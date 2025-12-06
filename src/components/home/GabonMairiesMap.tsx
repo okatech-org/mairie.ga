@@ -21,13 +21,14 @@ interface SelectedMairie {
 const GabonMairiesMap = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  const markersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
+  const markersRef = useRef<Map<string, { marker: mapboxgl.Marker; province: string }>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedMairie, setSelectedMairie] = useState<SelectedMairie | null>(null);
   const [hoveredProvince, setHoveredProvince] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [activeProvinceFilter, setActiveProvinceFilter] = useState<string | null>(null);
 
   // Filter mairies based on search query
   const searchResults = useMemo(() => {
@@ -39,6 +40,20 @@ const GabonMairiesMap = () => {
       m.departement.toLowerCase().includes(query)
     ).slice(0, 8);
   }, [searchQuery]);
+
+  // Update marker visibility when filter changes
+  useEffect(() => {
+    markersRef.current.forEach(({ marker, province }) => {
+      const el = marker.getElement();
+      if (activeProvinceFilter === null || province === activeProvinceFilter) {
+        el.style.display = 'block';
+        el.style.opacity = '1';
+      } else {
+        el.style.display = 'none';
+        el.style.opacity = '0';
+      }
+    });
+  }, [activeProvinceFilter]);
 
   // Handle selecting a mairie from search
   const handleSelectMairie = (mairie: MairieGabon) => {
@@ -52,6 +67,7 @@ const GabonMairiesMap = () => {
     });
     setSearchQuery('');
     setIsSearchFocused(false);
+    setActiveProvinceFilter(mairie.province);
 
     // Fly to the selected mairie
     if (map.current) {
@@ -62,20 +78,46 @@ const GabonMairiesMap = () => {
       });
 
       // Open the popup for the selected marker
-      const marker = markersRef.current.get(mairie.id);
-      if (marker) {
-        marker.togglePopup();
+      const markerData = markersRef.current.get(mairie.id);
+      if (markerData) {
+        markerData.marker.togglePopup();
       }
     }
   };
 
   // Handle clicking on a province to filter
   const handleProvinceClick = (provinceName: string) => {
+    // Toggle filter if clicking same province
+    if (activeProvinceFilter === provinceName) {
+      setActiveProvinceFilter(null);
+      if (map.current) {
+        map.current.flyTo({
+          center: [11.5, -0.8],
+          zoom: 5.5,
+          duration: 1500
+        });
+      }
+      return;
+    }
+
+    setActiveProvinceFilter(provinceName);
     const provinceCapital = mairiesGabon.find(m => m.province === provinceName && m.isCapitalProvince);
     if (provinceCapital && map.current) {
       map.current.flyTo({
         center: provinceCapital.coordinates,
         zoom: 8,
+        duration: 1500
+      });
+    }
+  };
+
+  // Clear filter
+  const handleClearFilter = () => {
+    setActiveProvinceFilter(null);
+    if (map.current) {
+      map.current.flyTo({
+        center: [11.5, -0.8],
+        zoom: 5.5,
         duration: 1500
       });
     }
@@ -158,8 +200,8 @@ const GabonMairiesMap = () => {
               .setPopup(popup)
               .addTo(map.current!);
 
-            // Store marker reference
-            markersRef.current.set(mairie.id, marker);
+            // Store marker reference with province info
+            markersRef.current.set(mairie.id, { marker, province: mairie.province });
 
             el.addEventListener('click', () => {
               setSelectedMairie({
@@ -304,18 +346,41 @@ const GabonMairiesMap = () => {
 
         {/* Province List */}
         <div className="space-y-3">
-          <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-primary" />
-            Provinces
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-lg flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-primary" />
+              Provinces
+            </h3>
+            {activeProvinceFilter && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleClearFilter}
+                className="text-xs h-7 gap-1"
+              >
+                <X className="h-3 w-3" />
+                Effacer filtre
+              </Button>
+            )}
+          </div>
+
+          {activeProvinceFilter && (
+            <div className="p-2 rounded-lg bg-primary/10 border border-primary/30 mb-3 animate-fade-in">
+              <p className="text-xs text-center text-primary font-medium">
+                Filtre actif: {activeProvinceFilter}
+              </p>
+            </div>
+          )}
           
           {provinceCounts.map((province) => (
             <div
               key={province.name}
               className={`p-3 rounded-lg border transition-all cursor-pointer hover:shadow-md ${
-                hoveredProvince === province.name 
-                  ? 'border-primary bg-primary/5 shadow-md' 
-                  : 'border-border hover:border-primary/50'
+                activeProvinceFilter === province.name
+                  ? 'border-primary bg-primary/10 shadow-md ring-2 ring-primary/30'
+                  : hoveredProvince === province.name 
+                    ? 'border-primary bg-primary/5 shadow-md' 
+                    : 'border-border hover:border-primary/50'
               }`}
               onMouseEnter={() => setHoveredProvince(province.name)}
               onMouseLeave={() => setHoveredProvince(null)}
@@ -329,7 +394,10 @@ const GabonMairiesMap = () => {
                   />
                   <span className="font-medium text-sm">{province.name}</span>
                 </div>
-                <Badge variant="secondary" className="text-xs">
+                <Badge 
+                  variant={activeProvinceFilter === province.name ? "default" : "secondary"} 
+                  className="text-xs"
+                >
                   {province.count}
                 </Badge>
               </div>
