@@ -25,11 +25,11 @@ import {
   MessageSquare,
   Calendar,
   Navigation,
-  Volume2,
   Headphones
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { GabonMairiesSection } from "@/components/home/GabonMairiesSection";
+import IAstedButtonFull from "@/components/iasted/IAstedButtonFull";
 import heroImage from "@/assets/mairie-accueil.jpg";
 import serviceImage from "@/assets/service-municipal.jpg";
 import familleImage from "@/assets/famille-acte-naissance.jpg";
@@ -392,44 +392,40 @@ export default function Home() {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left - Visual */}
             <div className="relative order-2 lg:order-1">
-              <div className="relative mx-auto w-72 h-72 md:w-96 md:h-96">
+              <div className="relative mx-auto w-72 h-72 md:w-96 md:h-96 flex items-center justify-center">
                 {/* Animated rings */}
                 <div className="absolute inset-0 rounded-full border-2 border-violet-500/20 animate-ping" style={{ animationDuration: '3s' }} />
                 <div className="absolute inset-4 rounded-full border-2 border-violet-500/30 animate-ping" style={{ animationDuration: '3s', animationDelay: '0.5s' }} />
                 <div className="absolute inset-8 rounded-full border-2 border-violet-500/40 animate-ping" style={{ animationDuration: '3s', animationDelay: '1s' }} />
                 
-                {/* Center circle */}
-                <div className="absolute inset-12 md:inset-16 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-2xl shadow-violet-500/30">
-                  <div className="text-center text-white">
-                    <Volume2 className="h-12 w-12 md:h-16 md:w-16 mx-auto mb-2" />
-                    <p className="font-bold text-lg md:text-xl">iAsted</p>
-                    <p className="text-xs md:text-sm opacity-80">Assistant IA</p>
-                  </div>
+                {/* Center - Real iAsted Button */}
+                <div className="relative z-10">
+                  <IAstedButtonFull size="lg" />
                 </div>
 
                 {/* Floating feature cards */}
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-card rounded-xl p-3 shadow-lg border border-border animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-card rounded-xl p-3 shadow-lg border border-border animate-fade-in z-20" style={{ animationDelay: '0.2s' }}>
                   <div className="flex items-center gap-2">
                     <Mic className="h-4 w-4 text-violet-500" />
                     <span className="text-xs font-medium">Commande vocale</span>
                   </div>
                 </div>
                 
-                <div className="absolute top-1/4 -right-4 md:right-0 bg-card rounded-xl p-3 shadow-lg border border-border animate-fade-in" style={{ animationDelay: '0.4s' }}>
+                <div className="absolute top-1/4 -right-4 md:right-0 bg-card rounded-xl p-3 shadow-lg border border-border animate-fade-in z-20" style={{ animationDelay: '0.4s' }}>
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-primary" />
                     <span className="text-xs font-medium">Documents</span>
                   </div>
                 </div>
                 
-                <div className="absolute bottom-1/4 -left-4 md:left-0 bg-card rounded-xl p-3 shadow-lg border border-border animate-fade-in" style={{ animationDelay: '0.6s' }}>
+                <div className="absolute bottom-1/4 -left-4 md:left-0 bg-card rounded-xl p-3 shadow-lg border border-border animate-fade-in z-20" style={{ animationDelay: '0.6s' }}>
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-emerald-500" />
                     <span className="text-xs font-medium">Rendez-vous</span>
                   </div>
                 </div>
                 
-                <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-card rounded-xl p-3 shadow-lg border border-border animate-fade-in" style={{ animationDelay: '0.8s' }}>
+                <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-card rounded-xl p-3 shadow-lg border border-border animate-fade-in z-20" style={{ animationDelay: '0.8s' }}>
                   <div className="flex items-center gap-2">
                     <Navigation className="h-4 w-4 text-orange-500" />
                     <span className="text-xs font-medium">Navigation</span>
