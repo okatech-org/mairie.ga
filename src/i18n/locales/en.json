@@ -13,10 +13,10 @@
     "success": "Success"
   },
   "header": {
-    "title": "Consulat.ga",
-    "subtitleNormal": "Gabonese Consular Network",
+    "title": "Mairie.ga",
+    "subtitleNormal": "Gabonese Municipal Network",
     "subtitleDemo": "Demo Mode Active",
-    "worldNetwork": "World Network",
+    "nationalNetwork": "National Network",
     "news": "News",
     "demoPortal": "Demo Portal",
     "messaging": "Messaging",
