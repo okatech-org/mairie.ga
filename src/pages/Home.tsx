@@ -181,7 +181,7 @@ export default function Home() {
                 </div>
                 
                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
-                  <span className="text-white dark:text-primary drop-shadow-lg">Mairies.ga</span>
+                  <span className="text-white dark:text-primary drop-shadow-lg">MAIRIE.GA</span>
                   <br />
                   <span className="text-white/95 dark:text-white text-3xl md:text-4xl lg:text-5xl font-medium drop-shadow-lg">
                     Le Portail des Communes du Gabon
