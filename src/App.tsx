@@ -51,6 +51,7 @@ import CitizenSettingsPage from './pages/dashboard/citizen/CitizenSettingsPage';
 import SettingsPage from './pages/SettingsPage';
 import MessagingPage from "./pages/MessagingPage";
 import IAstedInterfaceWrapper from "@/components/iasted/IAstedInterfaceWrapper";
+import ServicesCatalog from "./pages/ServicesCatalog";
 
 const queryClient = new QueryClient();
 
@@ -67,6 +68,7 @@ const App = () => (
                 {/* PUBLIC PORTAL (Citizens) */}
                 <Route element={<PublicLayout />}>
                   <Route path="/" element={<GlobalHub />} />
+                  <Route path="/services" element={<ServicesCatalog />} />
                   <Route path="/actualites" element={<Actualites />} />
                   <Route path="/login" element={<Login />} />
 
