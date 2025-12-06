@@ -1,32 +1,26 @@
-import { ConsularRole, EmploymentStatus } from './consular-roles';
-import { EntityType } from './entity';
+import { MunicipalRole, EmploymentStatus } from './municipal-roles';
+import { OrganizationType } from './organization';
 import { UserFunction, ServiceAccess, UserQuotas, BillingFeature } from './user-management';
 
-export type UserRole = 'ADMIN' | ConsularRole;
+export type UserRole = 'ADMIN' | MunicipalRole | string;
 
 export interface DemoUser {
   id: string;
   role: UserRole;
   name: string;
-  entityId?: string; // null pour ADMIN système
+  entityId?: string;
   permissions: string[];
-  badge: string; // emoji
+  badge: string;
   description: string;
-
-  // New Hierarchy Fields
   hierarchyLevel?: number;
   employmentStatus?: EmploymentStatus;
-  allowedEntityTypes?: EntityType[];
+  allowedEntityTypes?: OrganizationType[];
   email?: string;
-
-  // Territoriality & Residency
-  residenceCountry?: string; // Country Code (e.g., 'FR')
-  currentLocation?: string; // Country Code (e.g., 'MA')
-  stayDuration?: number; // Months in current location
-  managedByOrgId?: string; // ID of the organization managing the user
-  signaledToOrgId?: string; // ID of the organization where user is signaled (short stay)
-
-  // Advanced Management
+  residenceCountry?: string;
+  currentLocation?: string;
+  stayDuration?: number;
+  managedByOrgId?: string;
+  signaledToOrgId?: string;
   functions?: UserFunction[];
   accessibleServices?: ServiceAccess[];
   quotas?: UserQuotas;
