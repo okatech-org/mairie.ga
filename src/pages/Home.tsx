@@ -1,5 +1,3 @@
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,11 +15,13 @@ import {
   Heart,
   Store,
   Baby,
-  Home as HomeIcon,
-  Landmark
+  Landmark,
+  TreePine,
+  Briefcase,
+  GraduationCap,
+  Phone
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 import { GabonMairiesSection } from "@/components/home/GabonMairiesSection";
 import heroImage from "@/assets/mairie-accueil.jpg";
 import serviceImage from "@/assets/service-municipal.jpg";
@@ -29,8 +29,6 @@ import familleImage from "@/assets/famille-acte-naissance.jpg";
 import entrepreneurImage from "@/assets/entrepreneur-patente.jpg";
 
 export default function Home() {
-  const { t } = useTranslation();
-  
   const services = [
     {
       icon: Baby,
@@ -43,8 +41,8 @@ export default function Home() {
     },
     {
       icon: Building2,
-      title: "Urbanisme",
-      description: "Permis de construire, certificats et autorisations pour vos projets immobiliers.",
+      title: "Urbanisme & Habitat",
+      description: "Permis de construire, certificats d'urbanisme et autorisations pour vos projets immobiliers.",
       color: "text-secondary",
       bgColor: "bg-secondary/10",
       link: "/services",
@@ -52,8 +50,8 @@ export default function Home() {
     },
     {
       icon: Store,
-      title: "Entreprises",
-      description: "Patentes commerciales, autorisations et accompagnement des entrepreneurs locaux.",
+      title: "Fiscalité Locale",
+      description: "Patentes commerciales, taxes communales et accompagnement des entrepreneurs locaux.",
       color: "text-accent",
       bgColor: "bg-accent/10",
       link: "/services",
@@ -65,22 +63,22 @@ export default function Home() {
     {
       icon: Shield,
       title: "Sécurisé",
-      description: "Données protégées selon les normes officielles"
+      description: "Protection des données garantie"
     },
     {
       icon: Clock,
-      title: "Rapide",
-      description: "Suivi en temps réel de vos démarches"
+      title: "Disponible 24/7",
+      description: "Services accessibles à tout moment"
     },
     {
       icon: MapPin,
       title: "Proximité",
-      description: "52 mairies à votre service dans tout le Gabon"
+      description: "52 mairies connectées au Gabon"
     },
     {
       icon: Sparkles,
       title: "Simplifié",
-      description: "Procédures administratives dématérialisées"
+      description: "Procédures 100% dématérialisées"
     },
   ];
 
@@ -88,7 +86,7 @@ export default function Home() {
     { 
       icon: Newspaper, 
       label: "Actualités", 
-      description: "Infos de votre commune",
+      description: "Vie de votre commune",
       href: "/actualites",
       color: "bg-primary/10 text-primary"
     },
@@ -109,53 +107,78 @@ export default function Home() {
     { 
       icon: Users, 
       label: "Associations", 
-      description: "Vie associative",
+      description: "Vie associative locale",
       href: "/associations",
       color: "bg-warning/10 text-warning"
     },
   ];
 
-  return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
+  const provinces = [
+    { name: "Estuaire", mairies: 12, capital: "Libreville" },
+    { name: "Haut-Ogooué", mairies: 8, capital: "Franceville" },
+    { name: "Moyen-Ogooué", mairies: 5, capital: "Lambaréné" },
+    { name: "Ngounié", mairies: 6, capital: "Mouila" },
+    { name: "Nyanga", mairies: 4, capital: "Tchibanga" },
+    { name: "Ogooué-Maritime", mairies: 5, capital: "Port-Gentil" },
+    { name: "Ogooué-Ivindo", mairies: 4, capital: "Makokou" },
+    { name: "Ogooué-Lolo", mairies: 4, capital: "Koulamoutou" },
+    { name: "Woleu-Ntem", mairies: 4, capital: "Oyem" },
+  ];
 
+  return (
+    <div className="flex flex-col">
       {/* Hero Section */}
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-hidden min-h-[85vh] flex items-center">
         {/* Background Image with Overlay */}
         <div className="absolute inset-0 z-0">
           <img 
             src={heroImage} 
-            alt="Mairie du Gabon - Citoyens" 
+            alt="Mairie du Gabon - Accueil citoyens" 
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/85 to-background/70 dark:from-background/98 dark:via-background/90 dark:to-background/75" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/98 via-background/90 to-background/60 dark:from-background/99 dark:via-background/95 dark:to-background/70" />
         </div>
 
-        <div className="relative z-10 py-20 md:py-28">
+        <div className="relative z-10 py-20 md:py-28 w-full">
           <div className="container mx-auto px-4">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               {/* Left Content */}
               <div className="max-w-2xl animate-fade-in">
-                <Badge className="mb-4 bg-primary/20 text-primary border-primary/30 hover:bg-primary/30">
-                  🇬🇦 Réseau des Mairies du Gabon
-                </Badge>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-14 h-14 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
+                    <Landmark className="h-8 w-8 text-primary" />
+                  </div>
+                  <div>
+                    <Badge className="bg-success/20 text-success border-success/30 hover:bg-success/30">
+                      🇬🇦 République Gabonaise
+                    </Badge>
+                  </div>
+                </div>
+                
                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
-                  Vos Services Municipaux en Ligne
+                  <span className="text-primary">Mairies.ga</span>
+                  <br />
+                  <span className="text-muted-foreground text-3xl md:text-4xl lg:text-5xl font-medium">
+                    Le Portail des Communes du Gabon
+                  </span>
                 </h1>
+                
                 <p className="text-lg md:text-xl mb-8 text-muted-foreground leading-relaxed">
-                  Effectuez vos démarches administratives depuis chez vous. État civil, urbanisme, 
-                  fiscalité locale - toutes vos formalités municipales simplifiées.
+                  Accédez aux services de votre mairie en ligne. État civil, urbanisme, 
+                  fiscalité locale — toutes vos démarches administratives municipales simplifiées et sécurisées.
                 </p>
+                
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Link to="/login">
-                    <Button size="lg" className="w-full sm:w-auto min-w-[180px] gap-2">
-                      Accéder aux services
-                      <ArrowRight className="h-4 w-4" />
+                    <Button size="lg" className="w-full sm:w-auto min-w-[200px] gap-2 h-12 text-base">
+                      <Users className="h-5 w-5" />
+                      Espace Citoyen
                     </Button>
                   </Link>
-                  <Link to="/register">
-                    <Button size="lg" variant="outline" className="w-full sm:w-auto min-w-[180px]">
-                      Créer un compte
+                  <Link to="/services">
+                    <Button size="lg" variant="outline" className="w-full sm:w-auto min-w-[200px] gap-2 h-12 text-base">
+                      <FileText className="h-5 w-5" />
+                      Nos Services
                     </Button>
                   </Link>
                 </div>
@@ -165,9 +188,11 @@ export default function Home() {
                   {features.map((feature, index) => (
                     <div 
                       key={index}
-                      className="flex items-center gap-3 p-3 rounded-lg bg-background/60 backdrop-blur-sm border border-border/50"
+                      className="flex items-center gap-3 p-3 rounded-lg bg-background/60 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-colors"
                     >
-                      <feature.icon className="h-5 w-5 text-primary flex-shrink-0" />
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <feature.icon className="h-5 w-5 text-primary" />
+                      </div>
                       <div>
                         <p className="font-medium text-sm">{feature.title}</p>
                         <p className="text-xs text-muted-foreground">{feature.description}</p>
@@ -184,12 +209,12 @@ export default function Home() {
                     <Link 
                       key={index}
                       to={link.href}
-                      className="group p-6 rounded-xl bg-card/80 backdrop-blur-sm border border-border/50 hover:shadow-lg transition-all hover:-translate-y-1"
+                      className="group p-6 rounded-xl bg-card/90 backdrop-blur-sm border border-border/50 hover:shadow-xl hover:border-primary/30 transition-all hover:-translate-y-1"
                     >
-                      <div className={`w-12 h-12 rounded-lg ${link.color} flex items-center justify-center mb-4 transition-transform group-hover:scale-110`}>
-                        <link.icon className="h-6 w-6" />
+                      <div className={`w-14 h-14 rounded-xl ${link.color} flex items-center justify-center mb-4 transition-transform group-hover:scale-110`}>
+                        <link.icon className="h-7 w-7" />
                       </div>
-                      <h3 className="font-semibold mb-1 group-hover:text-primary transition-colors">{link.label}</h3>
+                      <h3 className="font-semibold text-lg mb-1 group-hover:text-primary transition-colors">{link.label}</h3>
                       <p className="text-sm text-muted-foreground">{link.description}</p>
                     </Link>
                   ))}
@@ -200,12 +225,37 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Services Section with Images */}
+      {/* Mobile Quick Links */}
+      <section className="lg:hidden py-8 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-2 gap-3">
+            {quickLinks.map((link, index) => (
+              <Link 
+                key={index}
+                to={link.href}
+                className="flex items-center gap-3 p-4 rounded-lg bg-card border border-border/50 hover:border-primary/30 transition-colors"
+              >
+                <div className={`w-10 h-10 rounded-lg ${link.color} flex items-center justify-center flex-shrink-0`}>
+                  <link.icon className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="font-medium text-sm">{link.label}</p>
+                  <p className="text-xs text-muted-foreground">{link.description}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Services Section */}
       <section className="py-20 md:py-24 bg-gradient-to-b from-background to-muted/20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <Badge variant="outline" className="mb-4">Services Municipaux</Badge>
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6">Nos Services Phares</h2>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6">
+              Nos Services <span className="text-primary">Essentiels</span>
+            </h2>
             <p className="text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto">
               Des services de proximité pour accompagner chaque moment de votre vie citoyenne
             </p>
@@ -218,12 +268,13 @@ export default function Home() {
                   className="group h-full overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-2 animate-scale-in border-2 hover:border-primary/30"
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
-                  <div className="h-48 overflow-hidden">
+                  <div className="h-48 overflow-hidden relative">
                     <img 
                       src={service.image} 
                       alt={service.title}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     />
+                    <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
                   </div>
                   <CardHeader className="text-center pb-4">
                     <div className={`w-14 h-14 rounded-2xl ${service.bgColor} flex items-center justify-center mx-auto -mt-10 relative z-10 border-4 border-background ${service.color} transition-transform group-hover:scale-110`}>
@@ -236,7 +287,7 @@ export default function Home() {
                   </CardHeader>
                   <CardContent className="pt-0">
                     <div className="flex items-center justify-center gap-2 text-sm text-primary font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                      <span>Découvrir</span>
+                      <span>Accéder au service</span>
                       <ArrowRight className="h-4 w-4" />
                     </div>
                   </CardContent>
@@ -248,7 +299,7 @@ export default function Home() {
           <div className="text-center mt-12">
             <Link to="/services">
               <Button size="lg" variant="outline" className="gap-2">
-                Voir tous les services
+                Voir tous les services municipaux
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
@@ -256,24 +307,121 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Gabon Mairies Section */}
-      <GabonMairiesSection />
+      {/* Provinces Section */}
+      <section className="py-20 md:py-24 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <Badge variant="outline" className="mb-4">
+              <MapPin className="h-3 w-3 mr-1" />
+              Couverture Nationale
+            </Badge>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              9 Provinces, <span className="text-primary">52 Communes</span>
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Un réseau municipal unifié couvrant l'ensemble du territoire gabonais
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 max-w-6xl mx-auto">
+            {provinces.map((province, index) => (
+              <Card 
+                key={index}
+                className="text-center p-4 hover:shadow-lg transition-all hover:-translate-y-1 border-2 hover:border-primary/30"
+              >
+                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-primary/10 flex items-center justify-center">
+                  <TreePine className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="font-semibold text-sm mb-1">{province.name}</h3>
+                <p className="text-xs text-muted-foreground mb-2">{province.capital}</p>
+                <Badge variant="secondary" className="text-xs">
+                  {province.mairies} mairies
+                </Badge>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* Stats Section */}
       <section className="py-16 bg-primary text-primary-foreground">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             {[
-              { value: "52", label: "Mairies connectées" },
-              { value: "1.8M", label: "Citoyens servis" },
-              { value: "24/7", label: "Services en ligne" },
-              { value: "98%", label: "Satisfaction" },
+              { value: "52", label: "Communes connectées", icon: Landmark },
+              { value: "2.3M", label: "Citoyens gabonais", icon: Users },
+              { value: "24/7", label: "Services en ligne", icon: Clock },
+              { value: "100%", label: "Gratuit", icon: CheckCircle2 },
             ].map((stat, index) => (
               <div key={index} className="animate-fade-in" style={{ animationDelay: `${index * 0.1}s` }}>
+                <stat.icon className="h-8 w-8 mx-auto mb-3 opacity-80" />
                 <div className="text-4xl md:text-5xl font-bold mb-2">{stat.value}</div>
-                <div className="text-primary-foreground/80">{stat.label}</div>
+                <div className="text-primary-foreground/80 text-sm">{stat.label}</div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Programs Section */}
+      <section className="py-20 md:py-24">
+        <div className="container mx-auto px-4">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <Badge className="mb-4 bg-accent/20 text-accent border-accent/30">Programmes Citoyens</Badge>
+              <h2 className="text-3xl md:text-4xl font-bold mb-6">
+                Votre Mairie Vous Accompagne
+              </h2>
+              <p className="text-muted-foreground text-lg mb-8">
+                Découvrez les programmes d'accompagnement mis en place par les mairies 
+                du Gabon pour améliorer le quotidien des citoyens.
+              </p>
+
+              <div className="space-y-4">
+                {[
+                  { icon: GraduationCap, title: "Éducation", desc: "Bourses et soutien scolaire" },
+                  { icon: Briefcase, title: "Emploi Local", desc: "Insertion professionnelle des jeunes" },
+                  { icon: Heart, title: "Solidarité", desc: "Aide aux familles vulnérables" },
+                  { icon: TreePine, title: "Environnement", desc: "Actions écologiques communales" },
+                ].map((item, index) => (
+                  <div key={index} className="flex items-center gap-4 p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <item.icon className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">{item.title}</p>
+                      <p className="text-sm text-muted-foreground">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <Link to="/sensibilisation" className="inline-block mt-8">
+                <Button size="lg" variant="outline" className="gap-2">
+                  Découvrir tous les programmes
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+
+            <div className="relative">
+              <img 
+                src={serviceImage} 
+                alt="Service municipal - Accompagnement citoyen"
+                className="w-full rounded-2xl shadow-2xl"
+              />
+              <div className="absolute -bottom-6 -left-6 bg-card p-6 rounded-xl shadow-xl border border-border max-w-xs">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-success/20 flex items-center justify-center">
+                    <CheckCircle2 className="h-5 w-5 text-success" />
+                  </div>
+                  <div>
+                    <p className="font-semibold">+15 000 familles</p>
+                    <p className="text-xs text-muted-foreground">accompagnées en 2024</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -282,23 +430,23 @@ export default function Home() {
       <section className="py-20 md:py-24 bg-muted/50">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
-            <Card className="overflow-hidden border-2">
+            <Card className="overflow-hidden border-2 border-primary/20">
               <div className="grid md:grid-cols-2">
                 <div className="p-8 md:p-12">
-                  <Badge className="mb-4 bg-accent/20 text-accent border-accent/30">Nouveau</Badge>
+                  <Badge className="mb-4 bg-primary/20 text-primary border-primary/30">Nouveau</Badge>
                   <h2 className="text-2xl md:text-3xl font-bold mb-4">
-                    Simplifiez vos démarches municipales
+                    Créez votre Compte Citoyen
                   </h2>
                   <p className="text-muted-foreground mb-6">
-                    Créez votre compte citoyen et accédez à tous les services de votre mairie en ligne. 
-                    Suivez vos demandes en temps réel.
+                    Accédez à tous les services de votre mairie en ligne. 
+                    Suivez vos demandes et recevez des notifications en temps réel.
                   </p>
                   <ul className="space-y-3 mb-8">
                     {[
                       "Demandes de documents officiels",
                       "Suivi des dossiers en temps réel",
                       "Prise de rendez-vous en ligne",
-                      "Notifications automatiques"
+                      "Notifications par SMS et email"
                     ].map((item, i) => (
                       <li key={i} className="flex items-center gap-2 text-sm">
                         <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
@@ -308,18 +456,18 @@ export default function Home() {
                   </ul>
                   <Link to="/register">
                     <Button size="lg" className="w-full sm:w-auto gap-2">
-                      Créer mon compte citoyen
+                      Créer mon compte
                       <ArrowRight className="h-4 w-4" />
                     </Button>
                   </Link>
                 </div>
-                <div className="hidden md:flex bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20 p-12 items-center justify-center">
+                <div className="hidden md:flex bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10 p-12 items-center justify-center">
                   <div className="text-center">
                     <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-primary/20 flex items-center justify-center">
                       <Landmark className="h-12 w-12 text-primary" />
                     </div>
-                    <p className="text-xl font-semibold">52 mairies</p>
-                    <p className="text-muted-foreground">à votre service</p>
+                    <p className="text-2xl font-bold text-primary">Mairies.ga</p>
+                    <p className="text-muted-foreground">Réseau des Communes du Gabon</p>
                   </div>
                 </div>
               </div>
@@ -328,7 +476,25 @@ export default function Home() {
         </div>
       </section>
 
-      <Footer />
+      {/* Contact Info */}
+      <section className="py-12 border-t border-border">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-wrap justify-center gap-8 text-center">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Phone className="h-4 w-4" />
+              <span>+241 01 XX XX XX</span>
+            </div>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <MapPin className="h-4 w-4" />
+              <span>Libreville, Gabon</span>
+            </div>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <FileText className="h-4 w-4" />
+              <span>contact@mairies.ga</span>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

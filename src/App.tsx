@@ -7,7 +7,7 @@ import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { DemoProvider } from "@/contexts/DemoContext";
 import { ThemeProvider } from "@/components/theme-provider";
 import { LanguageProvider } from "@/contexts/LanguageContext";
-import GlobalHub from "./pages/GlobalHub";
+import Home from "./pages/Home";
 import Actualites from "./pages/Actualites";
 import Login from "./pages/Login";
 import DemoPortal from "./pages/DemoPortal";
@@ -68,7 +68,7 @@ const App = () => (
               <Routes>
                 {/* PUBLIC PORTAL (Citizens) */}
                 <Route element={<PublicLayout />}>
-                  <Route path="/" element={<GlobalHub />} />
+                  <Route path="/" element={<Home />} />
                   <Route path="/services" element={<ServicesCatalog />} />
                   <Route path="/sensibilisation" element={<Sensibilisation />} />
                   <Route path="/actualites" element={<Actualites />} />

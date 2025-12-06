@@ -7,10 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { 
   Heart, 
   Users, 
-  Leaf, 
   BookOpen, 
-  Droplets,
-  Home as HomeIcon,
   GraduationCap,
   Building2,
   ChevronRight,
@@ -25,8 +22,6 @@ import {
   Baby
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
 import reunionImage from "@/assets/reunion-citoyenne.jpg";
 import familleImage from "@/assets/famille-acte-naissance.jpg";
 import aideImage from "@/assets/aide-seniors.jpg";
@@ -149,9 +144,7 @@ export default function Sensibilisation() {
   const [activeTab, setActiveTab] = useState("programmes");
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
-
+    <div className="flex flex-col">
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 z-0">
@@ -419,8 +412,6 @@ export default function Sensibilisation() {
           </div>
         </div>
       </section>
-
-      <Footer />
     </div>
   );
 }
