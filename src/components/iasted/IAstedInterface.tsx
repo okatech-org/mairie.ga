@@ -108,6 +108,7 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
 
     // Détermine si on est sur une page de formulaire d'inscription
     const isOnRegistrationPage = location.pathname.startsWith('/register');
+    const isOnHomePage = location.pathname === '/';
     const registrationFormType = location.pathname.includes('/gabonais') ? 'gabonais' 
         : location.pathname.includes('/etranger') ? 'etranger' 
         : 'choice';
@@ -119,10 +120,26 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
         const displayTitle = isIdentified ? userTitle : '';
         const identificationMode = isIdentified ? 'DÉSACTIVÉ' : 'ACTIVÉ';
         
+        // Contexte de page actuelle
+        let pageContext = `\n\n## CONTEXTE ACTUEL\n**Page actuelle**: ${location.pathname}\n`;
+        
         // Contexte d'assistance au formulaire
-        const formContext = isOnRegistrationPage 
-            ? `\n\n## MODE ASSISTANCE FORMULAIRE ACTIF\nVous êtes actuellement sur la page d'inscription (${registrationFormType}). Aidez l'utilisateur à remplir le formulaire en lui posant des questions et en remplissant les champs avec les outils disponibles.\n\nÉtape actuelle: ${formAssistantStore.getCurrentStep()}/6\nChamps remplis: ${JSON.stringify(formAssistantStore.getFormData())}\n\nPour aider l'utilisateur:\n1. Demandez-lui ses informations une par une\n2. Utilisez fill_form_field pour remplir chaque champ\n3. Utilisez navigate_form_step pour passer à l'étape suivante\n4. Confirmez ce que vous avez rempli\n\nExemple: "Quel est votre prénom ?" → utilisateur répond "Jean" → call fill_form_field(field="firstName", value="Jean") → "Parfait Jean, et quel est votre nom de famille ?"`
-            : '';
+        if (isOnRegistrationPage) {
+            const currentStep = formAssistantStore.getCurrentStep();
+            const formData = formAssistantStore.getFormData();
+            const filledFields = Object.keys(formData).filter(k => formData[k]);
+            
+            pageContext += `**Type de formulaire**: ${registrationFormType}\n`;
+            pageContext += `**Étape actuelle**: ${currentStep}/6\n`;
+            pageContext += `**Champs remplis**: ${filledFields.length > 0 ? filledFields.join(', ') : 'aucun'}\n`;
+            pageContext += `**Données actuelles**: ${JSON.stringify(formData)}\n\n`;
+            pageContext += `MODE ASSISTANCE FORMULAIRE ACTIF - Guidez l'utilisateur pour remplir le formulaire étape par étape.\n`;
+            pageContext += `Pour remplir: fill_form_field(field, value)\n`;
+            pageContext += `Pour naviguer: navigate_form_step(direction="next"|"previous"|"goto", step=1-6)\n`;
+        } else if (isOnHomePage) {
+            pageContext += `\n**Mode**: Page d'accueil - L'utilisateur n'est pas encore sur un formulaire.\n`;
+            pageContext += `Si l'utilisateur veut s'inscrire, utilisez start_registration_flow(citizen_type) pour le guider vers le bon formulaire.\n`;
+        }
         
         return IASTED_SYSTEM_PROMPT
             .replace(/{USER_TITLE}/g, displayTitle)
@@ -130,8 +147,8 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
             .replace(/{APPELLATION_COURTE}/g, isIdentified ? (userTitle.split(' ').slice(-1)[0] || '') : '')
             .replace(/{IDENTIFICATION_MODE}/g, identificationMode)
             .replace(/{QUESTIONS_REMAINING}/g, String(questionsRemaining))
-            + formContext;
-    }, [timeOfDay, userTitle, userRole, questionsRemaining, isOnRegistrationPage, registrationFormType]);
+            + pageContext;
+    }, [timeOfDay, userTitle, userRole, questionsRemaining, isOnRegistrationPage, isOnHomePage, registrationFormType, location.pathname]);
 
     // Initialize OpenAI RTC with tool call handler
     const openaiRTC = useRealtimeVoiceWebRTC(async (toolName, args) => {
@@ -485,14 +502,57 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
             if (type === 'gabonais') {
                 navigate('/register/gabonais');
                 formAssistantStore.setCurrentForm('gabonais_registration');
+                formAssistantStore.clearForm();
                 toast.success('Formulaire d\'inscription Gabonais sélectionné');
             } else if (type === 'etranger') {
                 navigate('/register/etranger');
                 formAssistantStore.setCurrentForm('foreigner_registration');
+                formAssistantStore.clearForm();
                 toast.success('Formulaire d\'inscription Étranger sélectionné');
             }
             
             return { success: true, type, message: `Type ${type} sélectionné, navigation vers le formulaire` };
+        }
+
+        // Nouvel outil pour démarrer le processus d'inscription
+        if (toolName === 'start_registration_flow') {
+            console.log('🚀 [IAstedInterface] Démarrage du processus d\'inscription:', args);
+            const { citizen_type } = args;
+            
+            // Réinitialiser le store
+            formAssistantStore.clearForm();
+            
+            if (citizen_type === 'gabonais') {
+                formAssistantStore.setCurrentForm('gabonais_registration');
+                navigate('/register/gabonais');
+                toast.success('Bienvenue ! Je vous accompagne dans votre inscription.');
+                return { 
+                    success: true, 
+                    message: 'Navigation vers le formulaire Gabonais. Étape 1: Documents. Prêt à vous aider à remplir le formulaire.',
+                    current_step: 1,
+                    total_steps: 6
+                };
+            } else if (citizen_type === 'etranger') {
+                formAssistantStore.setCurrentForm('foreigner_registration');
+                navigate('/register/etranger');
+                toast.success('Bienvenue ! Je vous accompagne dans votre inscription.');
+                return { 
+                    success: true, 
+                    message: 'Navigation vers le formulaire Étranger. Étape 1: Documents. Prêt à vous aider à remplir le formulaire.',
+                    current_step: 1,
+                    total_steps: 6
+                };
+            } else {
+                // Si type non spécifié, aller à la page de choix
+                formAssistantStore.setCurrentForm('registration_choice');
+                navigate('/register');
+                toast.info('Choisissez votre type de profil pour commencer.');
+                return { 
+                    success: true, 
+                    message: 'Navigation vers la page de choix d\'inscription. Demandez à l\'utilisateur s\'il est gabonais ou étranger.',
+                    options: ['gabonais', 'etranger']
+                };
+            }
         }
 
         if (toolName === 'navigate_form_step') {
