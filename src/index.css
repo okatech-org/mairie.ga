@@ -65,41 +65,55 @@
   }
 
   .dark {
-    /* Mode Sombre */
-    --background: 210 30% 8%;
-    --foreground: 210 40% 98%;
+    /* Mode Sombre Amélioré - Plus de contraste */
+    --background: 220 25% 6%;
+    --foreground: 0 0% 98%;
 
-    --card: 210 30% 10%;
-    --card-foreground: 210 40% 98%;
+    --card: 220 25% 9%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 210 30% 10%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 220 25% 8%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 173 78% 50%;
-    --primary-foreground: 0 0% 100%;
-    --primary-light: 173 70% 30%;
+    /* Primary - Turquoise plus lumineux */
+    --primary: 173 85% 55%;
+    --primary-foreground: 220 25% 6%;
+    --primary-light: 173 70% 25%;
 
-    --secondary: 202 100% 55%;
-    --secondary-foreground: 0 0% 100%;
+    /* Secondary - Bleu électrique plus vif */
+    --secondary: 202 100% 60%;
+    --secondary-foreground: 220 25% 6%;
 
-    --muted: 210 30% 15%;
-    --muted-foreground: 215 20% 65%;
+    /* Muted avec meilleur contraste */
+    --muted: 220 20% 14%;
+    --muted-foreground: 220 15% 70%;
 
-    --accent: 338 80% 62%;
+    /* Accent - Rose plus vibrant */
+    --accent: 338 85% 65%;
     --accent-foreground: 0 0% 100%;
     
-    --warning: 41 100% 55%;
-    --warning-foreground: 210 30% 8%;
+    /* Warning - Jaune doré lumineux */
+    --warning: 45 100% 60%;
+    --warning-foreground: 220 25% 6%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 90% 65%;
     --destructive-foreground: 0 0% 100%;
     
-    --success: 173 78% 50%;
+    /* Success - Vert Gabon lumineux */
+    --success: 146 80% 45%;
     --success-foreground: 0 0% 100%;
 
-    --border: 210 30% 18%;
-    --input: 210 30% 18%;
-    --ring: 173 78% 50%;
+    /* Bordures plus visibles */
+    --border: 220 20% 20%;
+    --input: 220 20% 16%;
+    --ring: 173 85% 55%;
+
+    /* Chart colors - Plus vifs en mode sombre */
+    --chart-1: 173 85% 55%;
+    --chart-2: 202 100% 60%;
+    --chart-3: 338 85% 65%;
+    --chart-4: 45 100% 60%;
+    --chart-5: 146 80% 45%;
   }
 
   /* === THEME NEUMORPHIQUE (Scoped) === */
