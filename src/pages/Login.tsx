@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -353,25 +354,45 @@ export default function Login() {
         <div className="relative z-10 flex items-center justify-center w-full px-8 xl:px-12">
           <div className="text-white max-w-lg">
             {/* Badge & Logo */}
-            <div className="flex items-center gap-3 mb-6">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+              className="flex items-center gap-3 mb-6"
+            >
               <div className="w-14 h-14 rounded-xl bg-white/20 dark:bg-primary/20 border border-white/30 dark:border-primary/30 flex items-center justify-center backdrop-blur-sm">
                 <Landmark className="h-8 w-8 text-white dark:text-primary" />
               </div>
               <div className="px-3 py-1.5 rounded-full bg-emerald-500/20 text-emerald-100 dark:text-success border border-emerald-500/30 dark:border-success/30 text-sm font-medium backdrop-blur-sm">
                 🇬🇦 République Gabonaise
               </div>
-            </div>
+            </motion.div>
 
-            <h2 className="text-3xl xl:text-4xl font-bold mb-2 drop-shadow-lg">
+            <motion.h2 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
+              className="text-3xl xl:text-4xl font-bold mb-2 drop-shadow-lg"
+            >
               <span className="text-white dark:text-primary">MAIRIE.GA</span>
-            </h2>
-            <p className="text-xl xl:text-2xl font-medium text-white/95 mb-6 drop-shadow-md">
+            </motion.h2>
+            <motion.p 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.15, ease: "easeOut" }}
+              className="text-xl xl:text-2xl font-medium text-white/95 mb-6 drop-shadow-md"
+            >
               Le Portail des Communes du Gabon
-            </p>
-            <p className="text-white/80 text-base xl:text-lg mb-8 leading-relaxed">
+            </motion.p>
+            <motion.p 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
+              className="text-white/80 text-base xl:text-lg mb-8 leading-relaxed"
+            >
               Accédez à vos services municipaux en ligne. État civil, urbanisme, 
               fiscalité locale — démarches simplifiées et sécurisées.
-            </p>
+            </motion.p>
 
             {/* Features Grid like homepage */}
             <div className="grid grid-cols-2 gap-3 xl:gap-4">
@@ -381,8 +402,11 @@ export default function Login() {
                 { icon: MapPin, title: "52 Communes", desc: "Réseau national" },
                 { icon: Sparkles, title: "Simplifié", desc: "100% en ligne" }
               ].map((feature, i) => (
-                <div 
-                  key={i} 
+                <motion.div 
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.25 + i * 0.08, ease: "easeOut" }}
                   className="flex items-center gap-3 p-3 rounded-lg bg-white/10 dark:bg-black/40 backdrop-blur-md border border-white/20 dark:border-white/10 hover:border-white/40 dark:hover:border-primary/50 transition-colors"
                 >
                   <div className="w-10 h-10 rounded-lg bg-white/20 dark:bg-primary/20 flex items-center justify-center flex-shrink-0">
@@ -392,24 +416,35 @@ export default function Login() {
                     <p className="font-medium text-sm text-white">{feature.title}</p>
                     <p className="text-xs text-white/70">{feature.desc}</p>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
 
             {/* Stats */}
-            <div className="mt-8 xl:mt-10 grid grid-cols-3 gap-4 pt-6 border-t border-white/20">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.6, ease: "easeOut" }}
+              className="mt-8 xl:mt-10 grid grid-cols-3 gap-4 pt-6 border-t border-white/20"
+            >
               {[
                 { value: "52", label: "Communes", icon: Landmark },
                 { value: "2.3M", label: "Citoyens", icon: Users },
                 { value: "100%", label: "Gratuit", icon: CheckCircle2 },
               ].map((stat, i) => (
-                <div key={i} className="text-center">
+                <motion.div 
+                  key={i} 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.4, delay: 0.7 + i * 0.1, ease: "easeOut" }}
+                  className="text-center"
+                >
                   <stat.icon className="h-5 w-5 mx-auto mb-2 text-white/80" />
                   <div className="text-xl xl:text-2xl font-bold">{stat.value}</div>
                   <div className="text-xs text-white/70">{stat.label}</div>
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           </div>
         </div>
       </div>
