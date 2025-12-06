@@ -1,11 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/integrations/supabase/client';
-import { mairiesGabon, provinces } from '@/data/mock-mairies-gabon';
+import { mairiesGabon, provinces, MairieGabon } from '@/data/mock-mairies-gabon';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, MapPin, Building2, Users } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Loader2, MapPin, Building2, Users, Search, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface SelectedMairie {
   name: string;
@@ -13,15 +15,71 @@ interface SelectedMairie {
   departement: string;
   population?: number;
   isCapitalProvince?: boolean;
+  coordinates: [number, number];
 }
 
 const GabonMairiesMap = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const markersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedMairie, setSelectedMairie] = useState<SelectedMairie | null>(null);
   const [hoveredProvince, setHoveredProvince] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+  // Filter mairies based on search query
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const query = searchQuery.toLowerCase();
+    return mairiesGabon.filter(m => 
+      m.name.toLowerCase().includes(query) || 
+      m.province.toLowerCase().includes(query) ||
+      m.departement.toLowerCase().includes(query)
+    ).slice(0, 8);
+  }, [searchQuery]);
+
+  // Handle selecting a mairie from search
+  const handleSelectMairie = (mairie: MairieGabon) => {
+    setSelectedMairie({
+      name: mairie.name,
+      province: mairie.province,
+      departement: mairie.departement,
+      population: mairie.population,
+      isCapitalProvince: mairie.isCapitalProvince,
+      coordinates: mairie.coordinates
+    });
+    setSearchQuery('');
+    setIsSearchFocused(false);
+
+    // Fly to the selected mairie
+    if (map.current) {
+      map.current.flyTo({
+        center: mairie.coordinates,
+        zoom: 10,
+        duration: 1500
+      });
+
+      // Open the popup for the selected marker
+      const marker = markersRef.current.get(mairie.id);
+      if (marker) {
+        marker.togglePopup();
+      }
+    }
+  };
+
+  // Handle clicking on a province to filter
+  const handleProvinceClick = (provinceName: string) => {
+    const provinceCapital = mairiesGabon.find(m => m.province === provinceName && m.isCapitalProvince);
+    if (provinceCapital && map.current) {
+      map.current.flyTo({
+        center: provinceCapital.coordinates,
+        zoom: 8,
+        duration: 1500
+      });
+    }
+  };
 
   useEffect(() => {
     const initMap = async () => {
@@ -100,13 +158,17 @@ const GabonMairiesMap = () => {
               .setPopup(popup)
               .addTo(map.current!);
 
+            // Store marker reference
+            markersRef.current.set(mairie.id, marker);
+
             el.addEventListener('click', () => {
               setSelectedMairie({
                 name: mairie.name,
                 province: mairie.province,
                 departement: mairie.departement,
                 population: mairie.population,
-                isCapitalProvince: mairie.isCapitalProvince
+                isCapitalProvince: mairie.isCapitalProvince,
+                coordinates: mairie.coordinates
               });
             });
           });
@@ -146,6 +208,69 @@ const GabonMairiesMap = () => {
 
   return (
     <div className="relative w-full">
+      {/* Search Bar */}
+      <div className="mb-6 relative max-w-md">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Rechercher une mairie, province..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
+            className="pl-10 pr-10"
+          />
+          {searchQuery && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+              onClick={() => setSearchQuery('')}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+
+        {/* Search Results Dropdown */}
+        {isSearchFocused && searchResults.length > 0 && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-xl z-50 overflow-hidden animate-fade-in">
+            {searchResults.map((mairie) => {
+              const province = provinces.find(p => p.name === mairie.province);
+              return (
+                <button
+                  key={mairie.id}
+                  className="w-full px-4 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors text-left border-b border-border/50 last:border-0"
+                  onClick={() => handleSelectMairie(mairie)}
+                >
+                  <div 
+                    className="w-3 h-3 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: province?.color || '#009e49' }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{mairie.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {mairie.province} • {mairie.departement}
+                    </p>
+                  </div>
+                  {mairie.isCapitalProvince && (
+                    <Badge variant="secondary" className="text-xs flex-shrink-0">Chef-lieu</Badge>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {isSearchFocused && searchQuery && searchResults.length === 0 && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-xl z-50 p-4 text-center">
+            <MapPin className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">Aucune mairie trouvée</p>
+          </div>
+        )}
+      </div>
+
       <div className="grid lg:grid-cols-4 gap-6">
         {/* Map Container */}
         <div className="lg:col-span-3 relative">
@@ -194,6 +319,7 @@ const GabonMairiesMap = () => {
               }`}
               onMouseEnter={() => setHoveredProvince(province.name)}
               onMouseLeave={() => setHoveredProvince(null)}
+              onClick={() => handleProvinceClick(province.name)}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
