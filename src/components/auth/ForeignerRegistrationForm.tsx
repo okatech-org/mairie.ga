@@ -1,62 +1,15 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle2, Upload, Loader2, Clock, AlertTriangle, Plane, MapPin, User, FileText, Briefcase, Mic } from "lucide-react";
-import { RequestReason, ForeignerStatus } from "@/types/citizen";
+import { CheckCircle2, Upload, Loader2, Clock, AlertTriangle, Plane, MapPin, User, FileText, Briefcase } from "lucide-react";
+import { RequestReason } from "@/types/citizen";
 import { formAssistantStore, useFormAssistant } from "@/stores/formAssistantStore";
-import { cn } from "@/lib/utils";
-
-// Composant Label avec indicateur iAsted
-interface IAstedLabelProps {
-    children: React.ReactNode;
-    filledByIasted?: boolean;
-    className?: string;
-}
-
-function IAstedLabel({ children, filledByIasted, className }: IAstedLabelProps) {
-    return (
-        <div className={cn("flex items-center gap-1.5", className)}>
-            <Label>{children}</Label>
-            {filledByIasted && (
-                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-500/10 animate-in fade-in zoom-in duration-300">
-                    <Mic className="w-2.5 h-2.5 text-blue-500" />
-                </span>
-            )}
-        </div>
-    );
-}
-
-// Composant Input avec indicateur visuel iAsted
-interface IAstedInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-    filledByIasted?: boolean;
-}
-
-function IAstedInput({ filledByIasted, className, ...props }: IAstedInputProps) {
-    return (
-        <div className="relative">
-            <Input 
-                className={cn(
-                    filledByIasted && "pr-8 border-blue-500/30 bg-blue-500/5 transition-colors duration-300",
-                    className
-                )} 
-                {...props} 
-            />
-            {filledByIasted && (
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 animate-in fade-in slide-in-from-right-2 duration-300">
-                    <div className="w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center">
-                        <Mic className="w-3 h-3 text-blue-500" />
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-}
+import { IAstedLabel, IAstedInput, IAstedSelectIndicator, getIAstedSelectClasses } from "@/components/ui/iasted-form-fields";
 
 export function ForeignerRegistrationForm() {
     const [step, setStep] = useState(1);
@@ -381,11 +334,9 @@ export function ForeignerRegistrationForm() {
                                         handleInputChange('reason', value);
                                     }}
                                 >
-                                    <SelectTrigger className={filledByIasted.has('reason') ? "border-blue-500/30 bg-blue-500/5" : ""}>
+                                    <SelectTrigger className={getIAstedSelectClasses(filledByIasted.has('reason'), 'blue')}>
                                         <SelectValue placeholder="Sélectionnez un motif" />
-                                        {filledByIasted.has('reason') && (
-                                            <Mic className="w-3 h-3 text-blue-500 ml-auto" />
-                                        )}
+                                        <IAstedSelectIndicator filledByIasted={filledByIasted.has('reason')} variant="blue" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value={RequestReason.VISA_REQUEST}>Demande de Visa</SelectItem>
@@ -426,11 +377,9 @@ export function ForeignerRegistrationForm() {
                                             value={formData.accommodationType}
                                             onValueChange={(value) => handleInputChange('accommodationType', value)}
                                         >
-                                            <SelectTrigger className={filledByIasted.has('accommodationType') ? "border-blue-500/30 bg-blue-500/5" : ""}>
+                                            <SelectTrigger className={getIAstedSelectClasses(filledByIasted.has('accommodationType'), 'blue')}>
                                                 <SelectValue placeholder="Sélectionner" />
-                                                {filledByIasted.has('accommodationType') && (
-                                                    <Mic className="w-3 h-3 text-blue-500 ml-auto" />
-                                                )}
+                                                <IAstedSelectIndicator filledByIasted={filledByIasted.has('accommodationType')} variant="blue" />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="HOTEL">Hôtel</SelectItem>

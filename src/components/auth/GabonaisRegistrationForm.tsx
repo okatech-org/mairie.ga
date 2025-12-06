@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,55 +6,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { CheckCircle2, Upload, Loader2, FileText, User, Users, MapPin, Briefcase, Eye, Mic } from "lucide-react";
+import { CheckCircle2, Upload, Loader2, FileText, User, Users, MapPin, Briefcase, Eye } from "lucide-react";
 import { formAssistantStore, useFormAssistant } from "@/stores/formAssistantStore";
-import { cn } from "@/lib/utils";
-
-// Composant Label avec indicateur iAsted
-interface IAstedLabelProps {
-    children: React.ReactNode;
-    filledByIasted?: boolean;
-    className?: string;
-}
-
-function IAstedLabel({ children, filledByIasted, className }: IAstedLabelProps) {
-    return (
-        <div className={cn("flex items-center gap-1.5", className)}>
-            <Label>{children}</Label>
-            {filledByIasted && (
-                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary/10 animate-in fade-in zoom-in duration-300">
-                    <Mic className="w-2.5 h-2.5 text-primary" />
-                </span>
-            )}
-        </div>
-    );
-}
-
-// Composant Input avec indicateur visuel iAsted
-interface IAstedInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-    filledByIasted?: boolean;
-}
-
-function IAstedInput({ filledByIasted, className, ...props }: IAstedInputProps) {
-    return (
-        <div className="relative">
-            <Input 
-                className={cn(
-                    filledByIasted && "pr-8 border-primary/30 bg-primary/5 transition-colors duration-300",
-                    className
-                )} 
-                {...props} 
-            />
-            {filledByIasted && (
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 animate-in fade-in slide-in-from-right-2 duration-300">
-                    <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
-                        <Mic className="w-3 h-3 text-primary" />
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-}
+import { IAstedLabel, IAstedInput, IAstedSelectIndicator, getIAstedSelectClasses } from "@/components/ui/iasted-form-fields";
 
 export function GabonaisRegistrationForm() {
     const [step, setStep] = useState(1);
@@ -296,11 +250,9 @@ export function GabonaisRegistrationForm() {
                                     value={formData.maritalStatus}
                                     onValueChange={(value) => handleInputChange('maritalStatus', value)}
                                 >
-                                    <SelectTrigger className={filledByIasted.has('maritalStatus') ? "border-primary/30 bg-primary/5" : ""}>
+                                    <SelectTrigger className={getIAstedSelectClasses(filledByIasted.has('maritalStatus'))}>
                                         <SelectValue placeholder="Sélectionner" />
-                                        {filledByIasted.has('maritalStatus') && (
-                                            <Mic className="w-3 h-3 text-primary ml-auto" />
-                                        )}
+                                        <IAstedSelectIndicator filledByIasted={filledByIasted.has('maritalStatus')} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="SINGLE">Célibataire</SelectItem>
@@ -401,11 +353,9 @@ export function GabonaisRegistrationForm() {
                                     value={formData.professionalStatus}
                                     onValueChange={(value) => handleInputChange('professionalStatus', value)}
                                 >
-                                    <SelectTrigger className={filledByIasted.has('professionalStatus') ? "border-primary/30 bg-primary/5" : ""}>
+                                    <SelectTrigger className={getIAstedSelectClasses(filledByIasted.has('professionalStatus'))}>
                                         <SelectValue placeholder="Sélectionner" />
-                                        {filledByIasted.has('professionalStatus') && (
-                                            <Mic className="w-3 h-3 text-primary ml-auto" />
-                                        )}
+                                        <IAstedSelectIndicator filledByIasted={filledByIasted.has('professionalStatus')} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="EMPLOYED">Salarié</SelectItem>
