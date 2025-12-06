@@ -21,6 +21,9 @@ export const Footer = () => {
         <div className="max-w-6xl mx-auto mt-4 pt-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
           <p>© {new Date().getFullYear()} Réseau des Mairies du Gabon</p>
           <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3 sm:gap-4">
+            <Link to="/iasted-guide" className="hover:text-primary transition-colors">
+              Guide iAsted
+            </Link>
             <Link to="/mentions-legales" className="hover:text-primary transition-colors">
               Mentions légales
             </Link>

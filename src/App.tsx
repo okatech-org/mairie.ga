@@ -56,6 +56,7 @@ import Sensibilisation from "./pages/Sensibilisation";
 import MentionsLegales from "./pages/MentionsLegales";
 import PolitiqueConfidentialite from "./pages/PolitiqueConfidentialite";
 import CGU from "./pages/CGU";
+import IAstedOnboarding from "./pages/IAstedOnboarding";
 
 const queryClient = new QueryClient();
 
@@ -77,6 +78,7 @@ const App = () => (
                   <Route path="/mentions-legales" element={<MentionsLegales />} />
                   <Route path="/politique-confidentialite" element={<PolitiqueConfidentialite />} />
                   <Route path="/cgu" element={<CGU />} />
+                  <Route path="/iasted-guide" element={<IAstedOnboarding />} />
                   <Route path="/actualites" element={<Actualites />} />
                   <Route path="/login" element={<Login />} />
 
