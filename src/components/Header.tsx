@@ -34,10 +34,6 @@ export const Header = () => {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-6">
-          <Link to="/" className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-1">
-            <MapPin className="h-4 w-4" />
-            {t('header.nationalNetwork')}
-          </Link>
           <Link to="/services" className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-1">
             <FileText className="h-4 w-4" />
             Services
@@ -85,14 +81,6 @@ export const Header = () => {
                 )}
               </div>
             )}
-            <Link
-              to="/"
-              className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-2"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <MapPin className="h-4 w-4" />
-              {t('header.nationalNetwork')}
-            </Link>
             <Link
               to="/services"
               className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-2"
