@@ -33,14 +33,24 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
 
     const [selectedVoice, setSelectedVoice] = useState<'echo' | 'ash' | 'shimmer'>('ash');
     const [pendingDocument, setPendingDocument] = useState<any>(null);
+    const [questionsRemaining, setQuestionsRemaining] = useState(3);
     const { setTheme, theme } = useTheme();
     const navigate = useNavigate();
 
-    // Initialize voice from localStorage
+    // Initialize voice from localStorage and reset question counter on new session
     useEffect(() => {
         const savedVoice = localStorage.getItem('iasted-voice-selection') as 'echo' | 'ash' | 'shimmer';
         if (savedVoice) setSelectedVoice(savedVoice);
-    }, []);
+        
+        // Check if user is not identified (anonymous mode)
+        const isAnonymous = !userRole || userRole === 'user' || userRole === 'unknown';
+        if (isAnonymous) {
+            const storedQuestions = sessionStorage.getItem('iasted-questions-remaining');
+            if (storedQuestions) {
+                setQuestionsRemaining(parseInt(storedQuestions, 10));
+            }
+        }
+    }, [userRole]);
 
     // Calculate time-based greeting
     const timeOfDay = useMemo(() => {
@@ -99,12 +109,15 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
         // Détermine si l'utilisateur est identifié ou non
         const isIdentified = userRole && userRole !== 'user' && userRole !== 'unknown';
         const displayTitle = isIdentified ? userTitle : '';
+        const identificationMode = isIdentified ? 'DÉSACTIVÉ' : 'ACTIVÉ';
         
         return IASTED_SYSTEM_PROMPT
             .replace(/{USER_TITLE}/g, displayTitle)
             .replace(/{CURRENT_TIME_OF_DAY}/g, timeOfDay)
-            .replace(/{APPELLATION_COURTE}/g, isIdentified ? (userTitle.split(' ').slice(-1)[0] || '') : '');
-    }, [timeOfDay, userTitle, userRole]);
+            .replace(/{APPELLATION_COURTE}/g, isIdentified ? (userTitle.split(' ').slice(-1)[0] || '') : '')
+            .replace(/{IDENTIFICATION_MODE}/g, identificationMode)
+            .replace(/{QUESTIONS_REMAINING}/g, String(questionsRemaining));
+    }, [timeOfDay, userTitle, userRole, questionsRemaining]);
 
     // Initialize OpenAI RTC with tool call handler
     const openaiRTC = useRealtimeVoiceWebRTC(async (toolName, args) => {
@@ -140,6 +153,54 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
                 await supabase.auth.signOut();
                 window.location.href = '/';
             }, 1500);
+        }
+
+        // Handler pour le mode identification - prompt_login
+        if (toolName === 'prompt_login') {
+            console.log('🔐 [IAstedInterface] Invitation à se connecter:', args);
+            const reason = args.reason || 'accéder à toutes les fonctionnalités';
+            const redirectAfter = args.redirect_after || '/dashboard/citizen';
+            
+            // Stocker la redirection pour après connexion
+            sessionStorage.setItem('iasted-redirect-after-login', redirectAfter);
+            
+            toast.info(`Connexion recommandée pour ${reason}`, {
+                duration: 5000,
+                action: {
+                    label: 'Se connecter',
+                    onClick: () => navigate('/login')
+                }
+            });
+            
+            // Naviguer vers la page de connexion après un délai
+            setTimeout(() => {
+                navigate('/login');
+            }, 2000);
+            
+            return { success: true, message: 'Redirection vers la page de connexion' };
+        }
+
+        // Décrémenter le compteur de questions pour les utilisateurs non identifiés
+        if (toolName === 'decrement_questions') {
+            const isAnonymous = !userRole || userRole === 'user' || userRole === 'unknown';
+            if (isAnonymous && questionsRemaining > 0) {
+                const newCount = questionsRemaining - 1;
+                setQuestionsRemaining(newCount);
+                sessionStorage.setItem('iasted-questions-remaining', String(newCount));
+                console.log(`📊 [IAstedInterface] Questions restantes: ${newCount}`);
+                
+                if (newCount === 0) {
+                    toast.warning('Vous avez utilisé vos 3 questions gratuites. Connectez-vous pour continuer !', {
+                        duration: 6000,
+                        action: {
+                            label: 'Créer un compte',
+                            onClick: () => navigate('/login')
+                        }
+                    });
+                }
+                return { success: true, remaining: newCount };
+            }
+            return { success: true, remaining: questionsRemaining };
         }
 
         if (toolName === 'open_chat') {
