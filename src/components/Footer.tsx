@@ -8,7 +8,7 @@ export const Footer = () => {
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Landmark className="h-4 w-4 text-primary" />
-            <span className="font-bold text-sm">Mairie.ga</span>
+            <span className="font-bold text-sm">MAIRIE.GA</span>
             <span className="text-xs text-muted-foreground hidden sm:inline">— Services municipaux digitalisés</span>
           </div>
 
