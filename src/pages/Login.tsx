@@ -305,28 +305,6 @@ export default function Login() {
                 </Link>
               </div>
 
-              {isDev && (
-                <>
-                  <Separator className="my-6" />
-                  
-                  <Alert className="bg-accent/10 border-accent">
-                    <TestTube2 className="h-4 w-4 text-accent" />
-                    <AlertDescription className="text-sm">
-                      Mode développement - Accès rapide disponible
-                    </AlertDescription>
-                  </Alert>
-
-                  <Link to="/demo-portal">
-                    <Button
-                      variant="outline"
-                      className="w-full mt-4 border-accent text-accent hover:bg-accent hover:text-accent-foreground h-11 md:h-12"
-                    >
-                      <TestTube2 className="mr-2 h-4 w-4" />
-                      Accès Démo Rapide
-                    </Button>
-                  </Link>
-                </>
-              )}
 
               <Alert className="mt-6 bg-muted/50">
                 <Shield className="h-4 w-4 text-primary" />
