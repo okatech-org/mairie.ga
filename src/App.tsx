@@ -53,6 +53,8 @@ import MessagingPage from "./pages/MessagingPage";
 import IAstedInterfaceWrapper from "@/components/iasted/IAstedInterfaceWrapper";
 import ServicesCatalog from "./pages/ServicesCatalog";
 import Sensibilisation from "./pages/Sensibilisation";
+import MentionsLegales from "./pages/MentionsLegales";
+import PolitiqueConfidentialite from "./pages/PolitiqueConfidentialite";
 
 const queryClient = new QueryClient();
 
@@ -71,6 +73,8 @@ const App = () => (
                   <Route path="/" element={<Home />} />
                   <Route path="/services" element={<ServicesCatalog />} />
                   <Route path="/sensibilisation" element={<Sensibilisation />} />
+                  <Route path="/mentions-legales" element={<MentionsLegales />} />
+                  <Route path="/politique-confidentialite" element={<PolitiqueConfidentialite />} />
                   <Route path="/actualites" element={<Actualites />} />
                   <Route path="/login" element={<Login />} />
 
