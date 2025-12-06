@@ -388,20 +388,20 @@ export default function Home() {
                 du Gabon pour améliorer le quotidien des citoyens.
               </p>
 
-              <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
                 {[
                   { icon: GraduationCap, title: "Éducation", desc: "Bourses et soutien scolaire" },
-                  { icon: Briefcase, title: "Emploi Local", desc: "Insertion professionnelle des jeunes" },
-                  { icon: Heart, title: "Solidarité", desc: "Aide aux familles vulnérables" },
-                  { icon: TreePine, title: "Environnement", desc: "Actions écologiques communales" },
+                  { icon: Briefcase, title: "Emploi Local", desc: "Insertion professionnelle" },
+                  { icon: Heart, title: "Solidarité", desc: "Aide aux familles" },
+                  { icon: TreePine, title: "Environnement", desc: "Actions écologiques" },
                 ].map((item, index) => (
-                  <div key={index} className="flex items-center gap-4 p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <item.icon className="h-6 w-6 text-primary" />
+                  <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <item.icon className="h-5 w-5 text-primary" />
                     </div>
-                    <div>
-                      <p className="font-semibold">{item.title}</p>
-                      <p className="text-sm text-muted-foreground">{item.desc}</p>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm">{item.title}</p>
+                      <p className="text-xs text-muted-foreground truncate">{item.desc}</p>
                     </div>
                   </div>
                 ))}
