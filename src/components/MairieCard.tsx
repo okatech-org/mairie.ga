@@ -51,42 +51,37 @@ export function MairieCard({ mairie }: MairieCardProps) {
     const demoUsagers = getDemoAccountsForEntity(entityForDemo);
 
     return (
-        <Card className={`transition-all duration-300 border-l-4 hover:shadow-lg ${isExpanded ? 'ring-2 ring-primary' : ''}`} 
+        <Card className={`transition-all duration-300 border-l-4 hover:shadow-lg ${isExpanded ? 'ring-2 ring-primary/50' : ''}`} 
               style={{ borderLeftColor: '#009639' }}>
-            <CardHeader className="cursor-pointer hover:bg-accent/5 transition-colors" onClick={() => setIsExpanded(!isExpanded)}>
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-green-600 to-green-700 text-white shadow-lg">
-                            <Landmark className="h-7 w-7" />
+            <CardHeader className="cursor-pointer hover:bg-accent/5 transition-colors p-3 md:p-6" onClick={() => setIsExpanded(!isExpanded)}>
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
+                        <div className="flex items-center justify-center w-10 h-10 md:w-14 md:h-14 rounded-lg md:rounded-xl bg-gradient-to-br from-green-600 to-green-700 text-white shadow-lg flex-shrink-0">
+                            <Landmark className="h-5 w-5 md:h-7 md:w-7" />
                         </div>
-                        <div>
-                            <CardTitle className="text-xl text-foreground flex items-center gap-2">
-                                {mairie.name}
-                                <Badge className={`ml-2 text-xs ${TYPE_COLORS[mairie.type] || 'bg-gray-500'}`}>
+                        <div className="min-w-0 flex-1">
+                            <CardTitle className="text-sm md:text-xl text-foreground flex flex-wrap items-center gap-1 md:gap-2">
+                                <span className="truncate">{mairie.name}</span>
+                                <Badge className={`text-[10px] md:text-xs ${TYPE_COLORS[mairie.type] || 'bg-gray-500'}`}>
                                     {TYPE_LABELS[mairie.type] || mairie.type}
                                 </Badge>
                             </CardTitle>
-                            <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-muted-foreground">
+                            <div className="flex flex-wrap items-center gap-2 md:gap-3 mt-1 md:mt-2 text-xs md:text-sm text-muted-foreground">
                                 <span className="flex items-center gap-1">
                                     <MapPin className="h-3 w-3" />
-                                    {mairie.city}, {mairie.province}
+                                    <span className="truncate">{mairie.city}</span>
                                 </span>
                                 {mairie.population && (
-                                    <span className="flex items-center gap-1">
+                                    <span className="hidden sm:flex items-center gap-1">
                                         <Users className="h-3 w-3" />
                                         {mairie.population.toLocaleString()} hab.
                                     </span>
                                 )}
-                                {mairie.maire_name && (
-                                    <Badge variant="outline" className="text-xs">
-                                        {mairie.maire_name}
-                                    </Badge>
-                                )}
                             </div>
                         </div>
                     </div>
-                    <Button variant="ghost" size="icon">
-                        {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                    <Button variant="ghost" size="icon" className="flex-shrink-0 h-8 w-8 md:h-10 md:w-10">
+                        {isExpanded ? <ChevronUp className="h-4 w-4 md:h-5 md:w-5" /> : <ChevronDown className="h-4 w-4 md:h-5 md:w-5" />}
                     </Button>
                 </div>
             </CardHeader>
@@ -100,26 +95,20 @@ export function MairieCard({ mairie }: MairieCardProps) {
                         transition={{ duration: 0.3 }}
                         className="overflow-hidden"
                     >
-                        <CardContent className="pt-0 pb-6 space-y-6">
+                        <CardContent className="pt-0 pb-4 md:pb-6 px-3 md:px-6 space-y-4 md:space-y-6">
                             {/* Infos de contact */}
                             {(mairie.contact_email || mairie.contact_phone || mairie.website) && (
-                                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg">
+                                <div className="flex flex-wrap gap-2 md:gap-4 text-xs md:text-sm text-muted-foreground bg-muted/30 p-2 md:p-3 rounded-lg">
                                     {mairie.contact_email && (
                                         <span className="flex items-center gap-1">
-                                            <Mail className="h-4 w-4" />
-                                            {mairie.contact_email}
+                                            <Mail className="h-3 w-3 md:h-4 md:w-4" />
+                                            <span className="truncate">{mairie.contact_email}</span>
                                         </span>
                                     )}
                                     {mairie.contact_phone && (
                                         <span className="flex items-center gap-1">
-                                            <Phone className="h-4 w-4" />
+                                            <Phone className="h-3 w-3 md:h-4 md:w-4" />
                                             {mairie.contact_phone}
-                                        </span>
-                                    )}
-                                    {mairie.website && (
-                                        <span className="flex items-center gap-1">
-                                            <Globe className="h-4 w-4" />
-                                            {mairie.website}
                                         </span>
                                     )}
                                 </div>
@@ -128,30 +117,35 @@ export function MairieCard({ mairie }: MairieCardProps) {
                             {/* Services activés */}
                             {mairie.enabled_services && mairie.enabled_services.length > 0 && (
                                 <div>
-                                    <h4 className="text-xs font-semibold text-muted-foreground mb-2">SERVICES DISPONIBLES</h4>
+                                    <h4 className="text-[10px] md:text-xs font-semibold text-muted-foreground mb-2">SERVICES</h4>
                                     <div className="flex flex-wrap gap-1">
-                                        {mairie.enabled_services.map(service => (
-                                            <Badge key={service} variant="secondary" className="text-xs">
+                                        {mairie.enabled_services.slice(0, 6).map(service => (
+                                            <Badge key={service} variant="secondary" className="text-[10px] md:text-xs">
                                                 {service.replace(/_/g, ' ')}
                                             </Badge>
                                         ))}
+                                        {mairie.enabled_services.length > 6 && (
+                                            <Badge variant="outline" className="text-[10px] md:text-xs">
+                                                +{mairie.enabled_services.length - 6}
+                                            </Badge>
+                                        )}
                                     </div>
                                 </div>
                             )}
 
                             {/* Personnel Municipal */}
-                            <div className="bg-green-50 dark:bg-green-950/30 p-4 rounded-lg border border-green-200 dark:border-green-900">
-                                <h3 className="text-sm font-semibold text-green-700 dark:text-green-400 mb-3 flex items-center gap-2">
-                                    <Briefcase className="h-4 w-4" />
-                                    PERSONNEL MUNICIPAL ({staff.length > 0 ? staff.length : 'Simulé'})
+                            <div className="bg-green-50 dark:bg-green-950/30 p-3 md:p-4 rounded-lg border border-green-200 dark:border-green-900">
+                                <h3 className="text-xs md:text-sm font-semibold text-green-700 dark:text-green-400 mb-3 flex items-center gap-2">
+                                    <Briefcase className="h-3 w-3 md:h-4 md:w-4" />
+                                    PERSONNEL MUNICIPAL
                                 </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">
                                     {staff.length > 0 ? (
-                                        staff.slice(0, 6).map(agent => (
+                                        staff.slice(0, 4).map(agent => (
                                             <DemoUserCard key={agent.id} user={agent} />
                                         ))
                                     ) : (
-                                        getMunicipalStaffAccounts(entityForDemo).map(agent => (
+                                        getMunicipalStaffAccounts(entityForDemo).slice(0, 4).map(agent => (
                                             <DemoUserCard key={agent.id} user={agent} />
                                         ))
                                     )}
@@ -159,12 +153,12 @@ export function MairieCard({ mairie }: MairieCardProps) {
                             </div>
 
                             {/* Comptes Usagers Démo */}
-                            <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg border border-blue-200 dark:border-blue-900">
-                                <h3 className="text-sm font-semibold text-blue-700 dark:text-blue-400 mb-3 flex items-center gap-2">
-                                    <Users className="h-4 w-4" />
-                                    COMPTES USAGERS DÉMO ({demoUsagers.length})
+                            <div className="bg-blue-50 dark:bg-blue-950/30 p-3 md:p-4 rounded-lg border border-blue-200 dark:border-blue-900">
+                                <h3 className="text-xs md:text-sm font-semibold text-blue-700 dark:text-blue-400 mb-3 flex items-center gap-2">
+                                    <Users className="h-3 w-3 md:h-4 md:w-4" />
+                                    COMPTES USAGERS
                                 </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
                                     {demoUsagers.map(account => (
                                         <DemoUserCard key={account.id} user={account} />
                                     ))}
