@@ -36,13 +36,9 @@ export function GabonaisRegistrationForm() {
         profession: '',
     });
 
-    // Synchroniser avec le store
-    const { formData: storeData, currentStep } = useFormAssistant();
-
     // Écouter les événements d'iAsted
     useEffect(() => {
         formAssistantStore.setCurrentForm('gabonais_registration');
-        formAssistantStore.setCurrentStep(step);
 
         const handleFillField = (event: CustomEvent) => {
             const { field, value } = event.detail;
@@ -69,21 +65,12 @@ export function GabonaisRegistrationForm() {
             window.removeEventListener('iasted-navigate-step', handleNavigateStep as EventListener);
             window.removeEventListener('iasted-submit-form', handleSubmitForm);
         };
-    }, [step]);
+    }, []);
 
-    // Synchroniser le step avec le store
+    // Synchroniser le step avec le store (sans créer de boucle)
     useEffect(() => {
         formAssistantStore.setCurrentStep(step);
     }, [step]);
-
-    // Mettre à jour le store quand les données changent
-    useEffect(() => {
-        Object.entries(formData).forEach(([key, value]) => {
-            if (value) {
-                formAssistantStore.setField(key, value);
-            }
-        });
-    }, [formData]);
 
     const handleInputChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
