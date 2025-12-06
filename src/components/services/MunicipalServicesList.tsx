@@ -9,6 +9,7 @@ import {
   ServiceCategory 
 } from "@/types/municipal-services";
 import { ServiceDetailModal } from "./ServiceDetailModal";
+import { RequestCreationForm } from "@/components/requests/RequestCreationForm";
 import { 
   Search, 
   Clock, 
@@ -52,6 +53,8 @@ export const MunicipalServicesList = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedService, setSelectedService] = useState<MunicipalServiceInfo | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [requestFormOpen, setRequestFormOpen] = useState(false);
+  const [serviceForRequest, setServiceForRequest] = useState<MunicipalServiceInfo | null>(null);
 
   const services = useMemo(() => {
     let result = Object.values(MUNICIPAL_SERVICE_CATALOG);
@@ -76,10 +79,12 @@ export const MunicipalServicesList = ({
   };
 
   const handleCreateRequest = (service: MunicipalServiceInfo) => {
-    toast.success("Demande initiée", {
-      description: `Vous allez créer une demande pour : ${service.name}`
-    });
-    navigate("/dashboard/citizen/requests");
+    setServiceForRequest(service);
+    setRequestFormOpen(true);
+  };
+
+  const handleRequestSuccess = () => {
+    toast.success("Demande créée avec succès!");
   };
 
   return (
@@ -188,6 +193,13 @@ export const MunicipalServicesList = ({
         open={detailModalOpen}
         onOpenChange={setDetailModalOpen}
         onCreateRequest={handleCreateRequest}
+      />
+
+      <RequestCreationForm
+        service={serviceForRequest}
+        open={requestFormOpen}
+        onOpenChange={setRequestFormOpen}
+        onSuccess={handleRequestSuccess}
       />
     </div>
   );
