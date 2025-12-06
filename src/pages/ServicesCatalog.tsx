@@ -123,6 +123,7 @@ const ServiceCard = ({ service, onClick, isFavorite, onToggleFavorite }: Service
 };
 
 import { ServiceDetailModal } from "@/components/services/ServiceDetailModal";
+import { RequestCreationForm } from "@/components/requests/RequestCreationForm";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
@@ -134,6 +135,8 @@ const ServicesCatalog = () => {
   const [selectedBeneficiary, setSelectedBeneficiary] = useState<BeneficiaryType>("all");
   const [selectedService, setSelectedService] = useState<MunicipalServiceInfo | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [requestFormOpen, setRequestFormOpen] = useState(false);
+  const [serviceForRequest, setServiceForRequest] = useState<MunicipalServiceInfo | null>(null);
   const { favorites, toggleFavorite, isFavorite } = useFavoriteServices();
 
   const handleServiceClick = (service: MunicipalServiceInfo) => {
@@ -142,10 +145,12 @@ const ServicesCatalog = () => {
   };
 
   const handleCreateRequest = (service: MunicipalServiceInfo) => {
-    toast.success("Demande initiée", {
-      description: `Vous allez créer une demande pour : ${service.name}`
-    });
-    navigate("/dashboard/citizen/requests");
+    setServiceForRequest(service);
+    setRequestFormOpen(true);
+  };
+
+  const handleRequestSuccess = (requestId: string) => {
+    toast.success("Demande créée avec succès!");
   };
   
   const services = useMemo(() => Object.values(MUNICIPAL_SERVICE_CATALOG), []);
@@ -372,6 +377,13 @@ const ServicesCatalog = () => {
         open={detailModalOpen}
         onOpenChange={setDetailModalOpen}
         onCreateRequest={handleCreateRequest}
+      />
+
+      <RequestCreationForm
+        service={serviceForRequest}
+        open={requestFormOpen}
+        onOpenChange={setRequestFormOpen}
+        onSuccess={handleRequestSuccess}
       />
     </div>
   );
