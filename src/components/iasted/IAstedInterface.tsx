@@ -48,33 +48,63 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
         return hour >= 5 && hour < 18 ? "Bonjour" : "Bonsoir";
     }, []);
 
-    // Map user role to appropriate title (consulaire context)
+    // Map user role to appropriate title (contexte municipal)
     const userTitle = useMemo(() => {
         switch (userRole) {
+            // Personnel municipal
+            case 'MAIRE':
+            case 'maire':
+                return 'Monsieur le Maire';
+            case 'MAIRE_ADJOINT':
+            case 'maire_adjoint':
+                return 'Monsieur le Maire Adjoint';
+            case 'SECRETAIRE_GENERAL':
+            case 'secretaire_general':
+                return 'Monsieur le Secrétaire Général';
+            case 'CHEF_SERVICE':
+            case 'chef_service':
+                return 'Monsieur le Chef de Service';
+            case 'AGENT':
+            case 'agent':
+                return 'Cher collègue'; // Agent municipal
             case 'super_admin':
+            case 'SUPER_ADMIN':
                 return 'Monsieur l\'Administrateur';
             case 'admin':
-                return 'Monsieur le Consul';
-            case 'agent':
-                return 'Monsieur l\'Agent';
+            case 'ADMIN':
+                return 'Monsieur le Directeur';
+            // Usagers - Citoyens
             case 'citizen':
-                return 'Cher ressortissant';
-            case 'foreigner':
+            case 'CITIZEN':
+            case 'resident':
+                return 'Cher administré';
+            case 'citizen_other':
+            case 'autre_commune':
                 return 'Cher visiteur';
-            case 'diplomat':
-                return 'Excellence';
+            case 'foreigner':
+            case 'etranger':
+                return 'Cher résident';
+            case 'company':
+            case 'entreprise':
+            case 'association':
+                return 'Cher partenaire';
+            // Non identifié (page d'accueil)
             default:
-                return 'Monsieur';
+                return 'Bonjour';
         }
     }, [userRole]);
 
     // Format system prompt with context
     const formattedSystemPrompt = useMemo(() => {
+        // Détermine si l'utilisateur est identifié ou non
+        const isIdentified = userRole && userRole !== 'user' && userRole !== 'unknown';
+        const displayTitle = isIdentified ? userTitle : '';
+        
         return IASTED_SYSTEM_PROMPT
-            .replace(/{USER_TITLE}/g, userTitle)
+            .replace(/{USER_TITLE}/g, displayTitle)
             .replace(/{CURRENT_TIME_OF_DAY}/g, timeOfDay)
-            .replace(/{APPELLATION_COURTE}/g, userTitle.split(' ').slice(-1)[0] || 'Monsieur');
-    }, [timeOfDay, userTitle]);
+            .replace(/{APPELLATION_COURTE}/g, isIdentified ? (userTitle.split(' ').slice(-1)[0] || '') : '');
+    }, [timeOfDay, userTitle, userRole]);
 
     // Initialize OpenAI RTC with tool call handler
     const openaiRTC = useRealtimeVoiceWebRTC(async (toolName, args) => {
