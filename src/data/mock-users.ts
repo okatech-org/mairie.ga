@@ -1,9 +1,7 @@
 import { DemoUser } from '@/types/roles';
-import { ConsularRole, EmploymentStatus } from '@/types/consular-roles';
+import { MunicipalRole, EmploymentStatus } from '@/types/municipal-roles';
 import { UserFunction, BillingFeature } from '@/types/user-management';
-import { MOCK_ENTITIES } from './mock-entities';
-import { Entity } from '@/types/entity';
-import { OrganizationType } from '@/types/organization';
+import { MOCK_MAIRIES_NETWORK, MairieInfo } from './mock-mairies-network';
 import { MOCK_GABONAIS_CITIZENS } from './mock-citizens';
 import { MOCK_FOREIGNERS } from './mock-foreigners';
 
@@ -12,132 +10,158 @@ import { MOCK_FOREIGNERS } from './mock-foreigners';
 const ADMIN_USER: DemoUser = {
   id: 'admin-system',
   role: 'ADMIN',
-  name: 'Super Admin',
+  name: 'Super Admin National',
   entityId: undefined,
   permissions: [
     'Accès total au système',
     'Gestion des licences',
-    'Création d\'entités',
+    'Création de mairies',
     'Configuration IA et sécurité',
     'Consultation des logs système',
     'Gestion des utilisateurs globale',
   ],
   badge: '🔴',
-  description: 'Super administrateur avec accès au réseau mondial complet',
+  description: 'Super administrateur avec accès au réseau national complet',
   functions: [UserFunction.USER_MANAGEMENT, UserFunction.SETTINGS_MANAGEMENT, UserFunction.REPORTING_VIEW],
   billingFeatures: [BillingFeature.API_ACCESS, BillingFeature.UNLIMITED_STORAGE],
   quotas: { maxDailyFiles: 9999, maxStorageGB: 1000, canExportData: true }
 };
 
-// --- DYNAMIC STAFF GENERATION ---
+// --- DYNAMIC STAFF GENERATION FOR MAIRIES ---
 
-const generateStaffForEntity = (entity: Entity): DemoUser[] => {
+const generateStaffForMairie = (mairie: MairieInfo): DemoUser[] => {
   const staff: DemoUser[] = [];
-  const entityType = entity.type;
-  const city = entity.metadata?.city || 'Unknown';
-  const idPrefix = entity.id.split('-').slice(0, 2).join('-'); // e.g., fr-consulat
+  const city = mairie.name;
+  const idPrefix = mairie.id;
 
-  // 1. CONSUL GENERAL (Only for CONSULAT_GENERAL)
-  if (entityType === OrganizationType.CONSULAT_GENERAL) {
-    staff.push({
-      id: `${idPrefix}-cg`,
-      role: ConsularRole.CONSUL_GENERAL,
-      name: `M. le Consul Général (${city})`,
-      entityId: entity.id,
-      hierarchyLevel: 1,
-      employmentStatus: EmploymentStatus.FONCTIONNAIRE,
-      allowedEntityTypes: [OrganizationType.CONSULAT_GENERAL],
-      permissions: ['Supervision globale', 'Direction stratégique', 'Administration générale'],
-      badge: '🥇',
-      description: 'Consul Général - Chef de Poste',
-      functions: [UserFunction.VISA_VALIDATE, UserFunction.PASSPORT_VALIDATE, UserFunction.CIVIL_REGISTRY_VALIDATE, UserFunction.CRISIS_MANAGE],
-      quotas: { maxDailyFiles: 500, maxStorageGB: 50, canExportData: true }
-    });
-  }
-
-  // 2. CONSUL (All entities)
+  // 1. MAIRE
   staff.push({
-    id: `${idPrefix}-consul`,
-    role: ConsularRole.CONSUL,
-    name: `Consul (${city})`,
-    entityId: entity.id,
+    id: `${idPrefix}-maire`,
+    role: MunicipalRole.MAIRE,
+    name: `M. le Maire de ${city}`,
+    entityId: mairie.id,
+    hierarchyLevel: 1,
+    employmentStatus: EmploymentStatus.FONCTIONNAIRE,
+    permissions: ['Supervision globale', 'Direction stratégique', 'Signature actes officiels', 'Gestion budget'],
+    badge: '🏛️',
+    description: `Maire de ${city} - Première autorité municipale`,
+    functions: [UserFunction.CIVIL_REGISTRY_VALIDATE, UserFunction.SETTINGS_MANAGEMENT],
+    quotas: { maxDailyFiles: 500, maxStorageGB: 50, canExportData: true }
+  });
+
+  // 2. MAIRE ADJOINT
+  staff.push({
+    id: `${idPrefix}-maire-adjoint`,
+    role: MunicipalRole.MAIRE_ADJOINT,
+    name: `Maire Adjoint (${city})`,
+    entityId: mairie.id,
     hierarchyLevel: 2,
     employmentStatus: EmploymentStatus.FONCTIONNAIRE,
-    allowedEntityTypes: [OrganizationType.CONSULAT_GENERAL, OrganizationType.CONSULAT, OrganizationType.AMBASSADE],
-    permissions: entityType === OrganizationType.CONSULAT_GENERAL
-      ? ['Direction adjointe', 'Gestion entité']
-      : ['Direction section consulaire', 'Responsable principal'],
-    badge: '🥈',
-    description: entityType === OrganizationType.CONSULAT_GENERAL ? 'Consul - Adjoint au Chef de Poste' : 'Consul - Chef de Section Consulaire',
+    permissions: ['Délégation Maire', 'Supervision services', 'Validation demandes'],
+    badge: '🎖️',
+    description: 'Maire Adjoint - Délégation du Maire',
   });
 
-  // 3. VICE-CONSUL (Only for CONSULAT and CONSULAT_GENERAL)
-  if (entityType === OrganizationType.CONSULAT || entityType === OrganizationType.CONSULAT_GENERAL) {
-    staff.push({
-      id: `${idPrefix}-vc`,
-      role: ConsularRole.VICE_CONSUL,
-      name: `Vice-Consul (${city})`,
-      entityId: entity.id,
-      hierarchyLevel: 3,
-      employmentStatus: EmploymentStatus.FONCTIONNAIRE,
-      allowedEntityTypes: [OrganizationType.CONSULAT_GENERAL, OrganizationType.CONSULAT],
-      permissions: ['Supervision opérations', 'Validation'],
-      badge: '🥉',
-      description: 'Vice-Consul - Supervision Opérationnelle',
-    });
-  }
-
-  // 4. CHARGE D'AFFAIRES CONSULAIRES (All entities)
+  // 3. SECRÉTAIRE GÉNÉRAL
   staff.push({
-    id: `${idPrefix}-cac`,
-    role: ConsularRole.CHARGE_AFFAIRES_CONSULAIRES,
-    name: `Chargé d'Affaires (${city})`,
-    entityId: entity.id,
+    id: `${idPrefix}-sg`,
+    role: MunicipalRole.SECRETAIRE_GENERAL,
+    name: `Secrétaire Général (${city})`,
+    entityId: mairie.id,
+    hierarchyLevel: 3,
+    employmentStatus: EmploymentStatus.FONCTIONNAIRE,
+    permissions: ['Coordination administrative', 'Gestion RH', 'Suivi dossiers'],
+    badge: '📋',
+    description: 'Secrétaire Général - Coordination Administrative',
+  });
+
+  // 4. CHEF SERVICE ÉTAT CIVIL
+  staff.push({
+    id: `${idPrefix}-chef-ec`,
+    role: MunicipalRole.CHEF_SERVICE,
+    name: `Chef Service État Civil (${city})`,
+    entityId: mairie.id,
     hierarchyLevel: 4,
     employmentStatus: EmploymentStatus.FONCTIONNAIRE,
-    allowedEntityTypes: [OrganizationType.CONSULAT_GENERAL, OrganizationType.CONSULAT, OrganizationType.AMBASSADE],
-    permissions: ['Gestion demandes', 'Validation dossiers'],
-    badge: '🎖️',
-    description: 'Chargé d\'Affaires Consulaires',
+    permissions: ['Gestion état civil', 'Validation actes', 'Encadrement agents'],
+    badge: '📑',
+    description: 'Chef de Service État Civil',
   });
 
-  // 5. AGENT CONSULAIRE (All entities - 2 agents)
+  // 5. CHEF SERVICE URBANISME
+  staff.push({
+    id: `${idPrefix}-chef-urb`,
+    role: MunicipalRole.CHEF_SERVICE,
+    name: `Chef Service Urbanisme (${city})`,
+    entityId: mairie.id,
+    hierarchyLevel: 4,
+    employmentStatus: EmploymentStatus.FONCTIONNAIRE,
+    permissions: ['Gestion urbanisme', 'Permis construire', 'Validation technique'],
+    badge: '🏗️',
+    description: 'Chef de Service Urbanisme',
+  });
+
+  // 6. OFFICIER ÉTAT CIVIL 1
+  staff.push({
+    id: `${idPrefix}-oec-1`,
+    role: MunicipalRole.AGENT_ETAT_CIVIL,
+    name: `Officier État Civil 1 (${city})`,
+    entityId: mairie.id,
+    hierarchyLevel: 6,
+    employmentStatus: EmploymentStatus.FONCTIONNAIRE,
+    permissions: ['Établissement actes', 'Célébration mariages', 'Registres'],
+    badge: '✍️',
+    description: 'Officier d\'État Civil',
+  });
+
+  // 7. OFFICIER ÉTAT CIVIL 2
+  staff.push({
+    id: `${idPrefix}-oec-2`,
+    role: MunicipalRole.AGENT_ETAT_CIVIL,
+    name: `Officier État Civil 2 (${city})`,
+    entityId: mairie.id,
+    hierarchyLevel: 6,
+    employmentStatus: EmploymentStatus.FONCTIONNAIRE,
+    permissions: ['Établissement actes', 'Copies actes', 'Registres'],
+    badge: '✍️',
+    description: 'Officier d\'État Civil',
+  });
+
+  // 8. AGENT MUNICIPAL
   staff.push({
     id: `${idPrefix}-agent-1`,
-    role: ConsularRole.AGENT_CONSULAIRE,
-    name: `Agent Consulaire 1 (${city})`,
-    entityId: entity.id,
-    hierarchyLevel: 5,
+    role: MunicipalRole.AGENT_MUNICIPAL,
+    name: `Agent Municipal (${city})`,
+    entityId: mairie.id,
+    hierarchyLevel: 6,
     employmentStatus: EmploymentStatus.CONTRACTUEL,
-    allowedEntityTypes: [OrganizationType.CONSULAT_GENERAL, OrganizationType.CONSULAT, OrganizationType.AMBASSADE],
-    permissions: ['Traitement dossiers', 'Guichet virtuel'],
+    permissions: ['Traitement dossiers', 'Guichet virtuel', 'Saisie données'],
     badge: '🟢',
     description: 'Agent de traitement - Guichet',
   });
 
+  // 9. AGENT ACCUEIL
   staff.push({
-    id: `${idPrefix}-agent-2`,
-    role: ConsularRole.AGENT_CONSULAIRE,
-    name: `Agent Consulaire 2 (${city})`,
-    entityId: entity.id,
-    hierarchyLevel: 5,
+    id: `${idPrefix}-accueil`,
+    role: MunicipalRole.AGENT_ACCUEIL,
+    name: `Agent Accueil (${city})`,
+    entityId: mairie.id,
+    hierarchyLevel: 7,
     employmentStatus: EmploymentStatus.CONTRACTUEL,
-    allowedEntityTypes: [OrganizationType.CONSULAT_GENERAL, OrganizationType.CONSULAT, OrganizationType.AMBASSADE],
-    permissions: ['Traitement dossiers', 'Biométrie'],
-    badge: '🟢',
-    description: 'Agent de traitement - Biométrie',
+    permissions: ['Accueil usagers', 'Orientation', 'Information'],
+    badge: '🙋',
+    description: 'Agent d\'accueil',
   });
 
-  // 6. STAGIAIRE (All entities)
+  // 10. STAGIAIRE
   staff.push({
     id: `${idPrefix}-stagiaire`,
-    role: ConsularRole.STAGIAIRE,
+    role: MunicipalRole.STAGIAIRE,
     name: `Stagiaire (${city})`,
-    entityId: entity.id,
-    hierarchyLevel: 6,
-    employmentStatus: EmploymentStatus.CONTRACTUEL,
-    allowedEntityTypes: [OrganizationType.CONSULAT_GENERAL, OrganizationType.CONSULAT, OrganizationType.AMBASSADE],
-    permissions: ['Support traitement', 'Saisie données'],
+    entityId: mairie.id,
+    hierarchyLevel: 7,
+    employmentStatus: EmploymentStatus.STAGIAIRE,
+    permissions: ['Support traitement', 'Saisie données', 'Apprentissage'],
     badge: '🎓',
     description: 'Stagiaire - Support Opérationnel',
   });
@@ -145,66 +169,59 @@ const generateStaffForEntity = (entity: Entity): DemoUser[] => {
   return staff;
 };
 
-// Generate staff for all entities
-const GENERATED_STAFF = MOCK_ENTITIES.flatMap(entity => generateStaffForEntity(entity));
+// Generate staff for all mairies
+const GENERATED_STAFF = MOCK_MAIRIES_NETWORK.flatMap(mairie => generateStaffForMairie(mairie));
 
-// --- DYNAMIC STAFF GENERATION ---
+// --- CITIZENS MAPPING ---
 
 // Convert detailed citizens to DemoUser
 const MAPPED_CITIZENS: DemoUser[] = MOCK_GABONAIS_CITIZENS.map(c => ({
   id: c.id,
-  role: ConsularRole.CITIZEN,
+  role: MunicipalRole.CITOYEN,
   name: `${c.firstName} ${c.lastName}`,
-  entityId: c.assignedConsulate,
-  permissions: ['Accès complet', 'Passeport', 'État Civil'],
+  entityId: c.assignedConsulate, // Will need to be mapped to mairie
+  permissions: ['Accès complet', 'État Civil', 'Urbanisme', 'Légalisation'],
   badge: '🇬🇦',
   description: `Citoyen Gabonais - ${c.profession}`,
   hierarchyLevel: 0,
-  employmentStatus: EmploymentStatus.CITOYEN
+  employmentStatus: EmploymentStatus.USAGER
 }));
 
 // Convert detailed foreigners to DemoUser
 const MAPPED_FOREIGNERS: DemoUser[] = MOCK_FOREIGNERS.map(f => ({
   id: f.id,
-  role: ConsularRole.FOREIGNER,
+  role: MunicipalRole.ETRANGER_RESIDENT,
   name: `${f.firstName} ${f.lastName}`,
-  entityId: f.assignedConsulate,
-  permissions: ['Accès limité', 'Visa', 'Légalisation'],
+  entityId: f.assignedConsulate, // Will need to be mapped to mairie
+  permissions: ['Certificat résidence', 'Légalisations', 'Attestations'],
   badge: '🌍',
-  description: `Usager Étranger - ${f.nationality}`,
+  description: `Étranger Résident - ${f.nationality}`,
   hierarchyLevel: 0,
-  employmentStatus: EmploymentStatus.CITOYEN
+  employmentStatus: EmploymentStatus.USAGER
 }));
 
-// --- SPECIFIC TEST CASES FOR TERRITORIALITY ---
+// --- TEST CASES ---
 
-const TEST_STUDENT_FRANCE: DemoUser = {
-  id: 'student-gabon-france',
-  role: ConsularRole.CITIZEN,
-  name: 'Étudiant Gabonais (France)',
-  entityId: 'fr-consulat-paris', // Managed by France
+const TEST_CITIZEN_LIBREVILLE: DemoUser = {
+  id: 'citizen-libreville-1',
+  role: MunicipalRole.CITOYEN,
+  name: 'Jean-Baptiste Ndong',
+  entityId: 'mairie-libreville-centrale',
   permissions: ['Accès complet'],
-  badge: '🎓',
-  description: 'Étudiant en France (> 6 mois)',
-  residenceCountry: 'FR',
-  currentLocation: 'FR',
-  stayDuration: 12,
-  managedByOrgId: 'fr-consulat-paris'
+  badge: '🏠',
+  description: 'Citoyen de Libreville - 1er Arrondissement',
+  residenceCountry: 'GA',
+  currentLocation: 'GA',
 };
 
-const TEST_STUDENT_TRAVELER: DemoUser = {
-  id: 'student-gabon-traveler',
-  role: ConsularRole.CITIZEN,
-  name: 'Étudiant Voyageur (Maroc)',
-  entityId: 'fr-consulat-paris', // Still managed by France
-  permissions: ['Accès complet'],
-  badge: '✈️',
-  description: 'Étudiant France en voyage au Maroc (< 6 mois)',
-  residenceCountry: 'FR',
-  currentLocation: 'MA', // Morocco
-  stayDuration: 2, // < 6 months
-  managedByOrgId: 'fr-consulat-paris',
-  signaledToOrgId: 'ma-consulat-rabat' // Signaled to Morocco
+const TEST_ENTREPRISE: DemoUser = {
+  id: 'entreprise-libreville-1',
+  role: MunicipalRole.PERSONNE_MORALE,
+  name: 'SARL Construction Plus',
+  entityId: 'mairie-libreville-centrale',
+  permissions: ['Patente', 'Permis construire', 'Autorisations'],
+  badge: '🏢',
+  description: 'Entreprise de BTP à Libreville',
 };
 
 export const MOCK_USERS: DemoUser[] = [
@@ -212,8 +229,8 @@ export const MOCK_USERS: DemoUser[] = [
   ...GENERATED_STAFF,
   ...MAPPED_CITIZENS,
   ...MAPPED_FOREIGNERS,
-  TEST_STUDENT_FRANCE,
-  TEST_STUDENT_TRAVELER
+  TEST_CITIZEN_LIBREVILLE,
+  TEST_ENTREPRISE
 ];
 
 export const getUserById = (id: string): DemoUser | undefined => {
@@ -222,4 +239,13 @@ export const getUserById = (id: string): DemoUser | undefined => {
 
 export const getUsersByEntity = (entityId: string): DemoUser[] => {
   return MOCK_USERS.filter(user => user.entityId === entityId);
+};
+
+export const getStaffByMairie = (mairieId: string): DemoUser[] => {
+  return MOCK_USERS.filter(user => 
+    user.entityId === mairieId && 
+    user.role !== MunicipalRole.CITOYEN && 
+    user.role !== MunicipalRole.ETRANGER_RESIDENT &&
+    user.role !== MunicipalRole.PERSONNE_MORALE
+  );
 };
