@@ -497,8 +497,9 @@ export async function generateOfficialPDFWithURL(data: DocumentData): Promise<{ 
     const blob = await generateOfficialPDF(data);
     const url = URL.createObjectURL(blob);
 
-    // Générer un nom de fichier descriptif
-    const filename = `${data.type}_${data.recipient.replace(/\s+/g, '_')}_${new Date().getTime()}.pdf`;
+    // Générer un nom de fichier descriptif avec null-safety
+    const safeRecipient = (data.recipient || 'document').replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+    const filename = `${data.type || 'doc'}_${safeRecipient}_${new Date().getTime()}.pdf`;
 
     return { blob, url, filename };
 }

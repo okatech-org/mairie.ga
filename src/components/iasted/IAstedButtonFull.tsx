@@ -2,26 +2,26 @@ import { useState, useRef, useEffect } from 'react';
 import { Mic, MessageCircle, Brain } from 'lucide-react';
 
 interface IAstedButtonProps {
-    voiceListening?: boolean;
-    voiceSpeaking?: boolean;
-    voiceProcessing?: boolean;
-    pulsing?: boolean; // Visual feedback for sound events
-    onClick?: () => void;
-    onSingleClick?: () => void;
-    onDoubleClick?: () => void;
-    className?: string;
-    audioLevel?: number; // 0 to 1
-    size?: 'sm' | 'md' | 'lg'; // Button size variant
-    isInterfaceOpen?: boolean;
+  voiceListening?: boolean;
+  voiceSpeaking?: boolean;
+  voiceProcessing?: boolean;
+  pulsing?: boolean; // Visual feedback for sound events
+  onClick?: () => void;
+  onSingleClick?: () => void;
+  onDoubleClick?: () => void;
+  className?: string;
+  audioLevel?: number; // 0 to 1
+  size?: 'sm' | 'md' | 'lg'; // Button size variant
+  isInterfaceOpen?: boolean;
 }
 
 interface Shockwave {
-    id: number;
+  id: number;
 }
 
 interface Position {
-    x: number;
-    y: number;
+  x: number;
+  y: number;
 }
 
 const styles = `
@@ -1139,299 +1139,300 @@ const styles = `
 `;
 
 export const IAstedButtonFull: React.FC<IAstedButtonProps> = ({
-    onClick,
-    onDoubleClick,
-    className = '',
-    voiceListening = false,
-    voiceSpeaking = false,
-    voiceProcessing = false,
-    pulsing = false,
-    audioLevel = 0,
-    size = 'md' // Default size
+  onClick,
+  onDoubleClick,
+  className = '',
+  voiceListening = false,
+  voiceSpeaking = false,
+  voiceProcessing = false,
+  pulsing = false,
+  audioLevel = 0,
+  size = 'md', // Default size
+  isInterfaceOpen = false
 }) => {
-    const [shockwaves, setShockwaves] = useState<Shockwave[]>([]);
-    const [isClicked, setIsClicked] = useState(false);
-    const [isActive, setIsActive] = useState(false);
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [isDragging, setIsDragging] = useState(false);
-    const [position, setPosition] = useState<Position>({ x: 0, y: 0 });
+  const [shockwaves, setShockwaves] = useState<Shockwave[]>([]);
+  const [isClicked, setIsClicked] = useState(false);
+  const [isActive, setIsActive] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [position, setPosition] = useState<Position>({ x: 0, y: 0 });
 
-    const containerRef = useRef<HTMLDivElement>(null);
-    const dragStartPos = useRef<Position>({ x: 0, y: 0 });
-    const buttonPosition = useRef<Position>({ x: 0, y: 0 });
-    const clickTimer = useRef<NodeJS.Timeout | null>(null);
-    const clickCount = useRef(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dragStartPos = useRef<Position>({ x: 0, y: 0 });
+  const buttonPosition = useRef<Position>({ x: 0, y: 0 });
+  const clickTimer = useRef<NodeJS.Timeout | null>(null);
+  const clickCount = useRef(0);
 
-    useEffect(() => {
-        // Restaurer la position sauvegardée ou utiliser la position par défaut
-        const savedPosition = localStorage.getItem('iasted-button-position');
-        if (savedPosition) {
-            const pos = JSON.parse(savedPosition);
-            setPosition(pos);
-            buttonPosition.current = pos;
-        } else {
-            // Position par défaut (bas à droite) - on calcule dynamiquement selon la taille
-            const getSize = () => {
-                if (window.innerWidth <= 380) {
-                    return size === 'sm' ? 56 : size === 'lg' ? 100 : 80;
-                } else if (window.innerWidth <= 640) {
-                    return size === 'sm' ? 64 : size === 'lg' ? 120 : 96;
-                } else if (window.innerWidth <= 1024) {
-                    return size === 'sm' ? 72 : size === 'lg' ? 140 : 112;
-                }
-                return size === 'sm' ? 80 : size === 'lg' ? 160 : 128;
-            };
-
-            const btnSize = getSize();
-            const defaultPos = {
-                x: window.innerWidth - btnSize - 40,
-                y: window.innerHeight - btnSize - 40
-            };
-            setPosition(defaultPos);
-            buttonPosition.current = defaultPos;
+  useEffect(() => {
+    // Restaurer la position sauvegardée ou utiliser la position par défaut
+    const savedPosition = localStorage.getItem('iasted-button-position');
+    if (savedPosition) {
+      const pos = JSON.parse(savedPosition);
+      setPosition(pos);
+      buttonPosition.current = pos;
+    } else {
+      // Position par défaut (bas à droite) - on calcule dynamiquement selon la taille
+      const getSize = () => {
+        if (window.innerWidth <= 380) {
+          return size === 'sm' ? 56 : size === 'lg' ? 100 : 80;
+        } else if (window.innerWidth <= 640) {
+          return size === 'sm' ? 64 : size === 'lg' ? 120 : 96;
+        } else if (window.innerWidth <= 1024) {
+          return size === 'sm' ? 72 : size === 'lg' ? 140 : 112;
         }
-    }, []);
+        return size === 'sm' ? 80 : size === 'lg' ? 160 : 128;
+      };
 
-    useEffect(() => {
-        if (containerRef.current) {
-            containerRef.current.style.left = `${position.x}px`;
-            containerRef.current.style.top = `${position.y}px`;
-        }
-    }, [position]);
+      const btnSize = getSize();
+      const defaultPos = {
+        x: window.innerWidth - btnSize - 40,
+        y: window.innerHeight - btnSize - 40
+      };
+      setPosition(defaultPos);
+      buttonPosition.current = defaultPos;
+    }
+  }, []);
 
-    const voiceStateClass = voiceListening ? 'voice-listening' : voiceSpeaking ? 'voice-speaking' : '';
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.style.left = `${position.x}px`;
+      containerRef.current.style.top = `${position.y}px`;
+    }
+  }, [position]);
 
-    const handleClick = (e: React.MouseEvent) => {
-        if (isDragging) {
-            return;
-        }
+  const voiceStateClass = voiceListening ? 'voice-listening' : voiceSpeaking ? 'voice-speaking' : '';
 
-        const shockwaveId = Date.now();
-        setShockwaves([...shockwaves, { id: shockwaveId }]);
-        setIsClicked(true);
+  const handleClick = (e: React.MouseEvent) => {
+    if (isDragging) {
+      return;
+    }
 
-        setIsProcessing(true);
+    const shockwaveId = Date.now();
+    setShockwaves([...shockwaves, { id: shockwaveId }]);
+    setIsClicked(true);
 
-        setTimeout(() => {
-            setShockwaves(prev => prev.filter(r => r.id !== shockwaveId));
-        }, 1000);
+    setIsProcessing(true);
 
-        setTimeout(() => {
-            setIsClicked(false);
-        }, 1500);
+    setTimeout(() => {
+      setShockwaves(prev => prev.filter(r => r.id !== shockwaveId));
+    }, 1000);
 
-        setTimeout(() => {
-            setIsProcessing(false);
-        }, 3000);
+    setTimeout(() => {
+      setIsClicked(false);
+    }, 1500);
 
-        // Gestion des clics simples vs doubles avec délai de 300ms
-        clickCount.current += 1;
+    setTimeout(() => {
+      setIsProcessing(false);
+    }, 3000);
 
-        if (clickCount.current === 1) {
-            // Premier clic - attendre pour voir s'il y a un double clic
-            clickTimer.current = setTimeout(() => {
-                // Simple clic confirmé
-                onClick();
-                clickCount.current = 0;
-            }, 300); // Délai de 300ms pour détecter le double clic
-        } else if (clickCount.current === 2) {
-            // Double clic détecté - ouvrir le modal de chat texte
-            if (clickTimer.current) {
-                clearTimeout(clickTimer.current);
-            }
-            onDoubleClick();
-            clickCount.current = 0;
-        }
-    };
+    // Gestion des clics simples vs doubles avec délai de 300ms
+    clickCount.current += 1;
 
-    const handleMouseDown = (e: React.MouseEvent) => {
-        setIsActive(true);
+    if (clickCount.current === 1) {
+      // Premier clic - attendre pour voir s'il y a un double clic
+      clickTimer.current = setTimeout(() => {
+        // Simple clic confirmé
+        onClick();
+        clickCount.current = 0;
+      }, 300); // Délai de 300ms pour détecter le double clic
+    } else if (clickCount.current === 2) {
+      // Double clic détecté - ouvrir le modal de chat texte
+      if (clickTimer.current) {
+        clearTimeout(clickTimer.current);
+      }
+      onDoubleClick();
+      clickCount.current = 0;
+    }
+  };
 
-        if (containerRef.current) {
-            const rect = containerRef.current.getBoundingClientRect();
-            dragStartPos.current = {
-                x: e.clientX - rect.left,
-                y: e.clientY - rect.top
-            };
-        }
-    };
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsActive(true);
 
-    const handleMouseUp = () => {
-        setIsActive(false);
-        setIsDragging(false);
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      dragStartPos.current = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      };
+    }
+  };
 
-        if (containerRef.current) {
-            const pos = buttonPosition.current;
-            localStorage.setItem('iasted-button-position', JSON.stringify(pos));
-        }
-    };
+  const handleMouseUp = () => {
+    setIsActive(false);
+    setIsDragging(false);
 
-    const handleMouseLeave = () => {
-        setIsActive(false);
-        setIsDragging(false);
+    if (containerRef.current) {
+      const pos = buttonPosition.current;
+      localStorage.setItem('iasted-button-position', JSON.stringify(pos));
+    }
+  };
 
-        if (containerRef.current) {
-            const pos = buttonPosition.current;
-            localStorage.setItem('iasted-button-position', JSON.stringify(pos));
-        }
-    };
+  const handleMouseLeave = () => {
+    setIsActive(false);
+    setIsDragging(false);
 
-    const handleMouseMove = (e: React.MouseEvent) => {
-        if (!isActive) return;
+    if (containerRef.current) {
+      const pos = buttonPosition.current;
+      localStorage.setItem('iasted-button-position', JSON.stringify(pos));
+    }
+  };
 
-        const deltaX = e.movementX;
-        const deltaY = e.movementY;
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isActive) return;
 
-        if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
-            setIsDragging(true);
-        }
+    const deltaX = e.movementX;
+    const deltaY = e.movementY;
 
-        if (isDragging && containerRef.current) {
-            const rect = containerRef.current.getBoundingClientRect();
-            const newX = e.clientX - dragStartPos.current.x;
-            const newY = e.clientY - dragStartPos.current.y;
+    if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
+      setIsDragging(true);
+    }
 
-            const maxX = window.innerWidth - rect.width;
-            const maxY = window.innerHeight - rect.height;
+    if (isDragging && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const newX = e.clientX - dragStartPos.current.x;
+      const newY = e.clientY - dragStartPos.current.y;
 
-            const constrainedX = Math.max(0, Math.min(newX, maxX));
-            const constrainedY = Math.max(0, Math.min(newY, maxY));
+      const maxX = window.innerWidth - rect.width;
+      const maxY = window.innerHeight - rect.height;
 
-            setPosition({ x: constrainedX, y: constrainedY });
-            buttonPosition.current = { x: constrainedX, y: constrainedY };
-        }
-    };
+      const constrainedX = Math.max(0, Math.min(newX, maxX));
+      const constrainedY = Math.max(0, Math.min(newY, maxY));
 
-    return (
-        <>
-            <style>{styles}</style>
+      setPosition({ x: constrainedX, y: constrainedY });
+      buttonPosition.current = { x: constrainedX, y: constrainedY };
+    }
+  };
 
-            <div
-                ref={containerRef}
-                className={`perspective-container ${isDragging ? 'grabbing' : ''}`}
-                onMouseMove={handleMouseMove}
-            >
-                <div className="perspective">
-                    <button
-                        onClick={handleClick}
-                        onMouseDown={handleMouseDown}
-                        onMouseUp={handleMouseUp}
-                        onMouseLeave={handleMouseLeave}
-                        className={`thick-matter-button living-matter ${size} ${isClicked ? 'color-shift' : ''} ${isActive ? 'active' : ''} ${isProcessing ? 'processing' : ''} ${isDragging ? 'grabbing' : ''} ${pulsing ? 'pulsing' : ''} ${voiceStateClass} relative cursor-grab focus:outline-none overflow-hidden border-0 ${className}`}
-                        style={{
-                            '--iasted-icon-size': size === 'sm' ? 'clamp(24px, 5vw, 32px)' : size === 'lg' ? 'clamp(48px, 10vw, 64px)' : 'clamp(36px, 7vw, 48px)',
-                            '--iasted-text-size': size === 'sm' ? 'clamp(12px, 2.5vw, 14px)' : size === 'lg' ? 'clamp(20px, 4vw, 28px)' : 'clamp(16px, 3vw, 20px)',
-                        } as React.CSSProperties}
-                    >
-                        {/* Couche de profondeur */}
-                        <div className="depth-layer"></div>
+  return (
+    <>
+      <style>{styles}</style>
 
-                        {/* Petite sphère satellite */}
-                        <div className="satellite-particle"></div>
+      <div
+        ref={containerRef}
+        className={`perspective-container ${isDragging ? 'grabbing' : ''}`}
+        onMouseMove={handleMouseMove}
+      >
+        <div className="perspective">
+          <button
+            onClick={handleClick}
+            onMouseDown={handleMouseDown}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseLeave}
+            className={`thick-matter-button living-matter ${size} ${isClicked ? 'color-shift' : ''} ${isActive ? 'active' : ''} ${isProcessing ? 'processing' : ''} ${isDragging ? 'grabbing' : ''} ${pulsing ? 'pulsing' : ''} ${voiceStateClass} relative cursor-grab focus:outline-none overflow-hidden border-0 ${className}`}
+            style={{
+              '--iasted-icon-size': size === 'sm' ? 'clamp(24px, 5vw, 32px)' : size === 'lg' ? 'clamp(48px, 10vw, 64px)' : 'clamp(36px, 7vw, 48px)',
+              '--iasted-text-size': size === 'sm' ? 'clamp(12px, 2.5vw, 14px)' : size === 'lg' ? 'clamp(20px, 4vw, 28px)' : 'clamp(16px, 3vw, 20px)',
+            } as React.CSSProperties}
+          >
+            {/* Couche de profondeur */}
+            <div className="depth-layer"></div>
 
-                        {/* Couche cellulaire respirante */}
-                        <div className="cellular-layer"></div>
+            {/* Petite sphère satellite */}
+            <div className="satellite-particle"></div>
 
-                        {/* Vagues de fluide organique */}
-                        <div className="fluid-waves">
-                            <div className="wave-layer wave-layer-1"></div>
-                            <div className="wave-layer wave-layer-2"></div>
-                            <div className="wave-layer wave-layer-3"></div>
-                        </div>
+            {/* Couche cellulaire respirante */}
+            <div className="cellular-layer"></div>
 
-                        {/* Membrane organique palpitante */}
-                        <div className="organic-membrane"></div>
-
-                        {/* Membrane secondaire pour plus de profondeur */}
-                        <div className="organic-membrane-secondary"></div>
-
-                        {/* Background morphing */}
-                        <div className="absolute inset-0 morphing-bg rounded-full"></div>
-
-                        {/* Reflets mobiles */}
-                        <div className="moving-highlights">
-                            <div className="highlight-1"></div>
-                            <div className="highlight-2"></div>
-                            <div className="highlight-3"></div>
-                        </div>
-
-                        {/* Effet de brillance mobile */}
-                        <div className="shine-effect"></div>
-
-                        {/* Effet de substance épaisse */}
-                        <div className="substance-effect"></div>
-
-                        {/* Couches de fluide interne */}
-                        <div className="inner-fluid-layer layer-1"></div>
-                        <div className="inner-fluid-layer layer-2"></div>
-                        <div className="inner-fluid-layer layer-3"></div>
-
-                        {/* Effet de tourbillons */}
-                        <div className="vortex-container">
-                            <div className="vortex vortex-1"></div>
-                            <div className="vortex vortex-2"></div>
-                        </div>
-
-                        {/* Particules additionnelles */}
-                        <div className="particle-container">
-                            <div className="floating-particle particle-float-1"></div>
-                            <div className="floating-particle particle-float-2"></div>
-                        </div>
-
-                        {/* Veins organiques */}
-                        <div className="organic-veins"></div>
-
-                        {/* Émissions d'ondes synchronisées avec le battement */}
-                        <div className="wave-emission wave-1"></div>
-                        <div className="wave-emission wave-2"></div>
-                        <div className="wave-emission wave-3"></div>
-
-                        {/* Texture organique de surface */}
-                        <div className="organic-texture"></div>
-
-                        {/* Couche de brillance */}
-                        <div className="highlight-layer"></div>
-
-                        {/* Bulles respiratoires */}
-                        <div className="breathing-bubble bubble-1"></div>
-                        <div className="breathing-bubble bubble-2"></div>
-                        <div className="breathing-bubble bubble-3"></div>
-
-                        {/* Effets d'onde de choc au clic */}
-                        {shockwaves.map(shockwave => (
-                            <div key={shockwave.id} className="shockwave-effect"></div>
-                        ))}
-
-                        {/* Badge de mode vocal actif */}
-
-                        {/* Conteneur des icônes au centre - À l'intérieur du bouton */}
-                        <div className="fixed-icons-container">
-                            <div className="icon-container">
-                                {voiceListening ? (
-                                    <Mic className="text-white icon-svg" style={{ opacity: 1, transform: 'scale(1.3)' }} />
-                                ) : voiceSpeaking ? (
-                                    <span className="text-white iasted-text" style={{ opacity: 1, transform: 'scale(1.2)', fontSize: 'var(--iasted-text-size)' }}>
-                                        iAsted
-                                    </span>
-                                ) : voiceProcessing ? (
-                                    <Brain className="text-white icon-svg" style={{ opacity: 1, transform: 'scale(1.2)' }} />
-                                ) : (
-                                    <>
-                                        <span className="alternating-element text-element text-white iasted-text">
-                                            iAsted
-                                        </span>
-                                        <Mic className="alternating-element mic-element text-white icon-svg" />
-                                        <MessageCircle className="alternating-element chat-element text-white icon-svg" />
-                                        <Brain className="alternating-element brain-element text-white icon-svg" />
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    </button>
-                </div>
+            {/* Vagues de fluide organique */}
+            <div className="fluid-waves">
+              <div className="wave-layer wave-layer-1"></div>
+              <div className="wave-layer wave-layer-2"></div>
+              <div className="wave-layer wave-layer-3"></div>
             </div>
-        </>
-    );
+
+            {/* Membrane organique palpitante */}
+            <div className="organic-membrane"></div>
+
+            {/* Membrane secondaire pour plus de profondeur */}
+            <div className="organic-membrane-secondary"></div>
+
+            {/* Background morphing */}
+            <div className="absolute inset-0 morphing-bg rounded-full"></div>
+
+            {/* Reflets mobiles */}
+            <div className="moving-highlights">
+              <div className="highlight-1"></div>
+              <div className="highlight-2"></div>
+              <div className="highlight-3"></div>
+            </div>
+
+            {/* Effet de brillance mobile */}
+            <div className="shine-effect"></div>
+
+            {/* Effet de substance épaisse */}
+            <div className="substance-effect"></div>
+
+            {/* Couches de fluide interne */}
+            <div className="inner-fluid-layer layer-1"></div>
+            <div className="inner-fluid-layer layer-2"></div>
+            <div className="inner-fluid-layer layer-3"></div>
+
+            {/* Effet de tourbillons */}
+            <div className="vortex-container">
+              <div className="vortex vortex-1"></div>
+              <div className="vortex vortex-2"></div>
+            </div>
+
+            {/* Particules additionnelles */}
+            <div className="particle-container">
+              <div className="floating-particle particle-float-1"></div>
+              <div className="floating-particle particle-float-2"></div>
+            </div>
+
+            {/* Veins organiques */}
+            <div className="organic-veins"></div>
+
+            {/* Émissions d'ondes synchronisées avec le battement */}
+            <div className="wave-emission wave-1"></div>
+            <div className="wave-emission wave-2"></div>
+            <div className="wave-emission wave-3"></div>
+
+            {/* Texture organique de surface */}
+            <div className="organic-texture"></div>
+
+            {/* Couche de brillance */}
+            <div className="highlight-layer"></div>
+
+            {/* Bulles respiratoires */}
+            <div className="breathing-bubble bubble-1"></div>
+            <div className="breathing-bubble bubble-2"></div>
+            <div className="breathing-bubble bubble-3"></div>
+
+            {/* Effets d'onde de choc au clic */}
+            {shockwaves.map(shockwave => (
+              <div key={shockwave.id} className="shockwave-effect"></div>
+            ))}
+
+            {/* Conteneur des icônes au centre - État basé sur le mode actif */}
+            <div className="fixed-icons-container">
+              <div className="icon-container">
+                {isInterfaceOpen && !voiceListening && !voiceSpeaking && !voiceProcessing ? (
+                  <MessageCircle className="text-white icon-svg" style={{ opacity: 1, transform: 'scale(1.2)' }} />
+                ) : voiceListening ? (
+                  <Mic className="text-white icon-svg" style={{ opacity: 1, transform: 'scale(1.3)' }} />
+                ) : voiceSpeaking ? (
+                  <span className="text-white iasted-text" style={{ opacity: 1, transform: 'scale(1.2)', fontSize: 'var(--iasted-text-size)' }}>
+                    iAsted
+                  </span>
+                ) : voiceProcessing ? (
+                  <Brain className="text-white icon-svg" style={{ opacity: 1, transform: 'scale(1.2)' }} />
+                ) : (
+                  <>
+                    <span className="alternating-element text-element text-white iasted-text">
+                      iAsted
+                    </span>
+                    <Mic className="alternating-element mic-element text-white icon-svg" />
+                    <MessageCircle className="alternating-element chat-element text-white icon-svg" />
+                    <Brain className="alternating-element brain-element text-white icon-svg" />
+                  </>
+                )}
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
+    </>
+  );
 };
 
 export default IAstedButtonFull;

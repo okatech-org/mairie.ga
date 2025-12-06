@@ -642,9 +642,27 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
         try {
             console.log('🔄 [IAstedChatModal] Initialisation session...');
             const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('Utilisateur non authentifié');
 
-            // Chercher ou créer une session
+            // Mode démo : pas d'utilisateur authentifié, utiliser session locale
+            if (!user) {
+                console.log('ℹ️ [IAstedChatModal] Mode démo - session locale uniquement');
+                const demoSessionId = `demo-${crypto.randomUUID()}`;
+                setSessionId(demoSessionId);
+
+                // Message de bienvenue pour le mode démo
+                const greetingMessage: Message = {
+                    id: crypto.randomUUID(),
+                    role: 'assistant',
+                    content: `Bonjour,\n\nJe suis iAsted, votre assistant municipal intelligent. Comment puis-je vous aider aujourd'hui ?`,
+                    timestamp: new Date().toISOString(),
+                    metadata: { responseStyle: 'strategique' },
+                };
+                setMessages([greetingMessage]);
+                console.log('✅ [IAstedChatModal] Session démo prête');
+                return;
+            }
+
+            // Utilisateur authentifié : chercher ou créer une session persistante
             const { data: existingSession } = await supabase
                 .from('conversation_sessions')
                 .select('*')
@@ -676,7 +694,7 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                 const greetingMessage: Message = {
                     id: crypto.randomUUID(),
                     role: 'assistant',
-                    content: `Bonjour Monsieur le Président,\n\nJe suis iAsted, votre assistant stratégique. Comment puis-je vous aider aujourd'hui ?`,
+                    content: `Bonjour,\n\nJe suis iAsted, votre assistant stratégique. Comment puis-je vous aider aujourd'hui ?`,
                     timestamp: new Date().toISOString(),
                     metadata: { responseStyle: 'strategique' },
                 };
@@ -687,11 +705,16 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
             console.log('✅ [IAstedChatModal] Session prête');
         } catch (error) {
             console.error('❌ [IAstedChatModal] Erreur initialisation:', error);
-            toast({
-                title: 'Erreur de session',
-                description: 'Impossible d\'initialiser la conversation',
-                variant: 'destructive',
-            });
+            // Fallback en mode démo local
+            const demoSessionId = `demo-fallback-${crypto.randomUUID()}`;
+            setSessionId(demoSessionId);
+            const greetingMessage: Message = {
+                id: crypto.randomUUID(),
+                role: 'assistant',
+                content: `Bonjour,\n\nJe suis iAsted. Je fonctionne en mode local. Comment puis-je vous aider ?`,
+                timestamp: new Date().toISOString(),
+            };
+            setMessages([greetingMessage]);
         }
     };
 

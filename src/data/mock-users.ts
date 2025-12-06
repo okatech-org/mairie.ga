@@ -200,37 +200,76 @@ const MAPPED_FOREIGNERS: DemoUser[] = MOCK_FOREIGNERS.map(f => ({
   employmentStatus: EmploymentStatus.USAGER
 }));
 
-// --- TEST CASES ---
+// --- DEMO CITIZEN ACCOUNTS (4 types d'usagers) ---
 
-const TEST_CITIZEN_LIBREVILLE: DemoUser = {
-  id: 'citizen-libreville-1',
+const DEMO_CITOYEN_RESIDENT: DemoUser = {
+  id: 'demo-citoyen-resident',
   role: MunicipalRole.CITOYEN,
   name: 'Jean-Baptiste Ndong',
   entityId: 'mairie-libreville-centrale',
-  permissions: ['Accès complet'],
+  permissions: ['Mes demandes', 'Mon profil', 'État Civil', 'Urbanisme'],
   badge: '🏠',
-  description: 'Citoyen de Libreville - 1er Arrondissement',
+  description: 'Citoyen résidant à Libreville',
   residenceCountry: 'GA',
   currentLocation: 'GA',
+  hierarchyLevel: 0,
+  employmentStatus: EmploymentStatus.USAGER
 };
 
-const TEST_ENTREPRISE: DemoUser = {
-  id: 'entreprise-libreville-1',
+const DEMO_CITOYEN_AUTRE_COMMUNE: DemoUser = {
+  id: 'demo-citoyen-autre-commune',
+  role: MunicipalRole.CITOYEN_AUTRE_COMMUNE,
+  name: 'Marie-Claire Obame',
+  entityId: 'mairie-libreville-centrale',
+  permissions: ['Légalisations', 'Certificats', 'Attestations'],
+  badge: '🌍',
+  description: 'Citoyen gabonais d\'une autre commune',
+  residenceCountry: 'GA',
+  currentLocation: 'GA',
+  hierarchyLevel: 0,
+  employmentStatus: EmploymentStatus.USAGER
+};
+
+const DEMO_ETRANGER_RESIDENT: DemoUser = {
+  id: 'demo-etranger-resident',
+  role: MunicipalRole.ETRANGER_RESIDENT,
+  name: 'Ahmed Ben Youssef',
+  entityId: 'mairie-libreville-centrale',
+  permissions: ['Certificat résidence', 'Attestations', 'Légalisations'],
+  badge: '🌐',
+  description: 'Étranger résidant à Libreville',
+  residenceCountry: 'TN',
+  currentLocation: 'GA',
+  hierarchyLevel: 0,
+  employmentStatus: EmploymentStatus.USAGER
+};
+
+const DEMO_ENTREPRISE: DemoUser = {
+  id: 'demo-entreprise-association',
   role: MunicipalRole.PERSONNE_MORALE,
   name: 'SARL Construction Plus',
   entityId: 'mairie-libreville-centrale',
-  permissions: ['Patente', 'Permis construire', 'Autorisations'],
+  permissions: ['Patente', 'Autorisations commerce', 'Marchés publics'],
   badge: '🏢',
-  description: 'Entreprise de BTP à Libreville',
+  description: 'Entité morale opérant à Libreville',
+  hierarchyLevel: 0,
+  employmentStatus: EmploymentStatus.USAGER
 };
+
+// Export des comptes usagers de démo
+export const DEMO_CITIZEN_ACCOUNTS: DemoUser[] = [
+  DEMO_CITOYEN_RESIDENT,
+  DEMO_CITOYEN_AUTRE_COMMUNE,
+  DEMO_ETRANGER_RESIDENT,
+  DEMO_ENTREPRISE
+];
 
 export const MOCK_USERS: DemoUser[] = [
   ADMIN_USER,
   ...GENERATED_STAFF,
   ...MAPPED_CITIZENS,
   ...MAPPED_FOREIGNERS,
-  TEST_CITIZEN_LIBREVILLE,
-  TEST_ENTREPRISE
+  ...DEMO_CITIZEN_ACCOUNTS
 ];
 
 export const getUserById = (id: string): DemoUser | undefined => {
@@ -242,9 +281,9 @@ export const getUsersByEntity = (entityId: string): DemoUser[] => {
 };
 
 export const getStaffByMairie = (mairieId: string): DemoUser[] => {
-  return MOCK_USERS.filter(user => 
-    user.entityId === mairieId && 
-    user.role !== MunicipalRole.CITOYEN && 
+  return MOCK_USERS.filter(user =>
+    user.entityId === mairieId &&
+    user.role !== MunicipalRole.CITOYEN &&
     user.role !== MunicipalRole.ETRANGER_RESIDENT &&
     user.role !== MunicipalRole.PERSONNE_MORALE
   );

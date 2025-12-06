@@ -52,7 +52,7 @@ export default function SuperAdminOrganizations() {
         setIsDialogOpen(true);
     };
 
-    const handleSave = async (data: Partial<Organization>) => {
+    const handleSave = async (data: Partial<Organization> & { adminUser?: { email: string; firstName: string; lastName: string } }) => {
         try {
             if (selectedEntity) {
                 await organizationService.update(selectedEntity.id, data as any);
@@ -63,11 +63,27 @@ export default function SuperAdminOrganizations() {
             } else {
                 // For creation, we need to ensure type is set
                 if (!data.type) data.type = OrganizationType.AMBASSADE;
-                await organizationService.create(data as any);
-                toast({
-                    title: "Organisation créée",
-                    description: `L'organisation ${data.name} a été créée avec succès.`,
-                });
+
+                // 1. Create Organization
+                const newOrg = await organizationService.create(data as any);
+
+                // 2. Handle Admin User Creation (Mock/Stub)
+                if (data.adminUser && data.adminUser.email) {
+                    console.log("[SuperAdmin] Creating Admin User for Org:", newOrg.id, data.adminUser);
+                    // NOTE: In a real app with Supabase, creating a new user via client SDK logs you out.
+                    // We would typically use a Supabase Edge Function to create the user with Service Role.
+                    // For this demo, we simulate success.
+                    toast({
+                        title: "Organisation et Admin créés",
+                        description: `L'organisation ${data.name} est créée. Un e-mail d'invitation serait envoyé à ${data.adminUser.email}.`,
+                        duration: 6000,
+                    });
+                } else {
+                    toast({
+                        title: "Organisation créée",
+                        description: `L'organisation ${data.name} a été créée avec succès.`,
+                    });
+                }
             }
             loadOrganizations();
             setIsDialogOpen(false);

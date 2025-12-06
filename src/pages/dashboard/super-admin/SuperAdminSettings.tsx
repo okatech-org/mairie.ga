@@ -10,6 +10,10 @@ import { useToast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+
 // Types
 interface SettingsState {
     maintenanceMode: boolean;
@@ -19,7 +23,10 @@ interface SettingsState {
     backupFrequency: string;
     securityLevel: string;
     announcementMessage: string;
+    ipWhitelist: string;
 }
+
+
 
 const INITIAL_SETTINGS: SettingsState = {
     maintenanceMode: false,
@@ -28,8 +35,23 @@ const INITIAL_SETTINGS: SettingsState = {
     adminEmail: "admin@consulat.ga",
     backupFrequency: "daily",
     securityLevel: "high",
-    announcementMessage: ""
+    announcementMessage: "",
+    ipWhitelist: "192.168.1.1, 10.0.0.1"
 };
+
+const MOCK_AUDIT_LOGS = [
+    { id: 1, action: "Connexion échouée", user: "unknown", ip: "145.2.3.4", date: "2024-03-20 14:23", status: "failed" },
+    { id: 2, action: "Modification paramètres", user: "Super Admin", ip: "192.168.1.1", date: "2024-03-20 14:00", status: "success" },
+    { id: 3, action: "Création Mairie", user: "Super Admin", ip: "192.168.1.1", date: "2024-03-20 11:30", status: "success" },
+    { id: 4, action: "Export données", user: "Admin Lyon", ip: "88.12.34.56", date: "2024-03-19 16:45", status: "warning" },
+];
+
+const ROLES_MATRIX = [
+    { permission: "Gestion Utilisateurs", super_admin: true, admin: true, agent: false, citizen: false },
+    { permission: "Configuration Système", super_admin: true, admin: false, agent: false, citizen: false },
+    { permission: "Traitement Dossiers", super_admin: true, admin: true, agent: true, citizen: false },
+    { permission: "Voir Statistiques", super_admin: true, admin: true, agent: false, citizen: false },
+];
 
 export default function SuperAdminSettings() {
     const { toast } = useToast();
@@ -142,133 +164,230 @@ export default function SuperAdminSettings() {
                     </Alert>
                 )}
 
-                {/* SYSTEM STATUS */}
-                <div className="neu-raised p-6 rounded-xl space-y-6">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="neu-inset p-2 rounded-full text-orange-600">
-                            <AlertTriangle className="w-6 h-6" />
-                        </div>
-                        <h2 className="text-xl font-bold">État du Système</h2>
-                    </div>
+                <Tabs defaultValue="general" className="w-full">
+                    <TabsList className="mb-6">
+                        <TabsTrigger value="general">Général</TabsTrigger>
+                        <TabsTrigger value="security">Sécurité Avancée</TabsTrigger>
+                        <TabsTrigger value="roles">Rôles & Permissions</TabsTrigger>
+                    </TabsList>
 
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50/50">
-                        <div className="space-y-0.5">
-                            <Label className="text-base font-bold">Mode Maintenance</Label>
-                            <p className="text-sm text-muted-foreground">
-                                Désactive l'accès public au portail pour maintenance.
-                            </p>
-                        </div>
-                        <Switch
-                            checked={settings.maintenanceMode}
-                            onCheckedChange={(c) => setSettings(s => ({ ...s, maintenanceMode: c }))}
-                            aria-label="Activer le mode maintenance"
-                        />
-                    </div>
+                    <TabsContent value="general" className="space-y-6">
+                        {/* SYSTEM STATUS */}
+                        <div className="neu-raised p-6 rounded-xl space-y-6">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="neu-inset p-2 rounded-full text-orange-600">
+                                    <AlertTriangle className="w-6 h-6" />
+                                </div>
+                                <h2 className="text-xl font-bold">État du Système</h2>
+                            </div>
 
-                    <div className="space-y-2">
-                        <Label>Message d'annonce global</Label>
-                        <Textarea
-                            placeholder="Message affiché sur toutes les pages..."
-                            value={settings.announcementMessage}
-                            onChange={(e) => setSettings(s => ({ ...s, announcementMessage: e.target.value }))}
-                            className="bg-transparent"
-                            rows={3}
-                        />
-                        <p className="text-xs text-muted-foreground text-right">
-                            {settings.announcementMessage.length}/500 caractères
-                        </p>
-                    </div>
-                </div>
+                            <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50/50">
+                                <div className="space-y-0.5">
+                                    <Label className="text-base font-bold">Mode Maintenance</Label>
+                                    <p className="text-sm text-muted-foreground">
+                                        Désactive l'accès public au portail pour maintenance.
+                                    </p>
+                                </div>
+                                <Switch
+                                    checked={settings.maintenanceMode}
+                                    onCheckedChange={(c) => setSettings(s => ({ ...s, maintenanceMode: c }))}
+                                    aria-label="Activer le mode maintenance"
+                                />
+                            </div>
 
-                {/* NOTIFICATIONS & EMAIL */}
-                <div className="neu-raised p-6 rounded-xl space-y-6">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="neu-inset p-2 rounded-full text-blue-600">
-                            <Mail className="w-6 h-6" />
+                            <div className="space-y-2">
+                                <Label>Message d'annonce global</Label>
+                                <Textarea
+                                    placeholder="Message affiché sur toutes les pages..."
+                                    value={settings.announcementMessage}
+                                    onChange={(e) => setSettings(s => ({ ...s, announcementMessage: e.target.value }))}
+                                    className="bg-transparent"
+                                    rows={3}
+                                />
+                                <p className="text-xs text-muted-foreground text-right">
+                                    {settings.announcementMessage.length}/500 caractères
+                                </p>
+                            </div>
                         </div>
-                        <h2 className="text-xl font-bold">Email & Notifications</h2>
-                    </div>
 
-                    <div className="grid md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label>Email Expéditeur</Label>
-                            <Input
-                                value={settings.emailSender}
-                                onChange={(e) => setSettings(s => ({ ...s, emailSender: e.target.value }))}
-                                placeholder="noreply@consulat.ga"
-                                type="email"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Email Administrateur</Label>
-                            <Input
-                                value={settings.adminEmail}
-                                onChange={(e) => setSettings(s => ({ ...s, adminEmail: e.target.value }))}
-                                placeholder="admin@consulat.ga"
-                                type="email"
-                            />
-                        </div>
-                    </div>
+                        {/* NOTIFICATIONS & EMAIL */}
+                        <div className="neu-raised p-6 rounded-xl space-y-6">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="neu-inset p-2 rounded-full text-blue-600">
+                                    <Mail className="w-6 h-6" />
+                                </div>
+                                <h2 className="text-xl font-bold">Email & Notifications</h2>
+                            </div>
 
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50/50">
-                        <div className="space-y-0.5">
-                            <Label className="text-base font-bold">Notifications Système</Label>
-                            <p className="text-sm text-muted-foreground">
-                                Recevoir des alertes pour les événements critiques.
-                            </p>
-                        </div>
-                        <Switch
-                            checked={settings.systemNotifications}
-                            onCheckedChange={(c) => setSettings(s => ({ ...s, systemNotifications: c }))}
-                            aria-label="Activer les notifications système"
-                        />
-                    </div>
-                </div>
+                            <div className="grid md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <Label>Email Expéditeur</Label>
+                                    <Input
+                                        value={settings.emailSender}
+                                        onChange={(e) => setSettings(s => ({ ...s, emailSender: e.target.value }))}
+                                        placeholder="noreply@consulat.ga"
+                                        type="email"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Email Administrateur</Label>
+                                    <Input
+                                        value={settings.adminEmail}
+                                        onChange={(e) => setSettings(s => ({ ...s, adminEmail: e.target.value }))}
+                                        placeholder="admin@consulat.ga"
+                                        type="email"
+                                    />
+                                </div>
+                            </div>
 
-                {/* SECURITY & BACKUP */}
-                <div className="neu-raised p-6 rounded-xl space-y-6">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="neu-inset p-2 rounded-full text-green-600">
-                            <Shield className="w-6 h-6" />
+                            <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50/50">
+                                <div className="space-y-0.5">
+                                    <Label className="text-base font-bold">Notifications Système</Label>
+                                    <p className="text-sm text-muted-foreground">
+                                        Recevoir des alertes pour les événements critiques.
+                                    </p>
+                                </div>
+                                <Switch
+                                    checked={settings.systemNotifications}
+                                    onCheckedChange={(c) => setSettings(s => ({ ...s, systemNotifications: c }))}
+                                    aria-label="Activer les notifications système"
+                                />
+                            </div>
                         </div>
-                        <h2 className="text-xl font-bold">Sécurité & Sauvegardes</h2>
-                    </div>
 
-                    <div className="grid md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label>Fréquence de Sauvegarde</Label>
-                            <Select
-                                value={settings.backupFrequency}
-                                onValueChange={(v) => setSettings(s => ({ ...s, backupFrequency: v }))}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Sélectionner la fréquence" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="hourly">Toutes les heures</SelectItem>
-                                    <SelectItem value="daily">Quotidienne</SelectItem>
-                                    <SelectItem value="weekly">Hebdomadaire</SelectItem>
-                                </SelectContent>
-                            </Select>
+                        {/* SECURITY & BACKUP */}
+                        <div className="neu-raised p-6 rounded-xl space-y-6">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="neu-inset p-2 rounded-full text-green-600">
+                                    <Shield className="w-6 h-6" />
+                                </div>
+                                <h2 className="text-xl font-bold">Sécurité & Sauvegardes</h2>
+                            </div>
+
+                            <div className="grid md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <Label>Fréquence de Sauvegarde</Label>
+                                    <Select
+                                        value={settings.backupFrequency}
+                                        onValueChange={(v) => setSettings(s => ({ ...s, backupFrequency: v }))}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Sélectionner la fréquence" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="hourly">Toutes les heures</SelectItem>
+                                            <SelectItem value="daily">Quotidienne</SelectItem>
+                                            <SelectItem value="weekly">Hebdomadaire</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Niveau de Sécurité</Label>
+                                    <Select
+                                        value={settings.securityLevel}
+                                        onValueChange={(v) => setSettings(s => ({ ...s, securityLevel: v }))}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Sélectionner le niveau" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="standard">Standard</SelectItem>
+                                            <SelectItem value="high">Élevé (2FA requis)</SelectItem>
+                                            <SelectItem value="strict">Strict (IP Whitelist)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label>Niveau de Sécurité</Label>
-                            <Select
-                                value={settings.securityLevel}
-                                onValueChange={(v) => setSettings(s => ({ ...s, securityLevel: v }))}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Sélectionner le niveau" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="standard">Standard</SelectItem>
-                                    <SelectItem value="high">Élevé (2FA requis)</SelectItem>
-                                    <SelectItem value="strict">Strict (IP Whitelist)</SelectItem>
-                                </SelectContent>
-                            </Select>
+                    </TabsContent>
+
+                    <TabsContent value="security" className="space-y-6">
+                        <div className="neu-raised p-6 rounded-xl space-y-6">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="neu-inset p-2 rounded-full text-red-600">
+                                    <Shield className="w-6 h-6" />
+                                </div>
+                                <h2 className="text-xl font-bold">Filtrage IP</h2>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>IPs Autorisées (Séparées par des virgules)</Label>
+                                <Textarea
+                                    value={settings.ipWhitelist}
+                                    onChange={(e) => setSettings(s => ({ ...s, ipWhitelist: e.target.value }))}
+                                    placeholder="Ex: 192.168.1.1, 10.0.0.1"
+                                />
+                                <p className="text-xs text-muted-foreground">Laissez vide pour autoriser toutes les IPs (Déconseillé en prod).</p>
+                            </div>
                         </div>
-                    </div>
-                </div>
+
+                        <div className="neu-raised p-6 rounded-xl space-y-6">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="neu-inset p-2 rounded-full text-blue-600">
+                                    <Database className="w-6 h-6" />
+                                </div>
+                                <h2 className="text-xl font-bold">Audit Logs</h2>
+                            </div>
+                            <div className="rounded-md border">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Date</TableHead>
+                                            <TableHead>Utilisateur</TableHead>
+                                            <TableHead>Action</TableHead>
+                                            <TableHead>IP</TableHead>
+                                            <TableHead>Statut</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {MOCK_AUDIT_LOGS.map((log) => (
+                                            <TableRow key={log.id}>
+                                                <TableCell className="text-xs">{log.date}</TableCell>
+                                                <TableCell className="font-medium">{log.user}</TableCell>
+                                                <TableCell>{log.action}</TableCell>
+                                                <TableCell className="text-xs text-muted-foreground">{log.ip}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant={log.status === 'success' ? 'outline' : log.status === 'warning' ? 'secondary' : 'destructive'}>
+                                                        {log.status}
+                                                    </Badge>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
+                    </TabsContent>
+
+                    <TabsContent value="roles" className="space-y-6">
+                        <div className="neu-raised p-6 rounded-xl">
+                            <h2 className="text-xl font-bold mb-4">Matrice des Permissions</h2>
+                            <div className="rounded-md border">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Permission</TableHead>
+                                            <TableHead className="text-center">Super Admin</TableHead>
+                                            <TableHead className="text-center">Admin Mairie</TableHead>
+                                            <TableHead className="text-center">Agent</TableHead>
+                                            <TableHead className="text-center">Citoyen</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {ROLES_MATRIX.map((role, idx) => (
+                                            <TableRow key={idx}>
+                                                <TableCell className="font-medium">{role.permission}</TableCell>
+                                                <TableCell className="text-center">{role.super_admin ? <CheckCircle2 className="w-5 h-5 text-green-500 mx-auto" /> : <XCircle className="w-5 h-5 text-red-300 mx-auto" />}</TableCell>
+                                                <TableCell className="text-center">{role.admin ? <CheckCircle2 className="w-5 h-5 text-green-500 mx-auto" /> : <XCircle className="w-5 h-5 text-red-300 mx-auto" />}</TableCell>
+                                                <TableCell className="text-center">{role.agent ? <CheckCircle2 className="w-5 h-5 text-green-500 mx-auto" /> : <XCircle className="w-5 h-5 text-red-300 mx-auto" />}</TableCell>
+                                                <TableCell className="text-center">{role.citizen ? <CheckCircle2 className="w-5 h-5 text-green-500 mx-auto" /> : <XCircle className="w-5 h-5 text-red-300 mx-auto" />}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
+                    </TabsContent>
+                </Tabs>
 
                 {/* ACTIONS */}
                 <div className="flex justify-end gap-4 sticky bottom-6 bg-background/90 backdrop-blur-md p-4 rounded-xl border border-gray-200 shadow-lg z-10">

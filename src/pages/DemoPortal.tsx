@@ -3,7 +3,7 @@ import { Footer } from "@/components/Footer";
 import { SimulationBanner } from "@/components/SimulationBanner";
 import { MairieCard } from "@/components/MairieCard";
 import { MAIRIES_GABON } from "@/data/mock-mairies-network";
-import { MOCK_USERS } from "@/data/mock-users";
+import { MOCK_USERS, DEMO_CITIZEN_ACCOUNTS } from "@/data/mock-users";
 import { DemoUserCard } from "@/components/DemoUserCard";
 import { TestTube2, Landmark, MapPin, Users, Building2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -40,7 +40,7 @@ export default function DemoPortal() {
     populationTotale: MAIRIES_GABON.reduce((sum, m) => sum + (m.population || 0), 0)
   }), []);
 
-  const displayedMairies = selectedProvince 
+  const displayedMairies = selectedProvince
     ? mairiesByProvince[selectedProvince] || []
     : MAIRIES_GABON;
 
@@ -76,7 +76,7 @@ export default function DemoPortal() {
               {stats.totalMairies} Mairies disponibles
             </p>
           </div>
-          
+
           {/* Stats Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-4 max-w-3xl mx-auto mb-6 md:mb-8">
             <Card className="bg-primary/5 border-primary/20">
@@ -119,10 +119,28 @@ export default function DemoPortal() {
             </div>
           </div>
 
+          {/* Comptes Usagers Section */}
+          <div className="mb-8 md:mb-12">
+            <h2 className="text-lg md:text-xl font-bold mb-4 text-center flex items-center justify-center gap-2">
+              <Users className="h-5 w-5 md:h-6 md:w-6 text-primary" />
+              Comptes Usagers
+            </h2>
+            <p className="text-muted-foreground text-sm text-center mb-4 max-w-md mx-auto">
+              Testez les différents types de comptes citoyens et leurs permissions
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 max-w-5xl mx-auto">
+              {DEMO_CITIZEN_ACCOUNTS.map(user => (
+                <div key={user.id} className="hover:scale-[1.02] transition-transform duration-200">
+                  <DemoUserCard user={user} />
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Filtres par Province */}
           <div className="mb-6 md:mb-8">
             <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
-              <Badge 
+              <Badge
                 variant={selectedProvince === null ? "default" : "outline"}
                 className="cursor-pointer text-xs md:text-sm py-1.5 px-2.5 md:py-2 md:px-4"
                 onClick={() => setSelectedProvince(null)}
@@ -131,7 +149,7 @@ export default function DemoPortal() {
                 Toutes ({MAIRIES_GABON.length})
               </Badge>
               {provinces.map(province => (
-                <Badge 
+                <Badge
                   key={province}
                   variant={selectedProvince === province ? "default" : "outline"}
                   className="cursor-pointer text-xs md:text-sm py-1.5 px-2.5 md:py-2 md:px-4"

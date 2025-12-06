@@ -39,14 +39,14 @@
     /* Rose vibrant - Couleur accent #E63B7A */
     --accent: 338 80% 57%;
     --accent-foreground: 0 0% 100%;
-    
+
     /* Jaune doré - Couleur warning/highlight #FDAD00 */
     --warning: 41 100% 50%;
     --warning-foreground: 210 25% 12%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    
+
     --success: 146 76% 31%;
     --success-foreground: 0 0% 100%;
 
@@ -91,14 +91,14 @@
     /* Accent - Rose plus vibrant */
     --accent: 338 85% 65%;
     --accent-foreground: 0 0% 100%;
-    
+
     /* Warning - Jaune doré lumineux */
     --warning: 45 100% 60%;
     --warning-foreground: 220 25% 6%;
 
     --destructive: 0 90% 65%;
     --destructive-foreground: 0 0% 100%;
-    
+
     /* Success - Vert Gabon lumineux */
     --success: 146 80% 45%;
     --success-foreground: 0 0% 100%;
@@ -317,6 +317,63 @@
     box-shadow: var(--neo-shadow-inset);
     border-radius: var(--radius);
     transition: var(--transition-fast);
+    border: 1px solid rgba(100, 100, 100, 0.15);
+  }
+
+  /* === Navigation Item Button - Harmonized 3D Effect === */
+  .neu-nav-item {
+    background: hsl(var(--card));
+    box-shadow:
+      3px 3px 6px rgba(110, 110, 110, 0.45),
+      -3px -3px 6px rgba(255, 255, 255, 0.95),
+      inset 0.5px 0.5px 1px rgba(255, 255, 255, 0.8),
+      inset -0.5px -0.5px 1px rgba(110, 110, 110, 0.25);
+    border-radius: var(--radius);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+  }
+
+  .neu-nav-item:hover {
+    box-shadow:
+      4px 4px 8px rgba(100, 100, 100, 0.5),
+      -4px -4px 8px rgba(255, 255, 255, 1),
+      inset 0.5px 0.5px 1px rgba(255, 255, 255, 0.85),
+      inset -0.5px -0.5px 1px rgba(100, 100, 100, 0.3);
+    transform: translateY(-1px);
+  }
+
+  .neu-nav-item:active,
+  .neu-nav-item.active {
+    box-shadow:
+      inset 4px 4px 8px rgba(100, 100, 100, 0.4),
+      inset -4px -4px 8px rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(100, 100, 100, 0.1);
+    transform: translateY(0);
+  }
+
+  .dark .neu-nav-item {
+    box-shadow:
+      3px 3px 6px rgba(0, 0, 0, 0.55),
+      -3px -3px 6px rgba(255, 255, 255, 0.02),
+      inset 0.5px 0.5px 1px rgba(255, 255, 255, 0.03),
+      inset -0.5px -0.5px 1px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+  }
+
+  .dark .neu-nav-item:hover {
+    box-shadow:
+      4px 4px 10px rgba(0, 0, 0, 0.65),
+      -4px -4px 10px rgba(255, 255, 255, 0.03),
+      inset 0.5px 0.5px 1px rgba(255, 255, 255, 0.04),
+      inset -0.5px -0.5px 1px rgba(0, 0, 0, 0.35);
+  }
+
+  .dark .neu-nav-item:active,
+  .dark .neu-nav-item.active {
+    box-shadow:
+      inset 4px 4px 8px rgba(0, 0, 0, 0.5),
+      inset -4px -4px 8px rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(0, 0, 0, 0.2);
   }
 }
 
@@ -336,4 +393,17 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
 }

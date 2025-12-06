@@ -30,10 +30,10 @@ const TYPE_COLORS: Record<string, string> = {
 
 export function MairieCard({ mairie }: MairieCardProps) {
     const [isExpanded, setIsExpanded] = useState(false);
-    
+
     // Récupérer le personnel de cette mairie
     const staff = getStaffByMairie(mairie.id);
-    
+
     // Créer une entité factice pour les comptes démo usagers
     const entityForDemo = {
         id: mairie.id,
@@ -47,12 +47,12 @@ export function MairieCard({ mairie }: MairieCardProps) {
             countryCode: 'GA'
         }
     } as any;
-    
+
     const demoUsagers = getDemoAccountsForEntity(entityForDemo);
 
     return (
-        <Card className={`transition-all duration-300 border-l-4 hover:shadow-lg ${isExpanded ? 'ring-2 ring-primary/50' : ''}`} 
-              style={{ borderLeftColor: '#009639' }}>
+        <Card className={`transition-all duration-300 border-l-4 hover:shadow-lg ${isExpanded ? 'ring-2 ring-primary/50' : ''}`}
+            style={{ borderLeftColor: '#009639' }}>
             <CardHeader className="cursor-pointer hover:bg-accent/5 transition-colors p-3 md:p-6" onClick={() => setIsExpanded(!isExpanded)}>
                 <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
@@ -141,7 +141,7 @@ export function MairieCard({ mairie }: MairieCardProps) {
                                 </h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">
                                     {staff.length > 0 ? (
-                                        staff.slice(0, 4).map(agent => (
+                                        staff.map(agent => (
                                             <DemoUserCard key={agent.id} user={agent} />
                                         ))
                                     ) : (

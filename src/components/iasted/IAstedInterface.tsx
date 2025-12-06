@@ -43,7 +43,7 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
     useEffect(() => {
         const savedVoice = localStorage.getItem('iasted-voice-selection') as 'echo' | 'ash' | 'shimmer';
         if (savedVoice) setSelectedVoice(savedVoice);
-        
+
         // Check if user is not identified (anonymous mode)
         const isAnonymous = !userRole || userRole === 'user' || userRole === 'unknown';
         if (isAnonymous) {
@@ -109,9 +109,9 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
     // Détermine si on est sur une page de formulaire d'inscription
     const isOnRegistrationPage = location.pathname.startsWith('/register');
     const isOnHomePage = location.pathname === '/';
-    const registrationFormType = location.pathname.includes('/gabonais') ? 'gabonais' 
-        : location.pathname.includes('/etranger') ? 'etranger' 
-        : 'choice';
+    const registrationFormType = location.pathname.includes('/gabonais') ? 'gabonais'
+        : location.pathname.includes('/etranger') ? 'etranger'
+            : 'choice';
 
     // Format system prompt with context
     const formattedSystemPrompt = useMemo(() => {
@@ -119,16 +119,16 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
         const isIdentified = userRole && userRole !== 'user' && userRole !== 'unknown';
         const displayTitle = isIdentified ? userTitle : '';
         const identificationMode = isIdentified ? 'DÉSACTIVÉ' : 'ACTIVÉ';
-        
+
         // Contexte de page actuelle
         let pageContext = `\n\n## CONTEXTE ACTUEL\n**Page actuelle**: ${location.pathname}\n`;
-        
+
         // Contexte d'assistance au formulaire
         if (isOnRegistrationPage) {
             const currentStep = formAssistantStore.getCurrentStep();
             const formData = formAssistantStore.getFormData();
             const filledFields = Object.keys(formData).filter(k => formData[k]);
-            
+
             pageContext += `**Type de formulaire**: ${registrationFormType}\n`;
             pageContext += `**Étape actuelle**: ${currentStep}/6\n`;
             pageContext += `**Champs remplis**: ${filledFields.length > 0 ? filledFields.join(', ') : 'aucun'}\n`;
@@ -140,7 +140,7 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
             pageContext += `\n**Mode**: Page d'accueil - L'utilisateur n'est pas encore sur un formulaire.\n`;
             pageContext += `Si l'utilisateur veut s'inscrire, utilisez start_registration_flow(citizen_type) pour le guider vers le bon formulaire.\n`;
         }
-        
+
         return IASTED_SYSTEM_PROMPT
             .replace(/{USER_TITLE}/g, displayTitle)
             .replace(/{CURRENT_TIME_OF_DAY}/g, timeOfDay)
@@ -191,10 +191,10 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
             console.log('🔐 [IAstedInterface] Invitation à se connecter:', args);
             const reason = args.reason || 'accéder à toutes les fonctionnalités';
             const redirectAfter = args.redirect_after || '/dashboard/citizen';
-            
+
             // Stocker la redirection pour après connexion
             sessionStorage.setItem('iasted-redirect-after-login', redirectAfter);
-            
+
             toast.info(`Connexion recommandée pour ${reason}`, {
                 duration: 5000,
                 action: {
@@ -202,12 +202,12 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
                     onClick: () => navigate('/login')
                 }
             });
-            
+
             // Naviguer vers la page de connexion après un délai
             setTimeout(() => {
                 navigate('/login');
             }, 2000);
-            
+
             return { success: true, message: 'Redirection vers la page de connexion' };
         }
 
@@ -219,7 +219,7 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
                 setQuestionsRemaining(newCount);
                 sessionStorage.setItem('iasted-questions-remaining', String(newCount));
                 console.log(`📊 [IAstedInterface] Questions restantes: ${newCount}`);
-                
+
                 if (newCount === 0) {
                     toast.warning('Vous avez utilisé vos 3 questions gratuites. Connectez-vous pour continuer !', {
                         duration: 6000,
@@ -236,11 +236,343 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
 
         if (toolName === 'open_chat') {
             setIsOpen(true);
+            return { success: true, message: 'Chat ouvert' };
         }
 
         if (toolName === 'close_chat') {
             setIsOpen(false);
+            return { success: true, message: 'Chat fermé' };
         }
+
+        // ========== COMMUNICATION & COLLABORATION ==========
+
+        if (toolName === 'start_call') {
+            console.log('📞 [IAstedInterface] Démarrage appel:', args);
+            const { recipient, video } = args;
+            const callType = video ? 'vidéo' : 'audio';
+
+            toast.info(`Appel ${callType} en cours vers ${recipient}...`, {
+                duration: 5000,
+            });
+
+            // Dispatch event for call system
+            window.dispatchEvent(new CustomEvent('iasted-start-call', {
+                detail: { recipient, video: video || false }
+            }));
+
+            return { success: true, message: `Appel ${callType} initié vers ${recipient}` };
+        }
+
+        if (toolName === 'end_call') {
+            console.log('📞 [IAstedInterface] Fin d\'appel');
+
+            toast.success('Appel terminé');
+
+            window.dispatchEvent(new CustomEvent('iasted-end-call'));
+
+            return { success: true, message: 'Appel terminé' };
+        }
+
+        if (toolName === 'manage_meeting') {
+            console.log('📅 [IAstedInterface] Gestion réunion:', args);
+            const { action, subject, time, participants } = args;
+
+            switch (action) {
+                case 'schedule':
+                    toast.success(`Réunion "${subject || 'Sans titre'}" planifiée${time ? ` pour ${time}` : ''}`);
+                    window.dispatchEvent(new CustomEvent('iasted-schedule-meeting', {
+                        detail: { subject, time, participants }
+                    }));
+                    return { success: true, message: `Réunion planifiée: ${subject}` };
+
+                case 'join':
+                    toast.info(`Connexion à la réunion "${subject || 'en cours'}"...`);
+                    window.dispatchEvent(new CustomEvent('iasted-join-meeting', {
+                        detail: { subject }
+                    }));
+                    return { success: true, message: `Connexion à la réunion` };
+
+                case 'cancel':
+                    toast.warning(`Réunion "${subject}" annulée`);
+                    return { success: true, message: 'Réunion annulée' };
+
+                case 'list':
+                    navigate('/dashboard/citizen/requests?tab=meetings');
+                    return { success: true, message: 'Affichage de vos réunions' };
+
+                default:
+                    return { success: false, message: 'Action de réunion non reconnue' };
+            }
+        }
+
+        if (toolName === 'manage_chat') {
+            console.log('💬 [IAstedInterface] Gestion chat:', args);
+            const { action, query } = args;
+
+            switch (action) {
+                case 'open':
+                    setIsOpen(true);
+                    return { success: true, message: 'Interface de chat ouverte' };
+
+                case 'close':
+                    setIsOpen(false);
+                    return { success: true, message: 'Interface de chat fermée' };
+
+                case 'summarize':
+                    toast.info('Génération du résumé de conversation...');
+                    // This would typically call an AI summarization endpoint
+                    return { success: true, message: 'Résumé en cours de génération...' };
+
+                case 'search':
+                    toast.info(`Recherche dans l'historique: "${query}"`);
+                    window.dispatchEvent(new CustomEvent('iasted-search-chat', { detail: { query } }));
+                    return { success: true, message: `Recherche: ${query}` };
+
+                case 'clear':
+                    window.dispatchEvent(new CustomEvent('iasted-clear-chat'));
+                    toast.success('Historique de conversation effacé');
+                    return { success: true, message: 'Historique effacé' };
+
+                default:
+                    return { success: false, message: 'Action de chat non reconnue' };
+            }
+        }
+
+        // ========== MESSAGING (iBoîte) ==========
+
+        if (toolName === 'send_mail') {
+            console.log('📧 [IAstedInterface] Envoi de mail:', args);
+            const { recipient, subject, body, priority } = args;
+
+            // Navigate to iBoîte and prefill the composer
+            toast.success(`Mail envoyé à ${recipient}`);
+
+            // Dispatch event to iBoîte to compose the mail
+            window.dispatchEvent(new CustomEvent('iasted-compose-mail', {
+                detail: { recipient, subject, body, priority: priority || 'normal' }
+            }));
+
+            // Navigate to messaging
+            setTimeout(() => {
+                navigate('/iboite', {
+                    state: {
+                        compose: true,
+                        recipient,
+                        subject,
+                        body,
+                        priority: priority || 'normal'
+                    }
+                });
+            }, 500);
+
+            return { success: true, message: `Mail envoyé à ${recipient}` };
+        }
+
+        if (toolName === 'send_message') {
+            console.log('💬 [IAstedInterface] Envoi de message:', args);
+            const { recipient, content, reply_to } = args;
+
+            toast.success(`Message envoyé à ${recipient}`);
+
+            // Dispatch event for messaging system
+            window.dispatchEvent(new CustomEvent('iasted-send-message', {
+                detail: { recipient, content, reply_to }
+            }));
+
+            // Navigate to messaging
+            setTimeout(() => {
+                navigate('/iboite', {
+                    state: {
+                        compose: true,
+                        recipient,
+                        body: content,
+                        reply_to
+                    }
+                });
+            }, 500);
+
+            return { success: true, message: `Message envoyé à ${recipient}` };
+        }
+
+        // ========== CONSULTATION COMMUNICATION ==========
+
+        if (toolName === 'read_mail') {
+            console.log('📧 [IAstedInterface] Lecture mail:', args);
+            const { mail_id, filter } = args;
+
+            // Mock mail data - in real app, would fetch from iBoîte
+            const mockMail = {
+                from: 'Service Urbanisme',
+                subject: 'Votre demande de permis de construire',
+                preview: 'Suite à votre demande du 15 novembre, nous avons le plaisir de vous informer que votre dossier est complet...',
+                date: 'Hier 14:30'
+            };
+
+            toast.info(`Lecture du mail de ${mockMail.from}`);
+
+            // Navigate to iBoîte to show the mail
+            navigate('/iboite', {
+                state: { openMail: mail_id || 'latest', filter }
+            });
+
+            return {
+                success: true,
+                message: `Mail de ${mockMail.from} : "${mockMail.subject}"`,
+                mail: mockMail
+            };
+        }
+
+        if (toolName === 'get_call_history') {
+            console.log('📞 [IAstedInterface] Historique appels:', args);
+            const { filter, limit } = args;
+
+            // Mock call history - in real app, would fetch from call logs
+            const mockCalls = [
+                { name: 'M. Dupont', time: '14:30', type: 'missed' },
+                { name: 'Service RH', time: '15:45', type: 'missed' },
+                { name: 'Agent Koumba', time: '10:00', type: 'incoming' }
+            ];
+
+            const filteredCalls = filter && filter !== 'all'
+                ? mockCalls.filter(c => c.type === filter)
+                : mockCalls;
+
+            const missedCount = mockCalls.filter(c => c.type === 'missed').length;
+
+            if (filter === 'missed' && missedCount > 0) {
+                toast.warning(`${missedCount} appel(s) manqué(s)`);
+            } else {
+                toast.info(`${filteredCalls.length} appel(s) récent(s)`);
+            }
+
+            // Dispatch event to show call history
+            window.dispatchEvent(new CustomEvent('iasted-show-calls', {
+                detail: { filter, limit }
+            }));
+
+            return {
+                success: true,
+                message: `Vous avez ${missedCount} appel(s) manqué(s) et ${mockCalls.length} appel(s) au total`,
+                calls: filteredCalls.slice(0, limit || 10)
+            };
+        }
+
+        if (toolName === 'get_unread_count') {
+            console.log('📬 [IAstedInterface] Compteur non-lus');
+
+            // Mock unread counts - in real app, would fetch from backend
+            const unreadMails = 5;
+            const unreadMessages = 2;
+            const missedCalls = 1;
+
+            const total = unreadMails + unreadMessages + missedCalls;
+
+            if (total > 0) {
+                toast.info(`${total} notification(s) non lue(s)`);
+            } else {
+                toast.success('Tout est à jour !');
+            }
+
+            return {
+                success: true,
+                message: `Vous avez ${unreadMails} email(s) non lu(s), ${unreadMessages} message(s) et ${missedCalls} appel(s) manqué(s)`,
+                unread: { mails: unreadMails, messages: unreadMessages, calls: missedCalls }
+            };
+        }
+
+        if (toolName === 'search_communications') {
+            console.log('🔍 [IAstedInterface] Recherche communications:', args);
+            const { query, type, date_range } = args;
+
+            // Mock search results
+            const mockResults = [
+                { type: 'mail', from: 'Urbanisme', subject: `Permis ${query}`, date: '15/11' },
+                { type: 'mail', from: 'État Civil', subject: `Demande ${query}`, date: '12/11' },
+            ];
+
+            toast.info(`Recherche "${query}" dans ${type || 'tous'}`);
+
+            // Navigate to iBoîte with search
+            navigate('/iboite', {
+                state: { search: query, searchType: type }
+            });
+
+            return {
+                success: true,
+                message: `${mockResults.length} résultat(s) trouvé(s) pour "${query}"`,
+                results: mockResults
+            };
+        }
+
+        // ========== MODE GUIDE & AIDE ==========
+
+        if (toolName === 'start_guide') {
+            console.log('📚 [IAstedInterface] Démarrage guide:', args);
+            const { topic } = args;
+
+            toast.info(topic ? `Guide: ${topic}` : 'Mode guide activé');
+
+            // Dispatch event for guide overlay component
+            window.dispatchEvent(new CustomEvent('iasted-start-guide', {
+                detail: { topic, page: location.pathname }
+            }));
+
+            return {
+                success: true,
+                message: `Mode guide activé pour ${topic || 'cette page'}`,
+                current_page: location.pathname
+            };
+        }
+
+        if (toolName === 'explain_context') {
+            console.log('❓ [IAstedInterface] Explication contexte:', args);
+            const { element_id } = args;
+
+            // Get page context info
+            const pageContextMap: Record<string, string> = {
+                '/dashboard/citizen': 'Votre tableau de bord citoyen avec un aperçu de vos demandes, documents et services disponibles.',
+                '/dashboard/citizen/requests': 'La liste de vos demandes en cours et leur statut de traitement.',
+                '/dashboard/citizen/documents': 'Vos documents officiels téléchargeables et leur historique.',
+                '/dashboard/agent': 'Votre espace agent pour traiter les demandes des citoyens.',
+                '/dashboard/super-admin': 'L\'administration système pour gérer le réseau des mairies.',
+                '/iboite': 'Votre messagerie pour communiquer avec les services municipaux.',
+                '/services': 'Le catalogue complet des services municipaux disponibles.',
+                '/': 'La page d\'accueil du portail municipal. Connectez-vous pour accéder à vos services personnalisés.'
+            };
+
+            const contextInfo = pageContextMap[location.pathname] ||
+                `Vous êtes sur la page ${location.pathname}. Je peux vous aider à naviguer.`;
+
+            if (element_id) {
+                const element = document.getElementById(element_id);
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    element.classList.add('ring-2', 'ring-primary', 'ring-offset-2');
+                    setTimeout(() => {
+                        element.classList.remove('ring-2', 'ring-primary', 'ring-offset-2');
+                    }, 3000);
+                }
+            }
+
+            return {
+                success: true,
+                message: contextInfo,
+                page: location.pathname,
+                element_found: element_id ? !!document.getElementById(element_id) : null
+            };
+        }
+
+        // ========== STOP CONVERSATION ==========
+
+        if (toolName === 'stop_conversation') {
+            console.log('🛑 [IAstedInterface] Arrêt de la conversation');
+
+            openaiRTC.disconnect();
+            toast.info('Conversation terminée');
+
+            return { success: true, message: 'Conversation arrêtée' };
+        }
+
 
         if (toolName === 'generate_document') {
             console.log('📝 [IAstedInterface] Génération document:', args);
@@ -388,12 +720,12 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
                 birth_certificate: 'acte de naissance',
                 marriage_certificate: 'acte de mariage'
             };
-            
+
             const serviceName = serviceNames[args.service_type] || args.service_type;
             const urgencyText = args.urgency === 'urgent' ? ' urgente' : '';
-            
+
             toast.success(`Initiation de la demande de ${serviceName}${urgencyText}`);
-            
+
             // Navigate to the appropriate service request page
             setTimeout(() => {
                 navigate('/dashboard/citizen/requests', {
@@ -404,14 +736,14 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
                     }
                 });
             }, 1000);
-            
+
             return { success: true, message: `Demande de ${serviceName} initiée` };
         }
 
         if (toolName === 'schedule_appointment') {
             console.log('📅 [IAstedInterface] Prise de rendez-vous:', args);
             toast.success('Ouverture du calendrier de rendez-vous');
-            
+
             setTimeout(() => {
                 navigate('/dashboard/citizen/requests', {
                     state: {
@@ -422,55 +754,55 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
                     }
                 });
             }, 1000);
-            
+
             return { success: true, message: 'Calendrier de rendez-vous ouvert' };
         }
 
         if (toolName === 'view_requests') {
             console.log('📋 [IAstedInterface] Consultation des demandes:', args);
             const filterText = args.filter === 'pending' ? 'en attente' :
-                              args.filter === 'in_progress' ? 'en cours' :
-                              args.filter === 'completed' ? 'terminées' : '';
-            
+                args.filter === 'in_progress' ? 'en cours' :
+                    args.filter === 'completed' ? 'terminées' : '';
+
             toast.success(`Affichage des demandes ${filterText || 'toutes'}`);
-            
+
             navigate('/dashboard/citizen/requests', {
                 state: { filter: args.filter }
             });
-            
+
             return { success: true, message: 'Navigation vers vos demandes' };
         }
 
         if (toolName === 'get_service_info') {
             console.log('ℹ️ [IAstedInterface] Informations sur le service:', args);
-            
+
             // This would typically fetch from a service catalog
             // For now, we'll just acknowledge and could open a modal with info
             toast.info(`Recherche d'informations sur le service ${args.service_type}...`);
-            
+
             // Could navigate to a service info page or open a modal
             setTimeout(() => {
                 // You could implement a service info modal here
                 console.log('Service info for:', args.service_type);
             }, 500);
-            
+
             return { success: true, message: `Informations sur ${args.service_type}` };
         }
 
         // ========== OUTILS D'ASSISTANCE AU FORMULAIRE ==========
-        
+
         if (toolName === 'fill_form_field') {
             console.log('📝 [IAstedInterface] Remplissage de champ:', args);
             const { field, value } = args;
-            
+
             // Mettre à jour le store
             formAssistantStore.setField(field, value);
-            
+
             // Déclencher un événement pour que le formulaire réagisse
-            window.dispatchEvent(new CustomEvent('iasted-fill-field', { 
-                detail: { field, value } 
+            window.dispatchEvent(new CustomEvent('iasted-fill-field', {
+                detail: { field, value }
             }));
-            
+
             const fieldLabels: Record<string, string> = {
                 firstName: 'Prénom',
                 lastName: 'Nom',
@@ -490,7 +822,7 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
                 email: 'Email',
                 phone: 'Téléphone'
             };
-            
+
             toast.success(`${fieldLabels[field] || field} rempli: ${value}`);
             return { success: true, field, value, message: `Champ ${fieldLabels[field] || field} rempli avec "${value}"` };
         }
@@ -498,7 +830,7 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
         if (toolName === 'select_citizen_type') {
             console.log('👤 [IAstedInterface] Sélection type citoyen:', args);
             const { type } = args;
-            
+
             if (type === 'gabonais') {
                 navigate('/register/gabonais');
                 formAssistantStore.setCurrentForm('gabonais_registration');
@@ -510,7 +842,7 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
                 formAssistantStore.clearForm();
                 toast.success('Formulaire d\'inscription Étranger sélectionné');
             }
-            
+
             return { success: true, type, message: `Type ${type} sélectionné, navigation vers le formulaire` };
         }
 
@@ -518,16 +850,16 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
         if (toolName === 'start_registration_flow') {
             console.log('🚀 [IAstedInterface] Démarrage du processus d\'inscription:', args);
             const { citizen_type } = args;
-            
+
             // Réinitialiser le store
             formAssistantStore.clearForm();
-            
+
             if (citizen_type === 'gabonais') {
                 formAssistantStore.setCurrentForm('gabonais_registration');
                 navigate('/register/gabonais');
                 toast.success('Bienvenue ! Je vous accompagne dans votre inscription.');
-                return { 
-                    success: true, 
+                return {
+                    success: true,
                     message: 'Navigation vers le formulaire Gabonais. Étape 1: Documents. Prêt à vous aider à remplir le formulaire.',
                     current_step: 1,
                     total_steps: 6
@@ -536,8 +868,8 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
                 formAssistantStore.setCurrentForm('foreigner_registration');
                 navigate('/register/etranger');
                 toast.success('Bienvenue ! Je vous accompagne dans votre inscription.');
-                return { 
-                    success: true, 
+                return {
+                    success: true,
                     message: 'Navigation vers le formulaire Étranger. Étape 1: Documents. Prêt à vous aider à remplir le formulaire.',
                     current_step: 1,
                     total_steps: 6
@@ -547,8 +879,8 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
                 formAssistantStore.setCurrentForm('registration_choice');
                 navigate('/register');
                 toast.info('Choisissez votre type de profil pour commencer.');
-                return { 
-                    success: true, 
+                return {
+                    success: true,
                     message: 'Navigation vers la page de choix d\'inscription. Demandez à l\'utilisateur s\'il est gabonais ou étranger.',
                     options: ['gabonais', 'etranger']
                 };
@@ -558,9 +890,9 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
         if (toolName === 'navigate_form_step') {
             console.log('📋 [IAstedInterface] Navigation étape formulaire:', args);
             const { step, direction } = args;
-            
+
             let targetStep = formAssistantStore.getCurrentStep();
-            
+
             if (direction === 'next') {
                 targetStep = Math.min(6, targetStep + 1);
             } else if (direction === 'previous') {
@@ -568,17 +900,17 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
             } else if (direction === 'goto' && step) {
                 targetStep = Math.max(1, Math.min(6, step));
             }
-            
+
             formAssistantStore.setCurrentStep(targetStep);
-            
+
             // Déclencher l'événement pour le formulaire
-            window.dispatchEvent(new CustomEvent('iasted-navigate-step', { 
-                detail: { step: targetStep, direction } 
+            window.dispatchEvent(new CustomEvent('iasted-navigate-step', {
+                detail: { step: targetStep, direction }
             }));
-            
+
             const stepLabels = ['', 'Documents', 'Infos de base', 'Famille', 'Coordonnées', 'Profession', 'Révision'];
             toast.success(`Étape ${targetStep}: ${stepLabels[targetStep]}`);
-            
+
             return { success: true, step: targetStep, message: `Navigation vers l'étape ${targetStep}: ${stepLabels[targetStep]}` };
         }
 
@@ -587,9 +919,9 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
             const currentStep = formAssistantStore.getCurrentStep();
             const formData = formAssistantStore.getFormData();
             const filledFields = Object.keys(formData).filter(k => formData[k]);
-            
-            return { 
-                success: true, 
+
+            return {
+                success: true,
                 currentStep,
                 totalSteps: 6,
                 filledFields,
@@ -600,10 +932,10 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
 
         if (toolName === 'submit_form') {
             console.log('✅ [IAstedInterface] Soumission du formulaire');
-            
+
             // Déclencher la soumission via événement
             window.dispatchEvent(new CustomEvent('iasted-submit-form'));
-            
+
             toast.success('Soumission du formulaire en cours...');
             return { success: true, message: 'Formulaire soumis pour validation' };
         }

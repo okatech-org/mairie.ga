@@ -108,7 +108,7 @@ export default function MessagingPage() {
                     </div>
 
                     {/* Pane 2: Mail List */}
-                    <div className={`${selectedMailId ? 'hidden lg:flex' : 'flex'} w-full lg:w-64 flex-col border-r bg-background/10`}>
+                    <div className={`${selectedMailId ? 'hidden lg:flex' : 'flex'} w-full lg:w-[260px] xl:w-[280px] flex-col border-r bg-background/10`}>
                         <div className="p-3 border-b flex justify-between items-center bg-background/20">
                             <span className="text-sm font-medium text-muted-foreground">
                                 {mails.length} message{mails.length > 1 ? 's' : ''}

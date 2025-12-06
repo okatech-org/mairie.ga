@@ -5,20 +5,21 @@ export enum MunicipalRole {
     MAIRE = 'MAIRE',
     MAIRE_ADJOINT = 'MAIRE_ADJOINT',
     SECRETAIRE_GENERAL = 'SECRETAIRE_GENERAL',
-    
+
     // Encadrement
     CHEF_SERVICE = 'CHEF_SERVICE',
     CHEF_BUREAU = 'CHEF_BUREAU',
-    
+
     // Agents
     AGENT_MUNICIPAL = 'AGENT_MUNICIPAL',
     AGENT_ETAT_CIVIL = 'AGENT_ETAT_CIVIL',
     AGENT_TECHNIQUE = 'AGENT_TECHNIQUE',
     AGENT_ACCUEIL = 'AGENT_ACCUEIL',
     STAGIAIRE = 'STAGIAIRE',
-    
+
     // Usagers
     CITOYEN = 'CITOYEN',
+    CITOYEN_AUTRE_COMMUNE = 'CITOYEN_AUTRE_COMMUNE',
     ETRANGER_RESIDENT = 'ETRANGER_RESIDENT',
     PERSONNE_MORALE = 'PERSONNE_MORALE'
 }
@@ -254,17 +255,32 @@ export const MUNICIPAL_ROLE_MAPPING: Record<MunicipalRole, RoleMunicipalMapping>
 
     [MunicipalRole.CITOYEN]: {
         role: MunicipalRole.CITOYEN,
-        label: 'Citoyen',
-        labelFeminin: 'Citoyenne',
+        label: 'Citoyen Résident',
+        labelFeminin: 'Citoyenne Résidente',
         allowedOrgTypes: ['MAIRIE_CENTRALE', 'MAIRIE_ARRONDISSEMENT', 'MAIRIE_COMMUNE', 'COMMUNAUTE_URBAINE'],
         employmentStatus: EmploymentStatus.USAGER,
         hierarchyLevel: 0,
         canManageRoles: [],
         permissions: [
-            'Déposer demandes',
-            'Suivre dossiers',
-            'Prendre rendez-vous',
-            'Télécharger documents'
+            'Mes demandes',
+            'Mon profil',
+            'État Civil',
+            'Urbanisme'
+        ]
+    },
+
+    [MunicipalRole.CITOYEN_AUTRE_COMMUNE]: {
+        role: MunicipalRole.CITOYEN_AUTRE_COMMUNE,
+        label: 'Citoyen (Autre Commune)',
+        labelFeminin: 'Citoyenne (Autre Commune)',
+        allowedOrgTypes: ['MAIRIE_CENTRALE', 'MAIRIE_ARRONDISSEMENT', 'MAIRIE_COMMUNE', 'COMMUNAUTE_URBAINE'],
+        employmentStatus: EmploymentStatus.USAGER,
+        hierarchyLevel: 0,
+        canManageRoles: [],
+        permissions: [
+            'Légalisations',
+            'Certificats',
+            'Attestations'
         ]
     },
 
@@ -319,7 +335,7 @@ export const isStaffRole = (role: MunicipalRole): boolean => {
 };
 
 export const isUserRole = (role: MunicipalRole): boolean => {
-    return [MunicipalRole.CITOYEN, MunicipalRole.ETRANGER_RESIDENT, MunicipalRole.PERSONNE_MORALE].includes(role);
+    return [MunicipalRole.CITOYEN, MunicipalRole.CITOYEN_AUTRE_COMMUNE, MunicipalRole.ETRANGER_RESIDENT, MunicipalRole.PERSONNE_MORALE].includes(role);
 };
 
 // Compatibility aliases for legacy code
@@ -337,10 +353,10 @@ export const ConsularRole = {
 export type ConsularRoleType = MunicipalRole;
 
 // Re-export for hierarchy validation with allowedEntityTypes
-export const ROLE_ENTITY_MAPPING: Record<MunicipalRole, RoleMunicipalMapping & { allowedEntityTypes: string[] }> = 
+export const ROLE_ENTITY_MAPPING: Record<MunicipalRole, RoleMunicipalMapping & { allowedEntityTypes: string[] }> =
     Object.fromEntries(
         Object.entries(MUNICIPAL_ROLE_MAPPING).map(([key, value]) => [
-            key, 
+            key,
             { ...value, allowedEntityTypes: value.allowedOrgTypes }
         ])
     ) as any;

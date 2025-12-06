@@ -26,7 +26,8 @@ const ROLE_COLORS: Record<string, string> = {
   [MunicipalRole.AGENT_TECHNIQUE]: 'bg-cyan-600',
   [MunicipalRole.AGENT_ACCUEIL]: 'bg-teal-500',
   [MunicipalRole.STAGIAIRE]: 'bg-purple-500',
-  [MunicipalRole.CITOYEN]: 'bg-gray-500',
+  [MunicipalRole.CITOYEN]: 'bg-sky-600',
+  [MunicipalRole.CITOYEN_AUTRE_COMMUNE]: 'bg-cyan-500',
   [MunicipalRole.ETRANGER_RESIDENT]: 'bg-indigo-500',
   [MunicipalRole.PERSONNE_MORALE]: 'bg-amber-600',
 };
@@ -34,7 +35,7 @@ const ROLE_COLORS: Record<string, string> = {
 export function DemoUserCard({ user }: DemoUserCardProps) {
   const navigate = useNavigate();
   const { simulateUser } = useDemo();
-  
+
   // Essayer d'abord les mairies puis les anciennes entités
   const mairie = user.entityId ? getMairieById(user.entityId) : null;
   const entity = !mairie && user.entityId ? getEntityById(user.entityId) : null;
@@ -46,7 +47,7 @@ export function DemoUserCard({ user }: DemoUserCardProps) {
     // Navigation selon le rôle
     if (user.role === 'ADMIN') {
       navigate("/dashboard/super-admin");
-    } else if (user.role === MunicipalRole.CITOYEN) {
+    } else if (user.role === MunicipalRole.CITOYEN || user.role === MunicipalRole.CITOYEN_AUTRE_COMMUNE) {
       navigate("/dashboard/citizen");
     } else if (user.role === MunicipalRole.ETRANGER_RESIDENT) {
       navigate("/dashboard/foreigner");
@@ -64,12 +65,12 @@ export function DemoUserCard({ user }: DemoUserCardProps) {
 
   const getRoleDisplayLabel = () => {
     if (user.role === 'ADMIN') return 'Super Admin';
-    
+
     const roleMapping = MUNICIPAL_ROLE_MAPPING[user.role as MunicipalRole];
     if (roleMapping) {
       return roleMapping.label;
     }
-    
+
     return user.role.replace(/_/g, ' ');
   };
 
