@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,13 +7,150 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle2, Upload, Loader2, Clock, AlertTriangle, Plane, MapPin, User, FileText, Briefcase } from "lucide-react";
+import { CheckCircle2, Upload, Loader2, Clock, AlertTriangle, Plane, MapPin, User, FileText, Briefcase, Mic } from "lucide-react";
 import { RequestReason, ForeignerStatus } from "@/types/citizen";
+import { formAssistantStore, useFormAssistant } from "@/stores/formAssistantStore";
+import { cn } from "@/lib/utils";
+
+// Composant Label avec indicateur iAsted
+interface IAstedLabelProps {
+    children: React.ReactNode;
+    filledByIasted?: boolean;
+    className?: string;
+}
+
+function IAstedLabel({ children, filledByIasted, className }: IAstedLabelProps) {
+    return (
+        <div className={cn("flex items-center gap-1.5", className)}>
+            <Label>{children}</Label>
+            {filledByIasted && (
+                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-500/10 animate-in fade-in zoom-in duration-300">
+                    <Mic className="w-2.5 h-2.5 text-blue-500" />
+                </span>
+            )}
+        </div>
+    );
+}
+
+// Composant Input avec indicateur visuel iAsted
+interface IAstedInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+    filledByIasted?: boolean;
+}
+
+function IAstedInput({ filledByIasted, className, ...props }: IAstedInputProps) {
+    return (
+        <div className="relative">
+            <Input 
+                className={cn(
+                    filledByIasted && "pr-8 border-blue-500/30 bg-blue-500/5 transition-colors duration-300",
+                    className
+                )} 
+                {...props} 
+            />
+            {filledByIasted && (
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 animate-in fade-in slide-in-from-right-2 duration-300">
+                    <div className="w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center">
+                        <Mic className="w-3 h-3 text-blue-500" />
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
 
 export function ForeignerRegistrationForm() {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [reason, setReason] = useState<string>("");
+    
+    // Tracker les champs remplis par iAsted
+    const [filledByIasted, setFilledByIasted] = useState<Set<string>>(new Set());
+    
+    // Données du formulaire
+    const [formData, setFormData] = useState({
+        firstName: '',
+        lastName: '',
+        nationality: '',
+        dateOfBirth: '',
+        profession: '',
+        address: '',
+        city: '',
+        country: '',
+        phone: '',
+        email: '',
+        passportNumber: '',
+        passportCountry: '',
+        passportExpiry: '',
+        arrivalDate: '',
+        departureDate: '',
+        accommodationType: '',
+        gabonAddress: '',
+        additionalNotes: '',
+    });
+
+    // Synchroniser avec le store
+    const { formData: storeData, currentStep } = useFormAssistant();
+
+    // Écouter les événements d'iAsted
+    useEffect(() => {
+        formAssistantStore.setCurrentForm('foreigner_registration');
+        formAssistantStore.setCurrentStep(step);
+
+        const handleFillField = (event: CustomEvent) => {
+            const { field, value } = event.detail;
+            setFormData(prev => ({ ...prev, [field]: value }));
+            // Marquer le champ comme rempli par iAsted
+            setFilledByIasted(prev => new Set([...prev, field]));
+            
+            // Cas spécial pour le motif
+            if (field === 'reason') {
+                setReason(value);
+            }
+        };
+
+        const handleNavigateStep = (event: CustomEvent) => {
+            const { step: targetStep } = event.detail;
+            setStep(targetStep);
+        };
+
+        const handleSubmitForm = () => {
+            handleSubmit();
+        };
+
+        window.addEventListener('iasted-fill-field', handleFillField as EventListener);
+        window.addEventListener('iasted-navigate-step', handleNavigateStep as EventListener);
+        window.addEventListener('iasted-submit-form', handleSubmitForm);
+
+        return () => {
+            window.removeEventListener('iasted-fill-field', handleFillField as EventListener);
+            window.removeEventListener('iasted-navigate-step', handleNavigateStep as EventListener);
+            window.removeEventListener('iasted-submit-form', handleSubmitForm);
+        };
+    }, [step]);
+
+    // Synchroniser le step avec le store
+    useEffect(() => {
+        formAssistantStore.setCurrentStep(step);
+    }, [step]);
+
+    // Mettre à jour le store quand les données changent
+    useEffect(() => {
+        Object.entries(formData).forEach(([key, value]) => {
+            if (value) {
+                formAssistantStore.setField(key, value);
+            }
+        });
+    }, [formData]);
+
+    const handleInputChange = (field: string, value: string) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+        // Si l'utilisateur modifie manuellement, retirer l'indicateur iAsted
+        setFilledByIasted(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(field);
+            return newSet;
+        });
+    };
 
     const steps = [
         { id: 1, label: "Identité", icon: User },
@@ -66,7 +203,7 @@ export function ForeignerRegistrationForm() {
                 ))}
             </div>
 
-            <Card className="border-blue-100">
+            <Card className="border-blue-100 dark:border-blue-900/50">
                 <CardHeader>
                     <CardTitle>
                         {step === 1 && "Identité & État Civil"}
@@ -91,27 +228,52 @@ export function ForeignerRegistrationForm() {
                         <div className="grid gap-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Prénom(s) *</Label>
-                                    <Input placeholder="John" />
+                                    <IAstedLabel filledByIasted={filledByIasted.has('firstName')}>Prénom(s) *</IAstedLabel>
+                                    <IAstedInput 
+                                        placeholder="John" 
+                                        value={formData.firstName}
+                                        onChange={(e) => handleInputChange('firstName', e.target.value)}
+                                        filledByIasted={filledByIasted.has('firstName')}
+                                    />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Nom(s) *</Label>
-                                    <Input placeholder="Doe" />
+                                    <IAstedLabel filledByIasted={filledByIasted.has('lastName')}>Nom(s) *</IAstedLabel>
+                                    <IAstedInput 
+                                        placeholder="Doe" 
+                                        value={formData.lastName}
+                                        onChange={(e) => handleInputChange('lastName', e.target.value)}
+                                        filledByIasted={filledByIasted.has('lastName')}
+                                    />
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Nationalité *</Label>
-                                    <Input placeholder="Ex: Française" />
+                                    <IAstedLabel filledByIasted={filledByIasted.has('nationality')}>Nationalité *</IAstedLabel>
+                                    <IAstedInput 
+                                        placeholder="Ex: Française" 
+                                        value={formData.nationality}
+                                        onChange={(e) => handleInputChange('nationality', e.target.value)}
+                                        filledByIasted={filledByIasted.has('nationality')}
+                                    />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Date de naissance *</Label>
-                                    <Input type="date" />
+                                    <IAstedLabel filledByIasted={filledByIasted.has('dateOfBirth')}>Date de naissance *</IAstedLabel>
+                                    <IAstedInput 
+                                        type="date" 
+                                        value={formData.dateOfBirth}
+                                        onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                                        filledByIasted={filledByIasted.has('dateOfBirth')}
+                                    />
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label>Profession</Label>
-                                <Input placeholder="Ex: Ingénieur" />
+                                <IAstedLabel filledByIasted={filledByIasted.has('profession')}>Profession</IAstedLabel>
+                                <IAstedInput 
+                                    placeholder="Ex: Ingénieur" 
+                                    value={formData.profession}
+                                    onChange={(e) => handleInputChange('profession', e.target.value)}
+                                    filledByIasted={filledByIasted.has('profession')}
+                                />
                             </div>
                         </div>
                     )}
@@ -119,27 +281,50 @@ export function ForeignerRegistrationForm() {
                     {step === 2 && (
                         <div className="space-y-4">
                             <div className="space-y-2">
-                                <Label>Adresse de résidence actuelle *</Label>
-                                <Input placeholder="Numéro et nom de rue" />
+                                <IAstedLabel filledByIasted={filledByIasted.has('address')}>Adresse de résidence actuelle *</IAstedLabel>
+                                <IAstedInput 
+                                    placeholder="Numéro et nom de rue" 
+                                    value={formData.address}
+                                    onChange={(e) => handleInputChange('address', e.target.value)}
+                                    filledByIasted={filledByIasted.has('address')}
+                                />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Ville *</Label>
-                                    <Input />
+                                    <IAstedLabel filledByIasted={filledByIasted.has('city')}>Ville *</IAstedLabel>
+                                    <IAstedInput 
+                                        value={formData.city}
+                                        onChange={(e) => handleInputChange('city', e.target.value)}
+                                        filledByIasted={filledByIasted.has('city')}
+                                    />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Pays *</Label>
-                                    <Input />
+                                    <IAstedLabel filledByIasted={filledByIasted.has('country')}>Pays *</IAstedLabel>
+                                    <IAstedInput 
+                                        value={formData.country}
+                                        onChange={(e) => handleInputChange('country', e.target.value)}
+                                        filledByIasted={filledByIasted.has('country')}
+                                    />
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Téléphone *</Label>
-                                    <Input placeholder="+33..." />
+                                    <IAstedLabel filledByIasted={filledByIasted.has('phone')}>Téléphone *</IAstedLabel>
+                                    <IAstedInput 
+                                        placeholder="+33..." 
+                                        value={formData.phone}
+                                        onChange={(e) => handleInputChange('phone', e.target.value)}
+                                        filledByIasted={filledByIasted.has('phone')}
+                                    />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Email *</Label>
-                                    <Input type="email" />
+                                    <IAstedLabel filledByIasted={filledByIasted.has('email')}>Email *</IAstedLabel>
+                                    <IAstedInput 
+                                        type="email" 
+                                        value={formData.email}
+                                        onChange={(e) => handleInputChange('email', e.target.value)}
+                                        filledByIasted={filledByIasted.has('email')}
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -148,20 +333,34 @@ export function ForeignerRegistrationForm() {
                     {step === 3 && (
                         <div className="space-y-4">
                             <div className="space-y-2">
-                                <Label>Numéro de Passeport *</Label>
-                                <Input placeholder="Ex: 12AB34567" />
+                                <IAstedLabel filledByIasted={filledByIasted.has('passportNumber')}>Numéro de Passeport *</IAstedLabel>
+                                <IAstedInput 
+                                    placeholder="Ex: 12AB34567" 
+                                    value={formData.passportNumber}
+                                    onChange={(e) => handleInputChange('passportNumber', e.target.value)}
+                                    filledByIasted={filledByIasted.has('passportNumber')}
+                                />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Pays d'émission *</Label>
-                                    <Input />
+                                    <IAstedLabel filledByIasted={filledByIasted.has('passportCountry')}>Pays d'émission *</IAstedLabel>
+                                    <IAstedInput 
+                                        value={formData.passportCountry}
+                                        onChange={(e) => handleInputChange('passportCountry', e.target.value)}
+                                        filledByIasted={filledByIasted.has('passportCountry')}
+                                    />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Date d'expiration *</Label>
-                                    <Input type="date" />
+                                    <IAstedLabel filledByIasted={filledByIasted.has('passportExpiry')}>Date d'expiration *</IAstedLabel>
+                                    <IAstedInput 
+                                        type="date" 
+                                        value={formData.passportExpiry}
+                                        onChange={(e) => handleInputChange('passportExpiry', e.target.value)}
+                                        filledByIasted={filledByIasted.has('passportExpiry')}
+                                    />
                                 </div>
                             </div>
-                            <Alert variant="destructive" className="bg-red-50 border-red-200 text-red-800">
+                            <Alert variant="destructive" className="bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900/50 text-red-800 dark:text-red-300">
                                 <AlertTriangle className="h-4 w-4" />
                                 <AlertTitle>Validité du Passeport</AlertTitle>
                                 <AlertDescription>
@@ -174,10 +373,19 @@ export function ForeignerRegistrationForm() {
                     {step === 4 && (
                         <div className="space-y-4">
                             <div className="space-y-2">
-                                <Label>Motif principal *</Label>
-                                <Select onValueChange={setReason}>
-                                    <SelectTrigger>
+                                <IAstedLabel filledByIasted={filledByIasted.has('reason')}>Motif principal *</IAstedLabel>
+                                <Select 
+                                    value={reason}
+                                    onValueChange={(value) => {
+                                        setReason(value);
+                                        handleInputChange('reason', value);
+                                    }}
+                                >
+                                    <SelectTrigger className={filledByIasted.has('reason') ? "border-blue-500/30 bg-blue-500/5" : ""}>
                                         <SelectValue placeholder="Sélectionnez un motif" />
+                                        {filledByIasted.has('reason') && (
+                                            <Mic className="w-3 h-3 text-blue-500 ml-auto" />
+                                        )}
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value={RequestReason.VISA_REQUEST}>Demande de Visa</SelectItem>
@@ -188,25 +396,41 @@ export function ForeignerRegistrationForm() {
                             </div>
 
                             {reason === RequestReason.VISA_REQUEST && (
-                                <div className="p-4 bg-blue-50 rounded-lg space-y-4 border border-blue-100 animate-in fade-in slide-in-from-top-2">
-                                    <h3 className="font-medium text-blue-900 flex items-center gap-2">
+                                <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg space-y-4 border border-blue-100 dark:border-blue-900/50 animate-in fade-in slide-in-from-top-2">
+                                    <h3 className="font-medium text-blue-900 dark:text-blue-300 flex items-center gap-2">
                                         <Plane className="h-4 w-4" /> Détails du Voyage
                                     </h3>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label>Date d'arrivée prévue</Label>
-                                            <Input type="date" />
+                                            <IAstedLabel filledByIasted={filledByIasted.has('arrivalDate')}>Date d'arrivée prévue</IAstedLabel>
+                                            <IAstedInput 
+                                                type="date" 
+                                                value={formData.arrivalDate}
+                                                onChange={(e) => handleInputChange('arrivalDate', e.target.value)}
+                                                filledByIasted={filledByIasted.has('arrivalDate')}
+                                            />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label>Date de départ prévue</Label>
-                                            <Input type="date" />
+                                            <IAstedLabel filledByIasted={filledByIasted.has('departureDate')}>Date de départ prévue</IAstedLabel>
+                                            <IAstedInput 
+                                                type="date" 
+                                                value={formData.departureDate}
+                                                onChange={(e) => handleInputChange('departureDate', e.target.value)}
+                                                filledByIasted={filledByIasted.has('departureDate')}
+                                            />
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Type d'hébergement</Label>
-                                        <Select>
-                                            <SelectTrigger>
+                                        <IAstedLabel filledByIasted={filledByIasted.has('accommodationType')}>Type d'hébergement</IAstedLabel>
+                                        <Select 
+                                            value={formData.accommodationType}
+                                            onValueChange={(value) => handleInputChange('accommodationType', value)}
+                                        >
+                                            <SelectTrigger className={filledByIasted.has('accommodationType') ? "border-blue-500/30 bg-blue-500/5" : ""}>
                                                 <SelectValue placeholder="Sélectionner" />
+                                                {filledByIasted.has('accommodationType') && (
+                                                    <Mic className="w-3 h-3 text-blue-500 ml-auto" />
+                                                )}
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="HOTEL">Hôtel</SelectItem>
@@ -216,15 +440,25 @@ export function ForeignerRegistrationForm() {
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Adresse au Gabon</Label>
-                                        <Input placeholder="Nom de l'hôtel ou adresse de l'hôte" />
+                                        <IAstedLabel filledByIasted={filledByIasted.has('gabonAddress')}>Adresse au Gabon</IAstedLabel>
+                                        <IAstedInput 
+                                            placeholder="Nom de l'hôtel ou adresse de l'hôte" 
+                                            value={formData.gabonAddress}
+                                            onChange={(e) => handleInputChange('gabonAddress', e.target.value)}
+                                            filledByIasted={filledByIasted.has('gabonAddress')}
+                                        />
                                     </div>
                                 </div>
                             )}
 
                             <div className="space-y-2">
-                                <Label>Précisions supplémentaires</Label>
-                                <Textarea placeholder="Détails utiles pour l'agent consulaire..." />
+                                <IAstedLabel filledByIasted={filledByIasted.has('additionalNotes')}>Précisions supplémentaires</IAstedLabel>
+                                <Textarea 
+                                    placeholder="Détails utiles pour l'agent consulaire..." 
+                                    value={formData.additionalNotes}
+                                    onChange={(e) => handleInputChange('additionalNotes', e.target.value)}
+                                    className={filledByIasted.has('additionalNotes') ? "border-blue-500/30 bg-blue-500/5" : ""}
+                                />
                             </div>
                         </div>
                     )}
@@ -232,24 +466,24 @@ export function ForeignerRegistrationForm() {
                     {step === 5 && (
                         <div className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-blue-50 cursor-pointer transition-colors border-blue-200">
+                                <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-colors border-blue-200 dark:border-blue-900/50">
                                     <Upload className="h-8 w-8 mx-auto mb-2 text-blue-500" />
                                     <p className="font-medium">Photo d'identité *</p>
                                     <p className="text-xs text-muted-foreground">Fond blanc, sans lunettes</p>
                                 </div>
-                                <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-blue-50 cursor-pointer transition-colors border-blue-200">
+                                <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-colors border-blue-200 dark:border-blue-900/50">
                                     <Upload className="h-8 w-8 mx-auto mb-2 text-blue-500" />
                                     <p className="font-medium">Copie du Passeport *</p>
                                     <p className="text-xs text-muted-foreground">Page avec photo</p>
                                 </div>
                                 {reason === RequestReason.VISA_REQUEST && (
                                     <>
-                                        <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-blue-50 cursor-pointer transition-colors border-blue-200">
+                                        <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-colors border-blue-200 dark:border-blue-900/50">
                                             <Upload className="h-8 w-8 mx-auto mb-2 text-blue-500" />
                                             <p className="font-medium">Réservation Billet *</p>
                                             <p className="text-xs text-muted-foreground">Aller-Retour</p>
                                         </div>
-                                        <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-blue-50 cursor-pointer transition-colors border-blue-200">
+                                        <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-colors border-blue-200 dark:border-blue-900/50">
                                             <Upload className="h-8 w-8 mx-auto mb-2 text-blue-500" />
                                             <p className="font-medium">Justificatif Hébergement *</p>
                                             <p className="text-xs text-muted-foreground">Réservation hôtel ou Certificat hébergement</p>
@@ -262,8 +496,8 @@ export function ForeignerRegistrationForm() {
 
                     {step === 6 && (
                         <div className="space-y-6">
-                            <Alert className="bg-yellow-50 border-yellow-200">
-                                <Clock className="h-4 w-4 text-yellow-600" />
+                            <Alert className="bg-yellow-50 dark:bg-yellow-950/30 border-yellow-200 dark:border-yellow-900/50">
+                                <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
                                 <AlertTitle>Délai de traitement</AlertTitle>
                                 <AlertDescription>
                                     L'analyse de votre dossier prendra entre <strong>48h et 72h ouvrées</strong>.
