@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +28,9 @@ import heroImage from "@/assets/mairie-accueil.jpg";
 import serviceImage from "@/assets/service-municipal.jpg";
 import familleImage from "@/assets/famille-acte-naissance.jpg";
 import entrepreneurImage from "@/assets/entrepreneur-patente.jpg";
+
+// Lazy load the map component
+const GabonMairiesMap = lazy(() => import("@/components/home/GabonMairiesMap"));
 
 export default function Home() {
   const [scrollY, setScrollY] = useState(0);
@@ -324,7 +327,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Provinces Section */}
+      {/* Interactive Map Section */}
       <section className="py-20 md:py-24 bg-muted/30">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
@@ -336,27 +339,20 @@ export default function Home() {
               9 Provinces, <span className="text-primary">52 Communes</span>
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Un réseau municipal unifié couvrant l'ensemble du territoire gabonais
+              Explorez le réseau municipal unifié couvrant l'ensemble du territoire gabonais
             </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 max-w-6xl mx-auto">
-            {provinces.map((province, index) => (
-              <Card 
-                key={index}
-                className="text-center p-4 hover:shadow-lg transition-all hover:-translate-y-1 border-2 hover:border-primary/30"
-              >
-                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-primary/10 flex items-center justify-center">
-                  <TreePine className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="font-semibold text-sm mb-1">{province.name}</h3>
-                <p className="text-xs text-muted-foreground mb-2">{province.capital}</p>
-                <Badge variant="secondary" className="text-xs">
-                  {province.mairies} mairies
-                </Badge>
-              </Card>
-            ))}
-          </div>
+          <Suspense fallback={
+            <div className="w-full h-[500px] bg-card rounded-2xl flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                <p className="text-muted-foreground">Chargement de la carte...</p>
+              </div>
+            </div>
+          }>
+            <GabonMairiesMap />
+          </Suspense>
         </div>
       </section>
 
