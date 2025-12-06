@@ -1,4 +1,5 @@
-import { useDemo } from '@/contexts/DemoContext';
+import { useContext } from 'react';
+import { DemoContext } from '@/contexts/DemoContext';
 import { COUNTRY_FLAGS } from '@/types/entity';
 import { Button } from '@/components/ui/button';
 import { X, TestTube2 } from 'lucide-react';
@@ -7,9 +8,12 @@ import { useTranslation } from 'react-i18next';
 
 export function SimulationBanner() {
   const { t } = useTranslation();
-  const { currentUser, currentEntity, clearSimulation, isSimulating } = useDemo();
+  const context = useContext(DemoContext);
 
-  if (!isSimulating) return null;
+  // Si le contexte n'est pas disponible, ne rien afficher
+  if (!context || !context.isSimulating) return null;
+
+  const { currentUser, currentEntity, clearSimulation } = context;
 
   return (
     <Alert className="fixed top-0 left-0 right-0 z-50 rounded-none border-b-2 border-primary bg-accent/95 backdrop-blur-sm animate-slide-down">
