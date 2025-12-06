@@ -559,7 +559,7 @@ export default function Home() {
                     <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-primary/20 flex items-center justify-center">
                       <Landmark className="h-12 w-12 text-primary" />
                     </div>
-                    <p className="text-2xl font-bold text-primary">Mairies.ga</p>
+                    <p className="text-2xl font-bold text-primary">MAIRIE.GA</p>
                     <p className="text-muted-foreground">Réseau des Communes du Gabon</p>
                   </div>
                 </div>
