@@ -5,51 +5,59 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { 
   FileText, 
-  BookKey, 
+  Building2, 
   Users, 
   ArrowRight, 
   Shield, 
   Clock, 
-  Globe, 
+  MapPin, 
   Sparkles,
   CheckCircle2,
   Newspaper,
   Heart,
-  Building2
+  Store,
+  Baby,
+  Home as HomeIcon,
+  Landmark
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { InteractiveWorldMap } from "@/components/InteractiveWorldMap";
 import { GabonMairiesSection } from "@/components/home/GabonMairiesSection";
-import heroImage from "@/assets/hero-consulat.jpg";
+import heroImage from "@/assets/mairie-accueil.jpg";
+import serviceImage from "@/assets/service-municipal.jpg";
+import familleImage from "@/assets/famille-acte-naissance.jpg";
+import entrepreneurImage from "@/assets/entrepreneur-patente.jpg";
 
 export default function Home() {
   const { t } = useTranslation();
   
   const services = [
     {
-      icon: FileText,
-      title: t('home.services.visa.title'),
-      description: t('home.services.visa.description'),
+      icon: Baby,
+      title: "État Civil",
+      description: "Actes de naissance, mariage, décès et tous les documents officiels pour les événements de vie.",
       color: "text-primary",
       bgColor: "bg-primary/10",
-      link: "/services"
+      link: "/services",
+      image: familleImage
     },
     {
-      icon: BookKey,
-      title: t('home.services.passport.title'),
-      description: t('home.services.passport.description'),
+      icon: Building2,
+      title: "Urbanisme",
+      description: "Permis de construire, certificats et autorisations pour vos projets immobiliers.",
       color: "text-secondary",
       bgColor: "bg-secondary/10",
-      link: "/services"
+      link: "/services",
+      image: entrepreneurImage
     },
     {
-      icon: Users,
-      title: t('home.services.civilRegistry.title'),
-      description: t('home.services.civilRegistry.description'),
+      icon: Store,
+      title: "Entreprises",
+      description: "Patentes commerciales, autorisations et accompagnement des entrepreneurs locaux.",
       color: "text-accent",
       bgColor: "bg-accent/10",
-      link: "/services"
+      link: "/services",
+      image: serviceImage
     },
   ];
 
@@ -57,7 +65,7 @@ export default function Home() {
     {
       icon: Shield,
       title: "Sécurisé",
-      description: "Données protégées selon les normes gouvernementales"
+      description: "Données protégées selon les normes officielles"
     },
     {
       icon: Clock,
@@ -65,9 +73,9 @@ export default function Home() {
       description: "Suivi en temps réel de vos démarches"
     },
     {
-      icon: Globe,
-      title: "Accessible",
-      description: "Disponible 24h/24 partout dans le monde"
+      icon: MapPin,
+      title: "Proximité",
+      description: "52 mairies à votre service dans tout le Gabon"
     },
     {
       icon: Sparkles,
@@ -80,14 +88,14 @@ export default function Home() {
     { 
       icon: Newspaper, 
       label: "Actualités", 
-      description: "Dernières annonces",
+      description: "Infos de votre commune",
       href: "/actualites",
       color: "bg-primary/10 text-primary"
     },
     { 
       icon: Heart, 
       label: "Sensibilisation", 
-      description: "Programmes diaspora",
+      description: "Programmes citoyens",
       href: "/sensibilisation",
       color: "bg-accent/10 text-accent"
     },
@@ -99,9 +107,9 @@ export default function Home() {
       color: "bg-secondary/10 text-secondary"
     },
     { 
-      icon: Building2, 
+      icon: Users, 
       label: "Associations", 
-      description: "Réseau diaspora",
+      description: "Vie associative",
       href: "/associations",
       color: "bg-warning/10 text-warning"
     },
@@ -117,10 +125,10 @@ export default function Home() {
         <div className="absolute inset-0 z-0">
           <img 
             src={heroImage} 
-            alt="Gabon" 
+            alt="Mairie du Gabon - Citoyens" 
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/80 to-background/60 dark:from-background/98 dark:via-background/90 dark:to-background/70" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/85 to-background/70 dark:from-background/98 dark:via-background/90 dark:to-background/75" />
         </div>
 
         <div className="relative z-10 py-20 md:py-28">
@@ -129,18 +137,19 @@ export default function Home() {
               {/* Left Content */}
               <div className="max-w-2xl animate-fade-in">
                 <Badge className="mb-4 bg-primary/20 text-primary border-primary/30 hover:bg-primary/30">
-                  🇬🇦 République Gabonaise
+                  🇬🇦 Réseau des Mairies du Gabon
                 </Badge>
                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
-                  {t('home.hero.title')}
+                  Vos Services Municipaux en Ligne
                 </h1>
                 <p className="text-lg md:text-xl mb-8 text-muted-foreground leading-relaxed">
-                  {t('home.hero.subtitle')}
+                  Effectuez vos démarches administratives depuis chez vous. État civil, urbanisme, 
+                  fiscalité locale - toutes vos formalités municipales simplifiées.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Link to="/login">
                     <Button size="lg" className="w-full sm:w-auto min-w-[180px] gap-2">
-                      {t('common.login')}
+                      Accéder aux services
                       <ArrowRight className="h-4 w-4" />
                     </Button>
                   </Link>
@@ -191,47 +200,36 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Carte Interactive */}
-      <section className="py-16 md:py-20 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <Badge variant="outline" className="mb-4">Réseau Mondial</Badge>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Notre Présence à l'International
-            </h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Consultez nos représentations diplomatiques à travers le monde
-            </p>
-          </div>
-          <div className="max-w-7xl mx-auto animate-fade-in">
-            <InteractiveWorldMap />
-          </div>
-        </div>
-      </section>
-
-      {/* Services Section */}
+      {/* Services Section with Images */}
       <section className="py-20 md:py-24 bg-gradient-to-b from-background to-muted/20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <Badge variant="outline" className="mb-4">Services Consulaires</Badge>
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6">{t('home.services.title')}</h2>
+            <Badge variant="outline" className="mb-4">Services Municipaux</Badge>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6">Nos Services Phares</h2>
             <p className="text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto">
-              {t('home.hero.description')}
+              Des services de proximité pour accompagner chaque moment de votre vie citoyenne
             </p>
           </div>
 
-          <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
             {services.map((service, index) => (
               <Link to={service.link} key={index}>
                 <Card
-                  className="group h-full hover:shadow-xl transition-all duration-300 hover:-translate-y-2 animate-scale-in border-2 hover:border-primary/30"
+                  className="group h-full overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-2 animate-scale-in border-2 hover:border-primary/30"
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
+                  <div className="h-48 overflow-hidden">
+                    <img 
+                      src={service.image} 
+                      alt={service.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    />
+                  </div>
                   <CardHeader className="text-center pb-4">
-                    <div className={`w-16 h-16 rounded-2xl ${service.bgColor} flex items-center justify-center mb-4 mx-auto ${service.color} transition-transform group-hover:scale-110`}>
-                      <service.icon className="h-8 w-8" />
+                    <div className={`w-14 h-14 rounded-2xl ${service.bgColor} flex items-center justify-center mx-auto -mt-10 relative z-10 border-4 border-background ${service.color} transition-transform group-hover:scale-110`}>
+                      <service.icon className="h-7 w-7" />
                     </div>
-                    <CardTitle className="text-xl mb-2 group-hover:text-primary transition-colors">{service.title}</CardTitle>
+                    <CardTitle className="text-xl mt-2 group-hover:text-primary transition-colors">{service.title}</CardTitle>
                     <CardDescription className="text-base">
                       {service.description}
                     </CardDescription>
@@ -266,10 +264,10 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             {[
-              { value: "50+", label: "Représentations" },
-              { value: "300K+", label: "Citoyens inscrits" },
-              { value: "24/7", label: "Disponibilité" },
-              { value: "99%", label: "Satisfaction" },
+              { value: "52", label: "Mairies connectées" },
+              { value: "1.8M", label: "Citoyens servis" },
+              { value: "24/7", label: "Services en ligne" },
+              { value: "98%", label: "Satisfaction" },
             ].map((stat, index) => (
               <div key={index} className="animate-fade-in" style={{ animationDelay: `${index * 0.1}s` }}>
                 <div className="text-4xl md:text-5xl font-bold mb-2">{stat.value}</div>
@@ -289,18 +287,18 @@ export default function Home() {
                 <div className="p-8 md:p-12">
                   <Badge className="mb-4 bg-accent/20 text-accent border-accent/30">Nouveau</Badge>
                   <h2 className="text-2xl md:text-3xl font-bold mb-4">
-                    Rejoignez la communauté gabonaise
+                    Simplifiez vos démarches municipales
                   </h2>
                   <p className="text-muted-foreground mb-6">
-                    Créez votre compte et accédez à tous les services consulaires en ligne. 
-                    Suivez vos démarches en temps réel.
+                    Créez votre compte citoyen et accédez à tous les services de votre mairie en ligne. 
+                    Suivez vos demandes en temps réel.
                   </p>
                   <ul className="space-y-3 mb-8">
                     {[
-                      "Demandes de documents en ligne",
-                      "Suivi en temps réel",
-                      "Notifications automatiques",
-                      "Messagerie sécurisée"
+                      "Demandes de documents officiels",
+                      "Suivi des dossiers en temps réel",
+                      "Prise de rendez-vous en ligne",
+                      "Notifications automatiques"
                     ].map((item, i) => (
                       <li key={i} className="flex items-center gap-2 text-sm">
                         <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
@@ -310,18 +308,18 @@ export default function Home() {
                   </ul>
                   <Link to="/register">
                     <Button size="lg" className="w-full sm:w-auto gap-2">
-                      Créer mon compte
+                      Créer mon compte citoyen
                       <ArrowRight className="h-4 w-4" />
                     </Button>
                   </Link>
                 </div>
-                <div className="hidden md:block bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20 p-12 flex items-center justify-center">
+                <div className="hidden md:flex bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20 p-12 items-center justify-center">
                   <div className="text-center">
                     <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-primary/20 flex items-center justify-center">
-                      <Users className="h-12 w-12 text-primary" />
+                      <Landmark className="h-12 w-12 text-primary" />
                     </div>
-                    <p className="text-xl font-semibold">Plus de 300 000</p>
-                    <p className="text-muted-foreground">citoyens nous font confiance</p>
+                    <p className="text-xl font-semibold">52 mairies</p>
+                    <p className="text-muted-foreground">à votre service</p>
                   </div>
                 </div>
               </div>
