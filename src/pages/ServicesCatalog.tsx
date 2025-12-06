@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { 
   Search, 
   Filter,
@@ -17,7 +18,8 @@ import {
   Stamp,
   Store,
   TreePine,
-  Truck
+  Truck,
+  Star
 } from "lucide-react";
 import { 
   MUNICIPAL_SERVICE_CATALOG, 
@@ -25,6 +27,10 @@ import {
   MunicipalServiceInfo 
 } from "@/types/municipal-services";
 import { useTranslation } from "react-i18next";
+import { BeneficiaryFilter, BeneficiaryType } from "@/components/services/BeneficiaryFilter";
+import { useFavoriteServices } from "@/hooks/useFavoriteServices";
+import { AnimatePresence } from "framer-motion";
+import { FavoriteServiceCard } from "@/components/services/FavoriteServiceCard";
 
 const CATEGORY_INFO: Record<ServiceCategory, { label: string; icon: typeof Landmark; color: string }> = {
   [ServiceCategory.ETAT_CIVIL]: { label: "État Civil", icon: FileText, color: "bg-blue-500" },
@@ -42,17 +48,28 @@ interface ServiceCardProps {
   onClick: () => void;
 }
 
-const ServiceCard = ({ service, onClick }: ServiceCardProps) => {
+const ServiceCard = ({ service, onClick, isFavorite, onToggleFavorite }: ServiceCardProps & { isFavorite: boolean; onToggleFavorite: () => void }) => {
   const Icon = service.icon;
   const categoryInfo = CATEGORY_INFO[service.category];
   
   return (
     <Card 
-      className="group hover:shadow-lg transition-all duration-300 hover:border-primary/50 cursor-pointer"
+      className="group hover:shadow-lg transition-all duration-300 hover:border-primary/50 cursor-pointer relative"
       onClick={onClick}
     >
+      <Button
+        variant="ghost"
+        size="icon"
+        className={`absolute top-2 right-2 h-8 w-8 z-10 ${isFavorite ? 'text-amber-500' : 'text-muted-foreground opacity-0 group-hover:opacity-100'}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleFavorite();
+        }}
+      >
+        <Star className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
+      </Button>
       <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between pr-8">
           <div className={`p-2 rounded-lg ${categoryInfo.color}/10`}>
             <Icon className={`h-5 w-5 ${service.color}`} />
           </div>
@@ -114,8 +131,10 @@ const ServicesCatalog = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | "all">("all");
+  const [selectedBeneficiary, setSelectedBeneficiary] = useState<BeneficiaryType>("all");
   const [selectedService, setSelectedService] = useState<MunicipalServiceInfo | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const { favorites, toggleFavorite, isFavorite } = useFavoriteServices();
 
   const handleServiceClick = (service: MunicipalServiceInfo) => {
     setSelectedService(service);
@@ -139,9 +158,27 @@ const ServicesCatalog = () => {
       
       const matchesCategory = selectedCategory === "all" || service.category === selectedCategory;
       
-      return matchesSearch && matchesCategory;
+      const matchesBeneficiary = selectedBeneficiary === "all" ||
+        (selectedBeneficiary === "citizen" && service.forCitoyen) ||
+        (selectedBeneficiary === "foreigner" && service.forEtranger) ||
+        (selectedBeneficiary === "business" && service.forPersonneMorale);
+      
+      return matchesSearch && matchesCategory && matchesBeneficiary;
     });
-  }, [services, searchQuery, selectedCategory]);
+  }, [services, searchQuery, selectedCategory, selectedBeneficiary]);
+
+  const beneficiaryCounts = useMemo(() => ({
+    all: services.length,
+    citizen: services.filter(s => s.forCitoyen).length,
+    foreigner: services.filter(s => s.forEtranger).length,
+    business: services.filter(s => s.forPersonneMorale).length,
+  }), [services]);
+
+  const favoriteServices = useMemo(() => {
+    return favorites
+      .map(id => MUNICIPAL_SERVICE_CATALOG[id])
+      .filter(Boolean);
+  }, [favorites]);
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = { all: services.length };
@@ -183,6 +220,40 @@ const ServicesCatalog = () => {
       </div>
 
       <div className="container mx-auto px-4 py-8">
+        {/* Favorites Section */}
+        {favoriteServices.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <Star className="h-5 w-5 text-amber-500 fill-amber-500" />
+              <h2 className="text-lg font-semibold">Mes services favoris</h2>
+              <Badge variant="secondary">{favoriteServices.length}</Badge>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <AnimatePresence>
+                {favoriteServices.map((service) => (
+                  <FavoriteServiceCard
+                    key={service.id}
+                    service={service}
+                    onRemove={() => toggleFavorite(service.id)}
+                    onClick={() => handleServiceClick(service)}
+                  />
+                ))}
+              </AnimatePresence>
+            </div>
+            <Separator className="mt-8" />
+          </div>
+        )}
+
+        {/* Beneficiary Filter */}
+        <div className="mb-6">
+          <p className="text-sm font-medium text-muted-foreground mb-3">Filtrer par bénéficiaire</p>
+          <BeneficiaryFilter
+            selected={selectedBeneficiary}
+            onChange={setSelectedBeneficiary}
+            counts={beneficiaryCounts}
+          />
+        </div>
+
         {/* Category Filters */}
         <div className="flex flex-wrap gap-2 mb-8">
           <Button
@@ -231,6 +302,8 @@ const ServicesCatalog = () => {
                 key={service.id} 
                 service={service} 
                 onClick={() => handleServiceClick(service)}
+                isFavorite={isFavorite(service.id)}
+                onToggleFavorite={() => toggleFavorite(service.id)}
               />
             ))}
           </div>
@@ -246,6 +319,7 @@ const ServicesCatalog = () => {
             <Button variant="outline" onClick={() => {
               setSearchQuery("");
               setSelectedCategory("all");
+              setSelectedBeneficiary("all");
             }}>
               Réinitialiser les filtres
             </Button>
