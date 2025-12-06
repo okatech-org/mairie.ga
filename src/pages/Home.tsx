@@ -6,6 +6,7 @@ import {
   FileText, 
   Building2, 
   Users, 
+  UserPlus,
   ArrowRight, 
   Shield, 
   Clock, 
@@ -198,6 +199,12 @@ export default function Home() {
                     <Button size="lg" className="w-full sm:w-auto min-w-[180px] gap-2 h-12 text-base bg-primary hover:bg-primary/90 text-white dark:text-primary-foreground">
                       <Users className="h-5 w-5" />
                       Espace Citoyen
+                    </Button>
+                  </Link>
+                  <Link to="/register">
+                    <Button size="lg" variant="outline" className="w-full sm:w-auto min-w-[180px] gap-2 h-12 text-base bg-white/10 dark:bg-white/5 border-white/30 dark:border-white/20 text-white hover:bg-white/20 dark:hover:bg-white/10 backdrop-blur-sm">
+                      <UserPlus className="h-5 w-5" />
+                      S'inscrire
                     </Button>
                   </Link>
                   <Link to="/services">
