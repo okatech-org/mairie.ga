@@ -1,25 +1,125 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { TestTube2, Eye, EyeOff, ArrowRight, Landmark, Shield, ChevronRight, Building2 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TestTube2, Eye, EyeOff, ArrowRight, Landmark, Shield, ChevronRight, Building2, Mail, Key, Loader2, AlertCircle } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
+import { supabase } from "@/integrations/supabase/client";
+import { PinCodeInput } from "@/components/auth/PinCodeInput";
+import { toast } from "sonner";
 import villeImage from "@/assets/ville-gabon.jpg";
 
 export default function Login() {
+  const navigate = useNavigate();
   const isDev = import.meta.env.DEV;
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  
+  // Email/Password form
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+  
+  // PIN form
+  const [pinEmail, setPinEmail] = useState("");
+  const [pinCode, setPinCode] = useState("");
+  const [activeTab, setActiveTab] = useState("email");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        navigate('/dashboard/citizen');
+      }
+    };
+    checkSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        navigate('/dashboard/citizen');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle login logic
+    setError("");
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        if (error.message === "Invalid login credentials") {
+          setError("Email ou mot de passe incorrect");
+        } else {
+          setError(error.message);
+        }
+      } else {
+        toast.success("Connexion réussie !");
+      }
+    } catch (err: any) {
+      setError(err.message || "Erreur de connexion");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePinLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      // First verify the PIN code
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('user_id, pin_code, pin_enabled, first_name, last_name')
+        .eq('email', pinEmail)
+        .eq('pin_enabled', true)
+        .maybeSingle();
+
+      if (profileError) {
+        setError("Erreur lors de la vérification");
+        setLoading(false);
+        return;
+      }
+
+      if (!profiles) {
+        setError("Email non trouvé ou code PIN non activé");
+        setLoading(false);
+        return;
+      }
+
+      if (profiles.pin_code !== pinCode) {
+        setError("Code PIN incorrect");
+        setLoading(false);
+        return;
+      }
+
+      // PIN is correct - switch to email/password with email pre-filled
+      toast.success(`Bienvenue ${profiles.first_name} ! Entrez votre mot de passe pour continuer.`);
+      setEmail(pinEmail);
+      setActiveTab("email");
+      setPinCode("");
+      
+    } catch (err: any) {
+      setError(err.message || "Erreur de connexion");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -35,7 +135,7 @@ export default function Login() {
           </div>
 
           <Card className="border-2">
-            <CardHeader className="space-y-1 text-center pb-6 md:pb-8">
+            <CardHeader className="space-y-1 text-center pb-4">
               <div className="w-14 h-14 md:w-16 md:h-16 mx-auto mb-3 md:mb-4 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
                 <Building2 className="h-7 w-7 md:h-8 md:w-8 text-white" />
               </div>
@@ -45,68 +145,152 @@ export default function Login() {
               </CardDescription>
             </CardHeader>
             <CardContent className="px-4 md:px-6">
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm">Adresse email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="exemple@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="h-11 md:h-12"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="password" className="text-sm">Mot de passe</Label>
-                    <Link 
-                      to="/forgot-password" 
-                      className="text-xs md:text-sm text-primary hover:underline"
-                    >
-                      Mot de passe oublié ?
-                    </Link>
-                  </div>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      className="h-11 md:h-12 pr-12"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                    </button>
-                  </div>
-                </div>
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-6">
+                  <TabsTrigger value="email" className="flex items-center gap-2">
+                    <Mail className="h-4 w-4" />
+                    Email
+                  </TabsTrigger>
+                  <TabsTrigger value="pin" className="flex items-center gap-2">
+                    <Key className="h-4 w-4" />
+                    Code PIN
+                  </TabsTrigger>
+                </TabsList>
 
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="remember" 
-                    checked={rememberMe}
-                    onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                  />
-                  <label
-                    htmlFor="remember"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    Se souvenir de moi
-                  </label>
-                </div>
+                <TabsContent value="email">
+                  <form onSubmit={handleEmailLogin} className="space-y-4">
+                    {error && activeTab === "email" && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>{error}</AlertDescription>
+                      </Alert>
+                    )}
 
-                <Button className="w-full h-11 md:h-12 gap-2" size="lg">
-                  Accéder à mes services
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </form>
+                    <div className="space-y-2">
+                      <Label htmlFor="email" className="text-sm">Adresse email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="exemple@email.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        className="h-11 md:h-12"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="password" className="text-sm">Mot de passe</Label>
+                        <Link 
+                          to="/forgot-password" 
+                          className="text-xs md:text-sm text-primary hover:underline"
+                        >
+                          Mot de passe oublié ?
+                        </Link>
+                      </div>
+                      <div className="relative">
+                        <Input
+                          id="password"
+                          type={showPassword ? "text" : "password"}
+                          placeholder="••••••••"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                          className="h-11 md:h-12 pr-12"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="remember" 
+                        checked={rememberMe}
+                        onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                      />
+                      <label
+                        htmlFor="remember"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        Se souvenir de moi
+                      </label>
+                    </div>
+
+                    <Button className="w-full h-11 md:h-12 gap-2" size="lg" disabled={loading}>
+                      {loading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          Accéder à mes services
+                          <ArrowRight className="h-4 w-4" />
+                        </>
+                      )}
+                    </Button>
+                  </form>
+                </TabsContent>
+
+                <TabsContent value="pin">
+                  <form onSubmit={handlePinLogin} className="space-y-6">
+                    <div className="text-center text-sm text-muted-foreground">
+                      Connexion rapide avec votre code PIN à 6 chiffres
+                    </div>
+
+                    {error && activeTab === "pin" && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>{error}</AlertDescription>
+                      </Alert>
+                    )}
+
+                    <div className="space-y-2">
+                      <Label htmlFor="pin-email" className="text-sm">Adresse email</Label>
+                      <Input
+                        id="pin-email"
+                        type="email"
+                        placeholder="exemple@email.com"
+                        value={pinEmail}
+                        onChange={(e) => setPinEmail(e.target.value)}
+                        required
+                        className="h-11 md:h-12"
+                      />
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label className="text-center block text-sm">Code PIN</Label>
+                      <PinCodeInput
+                        value={pinCode}
+                        onChange={setPinCode}
+                        disabled={loading}
+                      />
+                    </div>
+
+                    <Button 
+                      className="w-full h-11 md:h-12 gap-2" 
+                      size="lg" 
+                      disabled={loading || pinCode.length !== 6}
+                    >
+                      {loading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          Vérifier le code PIN
+                          <Key className="h-4 w-4" />
+                        </>
+                      )}
+                    </Button>
+
+                    <p className="text-xs text-center text-muted-foreground">
+                      Le code PIN vous a été fourni lors de votre inscription
+                    </p>
+                  </form>
+                </TabsContent>
+              </Tabs>
 
               <div className="mt-6">
                 <div className="relative">
