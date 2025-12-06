@@ -21,7 +21,12 @@ import {
   Briefcase,
   GraduationCap,
   Phone,
-  Mic
+  Mic,
+  MessageSquare,
+  Calendar,
+  Navigation,
+  Volume2,
+  Headphones
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { GabonMairiesSection } from "@/components/home/GabonMairiesSection";
@@ -377,6 +382,111 @@ export default function Home() {
                 <div className="text-primary-foreground/80 text-sm">{stat.label}</div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* iAsted Section */}
+      <section className="py-20 md:py-24 bg-gradient-to-br from-violet-500/5 via-background to-primary/5 overflow-hidden">
+        <div className="container mx-auto px-4">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Left - Visual */}
+            <div className="relative order-2 lg:order-1">
+              <div className="relative mx-auto w-72 h-72 md:w-96 md:h-96">
+                {/* Animated rings */}
+                <div className="absolute inset-0 rounded-full border-2 border-violet-500/20 animate-ping" style={{ animationDuration: '3s' }} />
+                <div className="absolute inset-4 rounded-full border-2 border-violet-500/30 animate-ping" style={{ animationDuration: '3s', animationDelay: '0.5s' }} />
+                <div className="absolute inset-8 rounded-full border-2 border-violet-500/40 animate-ping" style={{ animationDuration: '3s', animationDelay: '1s' }} />
+                
+                {/* Center circle */}
+                <div className="absolute inset-12 md:inset-16 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-2xl shadow-violet-500/30">
+                  <div className="text-center text-white">
+                    <Volume2 className="h-12 w-12 md:h-16 md:w-16 mx-auto mb-2" />
+                    <p className="font-bold text-lg md:text-xl">iAsted</p>
+                    <p className="text-xs md:text-sm opacity-80">Assistant IA</p>
+                  </div>
+                </div>
+
+                {/* Floating feature cards */}
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-card rounded-xl p-3 shadow-lg border border-border animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                  <div className="flex items-center gap-2">
+                    <Mic className="h-4 w-4 text-violet-500" />
+                    <span className="text-xs font-medium">Commande vocale</span>
+                  </div>
+                </div>
+                
+                <div className="absolute top-1/4 -right-4 md:right-0 bg-card rounded-xl p-3 shadow-lg border border-border animate-fade-in" style={{ animationDelay: '0.4s' }}>
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-primary" />
+                    <span className="text-xs font-medium">Documents</span>
+                  </div>
+                </div>
+                
+                <div className="absolute bottom-1/4 -left-4 md:left-0 bg-card rounded-xl p-3 shadow-lg border border-border animate-fade-in" style={{ animationDelay: '0.6s' }}>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-emerald-500" />
+                    <span className="text-xs font-medium">Rendez-vous</span>
+                  </div>
+                </div>
+                
+                <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-card rounded-xl p-3 shadow-lg border border-border animate-fade-in" style={{ animationDelay: '0.8s' }}>
+                  <div className="flex items-center gap-2">
+                    <Navigation className="h-4 w-4 text-orange-500" />
+                    <span className="text-xs font-medium">Navigation</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right - Content */}
+            <div className="order-1 lg:order-2">
+              <Badge className="mb-4 bg-violet-500/20 text-violet-600 dark:text-violet-400 border-violet-500/30">
+                <Sparkles className="h-3 w-3 mr-1" />
+                Intelligence Artificielle
+              </Badge>
+              <h2 className="text-3xl md:text-4xl font-bold mb-6">
+                Rencontrez <span className="text-violet-500">iAsted</span>
+              </h2>
+              <p className="text-muted-foreground text-lg mb-8">
+                Votre assistant municipal intelligent qui vous accompagne dans toutes vos démarches 
+                administratives. Parlez-lui naturellement, il comprend et agit pour vous.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+                {[
+                  { icon: Mic, title: "Parlez naturellement", desc: "Dites simplement ce que vous voulez" },
+                  { icon: FileText, title: "Demandes simplifiées", desc: "Initiez vos démarches par la voix" },
+                  { icon: Calendar, title: "Rendez-vous faciles", desc: "Planifiez en quelques mots" },
+                  { icon: Headphones, title: "Disponible 24/7", desc: "Toujours prêt à vous aider" },
+                ].map((feature, index) => (
+                  <div 
+                    key={index}
+                    className="flex items-start gap-3 p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors"
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center flex-shrink-0">
+                      <feature.icon className="h-5 w-5 text-violet-500" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">{feature.title}</p>
+                      <p className="text-xs text-muted-foreground">{feature.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Link to="/iasted-guide">
+                  <Button size="lg" className="w-full sm:w-auto gap-2 bg-violet-500 hover:bg-violet-600">
+                    <Sparkles className="h-4 w-4" />
+                    Découvrir iAsted
+                  </Button>
+                </Link>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground px-4">
+                  <MessageSquare className="h-4 w-4" />
+                  <span>Ou cliquez sur le bouton en bas de l'écran</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
