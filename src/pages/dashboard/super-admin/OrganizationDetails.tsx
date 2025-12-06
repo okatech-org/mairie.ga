@@ -55,7 +55,7 @@ export default function OrganizationDetails() {
     const handleSave = async () => {
         if (!organization) return;
         try {
-            await organizationService.update(organization.id, organization);
+            await organizationService.update(organization.id, organization as any);
             toast({
                 title: "Modifications enregistrées",
                 description: "Les informations de l'organisation ont été mises à jour.",

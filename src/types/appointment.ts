@@ -1,6 +1,6 @@
 import { Tables } from "@/integrations/supabase/types";
 
-// Types basés sur Supabase
+// Types basés sur Supabase avec extensions
 export type Appointment = Tables<"appointments"> & {
     service?: { name: string; category: string };
     organization?: { name: string };
@@ -9,11 +9,14 @@ export type Appointment = Tables<"appointments"> & {
 
 export type AppointmentStatus = Appointment["status"];
 
-// Enum pour compatibilité legacy
+// Object pour compatibilité avec les valeurs (utilisé comme enum)
 export const AppointmentStatusEnum = {
-    SCHEDULED: 'SCHEDULED',
-    CONFIRMED: 'CONFIRMED',
-    COMPLETED: 'COMPLETED',
-    CANCELLED: 'CANCELLED',
-    NO_SHOW: 'NO_SHOW'
-} as const;
+    SCHEDULED: 'SCHEDULED' as const,
+    CONFIRMED: 'CONFIRMED' as const,
+    COMPLETED: 'COMPLETED' as const,
+    CANCELLED: 'CANCELLED' as const,
+    NO_SHOW: 'NO_SHOW' as const
+};
+
+// Alias pour compatibilité
+export const AppointmentStatus = AppointmentStatusEnum;

@@ -101,7 +101,7 @@ export default function SuperAdminDashboard() {
     const totalEntities = entities.length;
     const totalUsers = users.length;
     const uniqueCountries = new Set(entities.map(e => e.metadata?.countryCode).filter(Boolean)).size;
-    const totalConsuls = users.filter(u => u.role === ConsularRole.CONSUL_GENERAL || u.role === ConsularRole.CONSUL).length;
+    const totalConsuls = users.filter(u => u.role === 'maire' || u.role === 'maire_adjoint' || u.role === ConsularRole.CONSUL_GENERAL || u.role === ConsularRole.CONSUL).length;
 
     const totalPages = Math.ceil(totalEntities / ITEMS_PER_PAGE);
     const startIndex = page * ITEMS_PER_PAGE;
@@ -217,7 +217,7 @@ export default function SuperAdminDashboard() {
                                                                     <div>
                                                                         <div className="text-sm font-medium">{user.first_name} {user.last_name}</div>
                                                                         <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                                                            <Badge variant="outline" className="text-[10px] h-4 px-1">{user.role}</Badge>
+                                                                            <Badge variant="outline" className="text-[10px] h-4 px-1">{user.role || 'citizen'}</Badge>
                                                                             {user.email}
                                                                         </div>
                                                                     </div>

@@ -1,10 +1,13 @@
 import { supabase } from "@/integrations/supabase/client";
-import { ConsularService } from "@/types/services";
+import { Tables } from "@/integrations/supabase/types";
+
+// Utiliser la table services au lieu de consular_services
+export type Service = Tables<"services">;
 
 export const serviceCatalog = {
-    async getAll(organizationId?: string): Promise<ConsularService[]> {
+    async getAll(organizationId?: string): Promise<Service[]> {
         let query = supabase
-            .from('consular_services')
+            .from('services')
             .select('*')
             .order('name');
 
@@ -15,49 +18,52 @@ export const serviceCatalog = {
         const { data, error } = await query;
 
         if (error) throw error;
-        return data as ConsularService[];
+        return data as Service[];
     },
 
-    async getById(id: string): Promise<ConsularService | null> {
+    async getById(id: string): Promise<Service | null> {
         const { data, error } = await supabase
-            .from('consular_services')
+            .from('services')
             .select('*')
             .eq('id', id)
             .single();
 
         if (error) throw error;
-        return data as ConsularService;
+        return data as Service;
     },
 
-    async create(service: Omit<ConsularService, 'id' | 'created_at' | 'updated_at'>): Promise<ConsularService> {
+    async create(service: Omit<Service, 'id' | 'created_at' | 'updated_at'>): Promise<Service> {
         const { data, error } = await supabase
-            .from('consular_services')
-            .insert(service)
+            .from('services')
+            .insert(service as any)
             .select()
             .single();
 
         if (error) throw error;
-        return data as ConsularService;
+        return data as Service;
     },
 
-    async update(id: string, updates: Partial<ConsularService>): Promise<ConsularService> {
+    async update(id: string, updates: Partial<Service>): Promise<Service> {
         const { data, error } = await supabase
-            .from('consular_services')
-            .update(updates)
+            .from('services')
+            .update(updates as any)
             .eq('id', id)
             .select()
             .single();
 
         if (error) throw error;
-        return data as ConsularService;
+        return data as Service;
     },
 
     async delete(id: string): Promise<void> {
         const { error } = await supabase
-            .from('consular_services')
+            .from('services')
             .delete()
             .eq('id', id);
 
         if (error) throw error;
     }
 };
+
+// Alias pour compatibilité
+export type ConsularService = Service;

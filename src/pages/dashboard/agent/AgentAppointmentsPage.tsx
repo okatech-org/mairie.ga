@@ -28,9 +28,9 @@ import { Appointment, AppointmentStatus } from '@/types/appointment';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
-const STATUS_STYLES = {
+const STATUS_STYLES: Record<string, { label: string; color: string; icon: any }> = {
     [AppointmentStatus.CONFIRMED]: { label: 'Confirmé', color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle2 },
-    [AppointmentStatus.PENDING]: { label: 'En Attente', color: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: Clock },
+    [AppointmentStatus.SCHEDULED]: { label: 'Planifié', color: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: Clock },
     [AppointmentStatus.COMPLETED]: { label: 'Terminé', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: CheckCircle2 },
     [AppointmentStatus.CANCELLED]: { label: 'Annulé', color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle },
     [AppointmentStatus.NO_SHOW]: { label: 'Absent', color: 'bg-gray-100 text-gray-700 border-gray-200', icon: AlertCircle },
@@ -40,7 +40,7 @@ export default function AgentAppointmentsPage() {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState<AppointmentStatus | null>(null);
+    const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
     useEffect(() => {
         loadAppointments();
@@ -60,7 +60,7 @@ export default function AgentAppointmentsPage() {
     const filteredAppointments = appointments.filter(app => {
         const citizenName = app.profile ? `${app.profile.first_name} ${app.profile.last_name}` : 'Inconnu';
         const matchesSearch = citizenName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            app.profile_id.toLowerCase().includes(searchTerm.toLowerCase());
+            app.citizen_id.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesStatus = statusFilter ? app.status === statusFilter : true;
         return matchesSearch && matchesStatus;
     });
@@ -114,7 +114,7 @@ export default function AgentAppointmentsPage() {
                                 variant="ghost"
                                 size="sm"
                                 className={`rounded-full gap-2 ${statusFilter === key ? 'bg-muted font-bold' : ''}`}
-                                onClick={() => setStatusFilter(key as AppointmentStatus)}
+                                onClick={() => setStatusFilter(key)}
                             >
                                 <div className={`w-2 h-2 rounded-full ${style.color.split(' ')[0].replace('bg-', 'bg-')}`} />
                                 {style.label}
@@ -133,7 +133,7 @@ export default function AgentAppointmentsPage() {
                         </div>
                     ) : (
                         filteredAppointments.map((app) => {
-                            const style = STATUS_STYLES[app.status] || STATUS_STYLES[AppointmentStatus.PENDING];
+                            const style = STATUS_STYLES[app.status] || STATUS_STYLES[AppointmentStatus.SCHEDULED];
                             const StatusIcon = style.icon;
                             const citizenName = app.profile ? `${app.profile.first_name} ${app.profile.last_name}` : 'Inconnu';
 
@@ -141,8 +141,8 @@ export default function AgentAppointmentsPage() {
                                 <div key={app.id} className="neu-raised p-4 rounded-xl flex flex-col md:flex-row gap-4 items-start md:items-center justify-between group hover:shadow-neo-lg transition-all">
                                     {/* Time & Date */}
                                     <div className="flex md:flex-col items-center md:items-start gap-2 md:gap-0 min-w-[100px] border-r md:border-r-0 border-border pr-4 md:pr-0">
-                                        <span className="text-xl font-bold text-primary">{format(new Date(app.date), 'HH:mm')}</span>
-                                        <span className="text-sm text-muted-foreground font-medium">{format(new Date(app.date), 'd MMM', { locale: fr })}</span>
+                                        <span className="text-xl font-bold text-primary">{format(new Date(app.appointment_date), 'HH:mm')}</span>
+                                        <span className="text-sm text-muted-foreground font-medium">{format(new Date(app.appointment_date), 'd MMM', { locale: fr })}</span>
                                     </div>
 
                                     {/* Citizen Info */}
@@ -155,7 +155,7 @@ export default function AgentAppointmentsPage() {
                                         <div>
                                             <h3 className="font-bold text-lg leading-none mb-1">{citizenName}</h3>
                                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                                <span className="bg-muted px-1.5 py-0.5 rounded text-xs font-medium">{app.profile_id.substring(0, 8)}</span>
+                                                <span className="bg-muted px-1.5 py-0.5 rounded text-xs font-medium">{app.citizen_id.substring(0, 8)}</span>
                                                 <span>•</span>
                                                 <span>{app.service?.name || 'Service'}</span>
                                             </div>
