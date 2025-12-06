@@ -25,6 +25,22 @@ export interface OrganizationMetadata {
     jurisdiction?: string[];
     contact?: { address: string; phone: string; email: string; website?: string; };
     hours?: { [day: string]: { open: string; close: string; isOpen: boolean }; };
+    city?: string;
+    country?: string;
+    countryCode?: string;
+}
+
+export interface CountrySettings {
+    contact: {
+        address: string;
+        phone: string;
+        email: string;
+        website?: string;
+    };
+    hours: {
+        [day: string]: { open: string; close: string; isOpen: boolean };
+    };
+    resources?: Record<string, any>;
 }
 
 export interface Organization {
@@ -34,12 +50,12 @@ export interface Organization {
     city?: string | null;
     country?: string | null;
     country_code?: string | null;
-    countryCode?: string | null; // Legacy
+    countryCode?: string | null;
     jurisdiction?: string[];
     enabled_services?: string[] | null;
-    enabledServices?: string[] | null; // Legacy
+    enabledServices?: string[] | null;
     settings?: any | null;
-    metadata?: OrganizationMetadata; // Legacy
+    metadata?: OrganizationMetadata;
     province?: string | null;
     departement?: string | null;
     population?: number | null;
@@ -49,7 +65,7 @@ export interface Organization {
     address?: string | null;
     website?: string | null;
     logo_url?: string | null;
-    isActive?: boolean; // Legacy
+    isActive?: boolean;
     created_at: string;
     updated_at: string;
 }

@@ -55,7 +55,7 @@ export default function SuperAdminOrganizations() {
     const handleSave = async (data: Partial<Organization>) => {
         try {
             if (selectedEntity) {
-                await organizationService.update(selectedEntity.id, data);
+                await organizationService.update(selectedEntity.id, data as any);
                 toast({
                     title: "Organisation modifiée",
                     description: `L'organisation ${data.name} a été mise à jour.`,
@@ -63,7 +63,7 @@ export default function SuperAdminOrganizations() {
             } else {
                 // For creation, we need to ensure type is set
                 if (!data.type) data.type = OrganizationType.AMBASSADE;
-                await organizationService.create(data as Omit<Organization, 'id' | 'created_at' | 'updated_at'>);
+                await organizationService.create(data as any);
                 toast({
                     title: "Organisation créée",
                     description: `L'organisation ${data.name} a été créée avec succès.`,

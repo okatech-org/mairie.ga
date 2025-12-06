@@ -13,7 +13,7 @@ import {
     Calendar, User, Phone, Mail, Paperclip
 } from "lucide-react";
 import { requestService } from "@/services/requestService";
-import { ServiceRequest, RequestStatus, RequestType, RequestPriority } from "@/types/request";
+import { ServiceRequest, RequestStatus } from "@/types/request";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 
