@@ -143,7 +143,7 @@ export default function Home() {
     <div className="flex flex-col">
       {/* Hero Section */}
       <section className="relative overflow-hidden min-h-[85vh] flex items-center">
-        {/* Background Image with Strong Overlay for Better Contrast */}
+        {/* Background Image with Theme-Aware Overlay */}
         <div className="absolute inset-0 z-0 overflow-hidden">
           <img 
             src={heroImage} 
@@ -153,10 +153,8 @@ export default function Home() {
               transform: `translateY(${scrollY * 0.3}px) scale(${1 + scrollY * 0.0002})`,
             }}
           />
-          {/* Dark overlay for text readability */}
-          <div className="absolute inset-0 bg-black/60" />
-          {/* Gradient overlay for depth */}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent" />
+          {/* Light mode: softer overlay - Dark mode: stronger overlay */}
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-900/70 via-slate-900/50 to-slate-900/30 dark:from-black/80 dark:via-black/60 dark:to-black/40" />
         </div>
 
         <div className="relative z-10 py-20 md:py-28 w-full">
@@ -165,20 +163,20 @@ export default function Home() {
               {/* Left Content */}
               <div className="max-w-2xl animate-fade-in">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-14 h-14 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
-                    <Landmark className="h-8 w-8 text-primary" />
+                  <div className="w-14 h-14 rounded-xl bg-white/20 dark:bg-primary/20 border border-white/30 dark:border-primary/30 flex items-center justify-center backdrop-blur-sm">
+                    <Landmark className="h-8 w-8 text-white dark:text-primary" />
                   </div>
                   <div>
-                    <Badge className="bg-success/20 text-success border-success/30 hover:bg-success/30">
+                    <Badge className="bg-emerald-500/20 text-emerald-100 dark:text-success border-emerald-500/30 dark:border-success/30 hover:bg-emerald-500/30 dark:hover:bg-success/30 backdrop-blur-sm">
                       🇬🇦 République Gabonaise
                     </Badge>
                   </div>
                 </div>
                 
                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
-                  <span className="text-primary drop-shadow-lg">Mairies.ga</span>
+                  <span className="text-white dark:text-primary drop-shadow-lg">Mairies.ga</span>
                   <br />
-                  <span className="text-white text-3xl md:text-4xl lg:text-5xl font-medium drop-shadow-lg">
+                  <span className="text-white/95 dark:text-white text-3xl md:text-4xl lg:text-5xl font-medium drop-shadow-lg">
                     Le Portail des Communes du Gabon
                   </span>
                 </h1>
@@ -190,13 +188,13 @@ export default function Home() {
                 
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Link to="/login">
-                    <Button size="lg" className="w-full sm:w-auto min-w-[200px] gap-2 h-12 text-base">
+                    <Button size="lg" className="w-full sm:w-auto min-w-[200px] gap-2 h-12 text-base bg-primary hover:bg-primary/90 text-white dark:text-primary-foreground">
                       <Users className="h-5 w-5" />
                       Espace Citoyen
                     </Button>
                   </Link>
                   <Link to="/services">
-                    <Button size="lg" variant="outline" className="w-full sm:w-auto min-w-[200px] gap-2 h-12 text-base">
+                    <Button size="lg" variant="outline" className="w-full sm:w-auto min-w-[200px] gap-2 h-12 text-base bg-white/10 dark:bg-white/5 border-white/30 dark:border-white/20 text-white hover:bg-white/20 dark:hover:bg-white/10 backdrop-blur-sm">
                       <FileText className="h-5 w-5" />
                       Nos Services
                     </Button>
@@ -208,10 +206,10 @@ export default function Home() {
                   {features.map((feature, index) => (
                     <div 
                       key={index}
-                      className="flex items-center gap-3 p-3 rounded-lg bg-black/40 backdrop-blur-md border border-white/20 hover:border-primary/50 transition-colors"
+                      className="flex items-center gap-3 p-3 rounded-lg bg-white/10 dark:bg-black/40 backdrop-blur-md border border-white/20 dark:border-white/10 hover:border-white/40 dark:hover:border-primary/50 transition-colors"
                     >
-                      <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
-                        <feature.icon className="h-5 w-5 text-primary" />
+                      <div className="w-10 h-10 rounded-lg bg-white/20 dark:bg-primary/20 flex items-center justify-center flex-shrink-0">
+                        <feature.icon className="h-5 w-5 text-white dark:text-primary" />
                       </div>
                       <div>
                         <p className="font-medium text-sm text-white">{feature.title}</p>
@@ -229,12 +227,12 @@ export default function Home() {
                     <Link 
                       key={index}
                       to={link.href}
-                      className="group p-6 rounded-xl bg-card/90 backdrop-blur-sm border border-border/50 hover:shadow-xl hover:border-primary/30 transition-all hover:-translate-y-1"
+                      className="group p-6 rounded-xl bg-white/95 dark:bg-card/90 backdrop-blur-sm border border-white/50 dark:border-border/50 shadow-lg dark:shadow-none hover:shadow-xl hover:border-primary/30 transition-all hover:-translate-y-1"
                     >
                       <div className={`w-14 h-14 rounded-xl ${link.color} flex items-center justify-center mb-4 transition-transform group-hover:scale-110`}>
                         <link.icon className="h-7 w-7" />
                       </div>
-                      <h3 className="font-semibold text-lg mb-1 group-hover:text-primary transition-colors">{link.label}</h3>
+                      <h3 className="font-semibold text-lg mb-1 text-foreground group-hover:text-primary transition-colors">{link.label}</h3>
                       <p className="text-sm text-muted-foreground">{link.description}</p>
                     </Link>
                   ))}
