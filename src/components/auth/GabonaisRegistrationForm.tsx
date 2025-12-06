@@ -6,12 +6,62 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { CheckCircle2, Upload, Loader2, FileText, User, Users, MapPin, Briefcase, Eye } from "lucide-react";
+import { CheckCircle2, Upload, Loader2, FileText, User, Users, MapPin, Briefcase, Eye, Mic } from "lucide-react";
 import { formAssistantStore, useFormAssistant } from "@/stores/formAssistantStore";
+import { cn } from "@/lib/utils";
+
+// Composant Label avec indicateur iAsted
+interface IAstedLabelProps {
+    children: React.ReactNode;
+    filledByIasted?: boolean;
+    className?: string;
+}
+
+function IAstedLabel({ children, filledByIasted, className }: IAstedLabelProps) {
+    return (
+        <div className={cn("flex items-center gap-1.5", className)}>
+            <Label>{children}</Label>
+            {filledByIasted && (
+                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary/10 animate-in fade-in zoom-in duration-300">
+                    <Mic className="w-2.5 h-2.5 text-primary" />
+                </span>
+            )}
+        </div>
+    );
+}
+
+// Composant Input avec indicateur visuel iAsted
+interface IAstedInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+    filledByIasted?: boolean;
+}
+
+function IAstedInput({ filledByIasted, className, ...props }: IAstedInputProps) {
+    return (
+        <div className="relative">
+            <Input 
+                className={cn(
+                    filledByIasted && "pr-8 border-primary/30 bg-primary/5 transition-colors duration-300",
+                    className
+                )} 
+                {...props} 
+            />
+            {filledByIasted && (
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 animate-in fade-in slide-in-from-right-2 duration-300">
+                    <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
+                        <Mic className="w-3 h-3 text-primary" />
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
 
 export function GabonaisRegistrationForm() {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
+    
+    // Tracker les champs remplis par iAsted
+    const [filledByIasted, setFilledByIasted] = useState<Set<string>>(new Set());
     
     // Données du formulaire avec état local
     const [formData, setFormData] = useState({
@@ -43,6 +93,8 @@ export function GabonaisRegistrationForm() {
         const handleFillField = (event: CustomEvent) => {
             const { field, value } = event.detail;
             setFormData(prev => ({ ...prev, [field]: value }));
+            // Marquer le champ comme rempli par iAsted
+            setFilledByIasted(prev => new Set([...prev, field]));
         };
 
         const handleNavigateStep = (event: CustomEvent) => {
@@ -81,6 +133,12 @@ export function GabonaisRegistrationForm() {
 
     const handleInputChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
+        // Si l'utilisateur modifie manuellement, retirer l'indicateur iAsted
+        setFilledByIasted(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(field);
+            return newSet;
+        });
     };
 
     const steps = [
@@ -185,37 +243,41 @@ export function GabonaisRegistrationForm() {
                         <div className="grid gap-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Prénom(s) *</Label>
-                                    <Input 
+                                    <IAstedLabel filledByIasted={filledByIasted.has('firstName')}>Prénom(s) *</IAstedLabel>
+                                    <IAstedInput 
                                         placeholder="Jean" 
                                         value={formData.firstName}
                                         onChange={(e) => handleInputChange('firstName', e.target.value)}
+                                        filledByIasted={filledByIasted.has('firstName')}
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Nom(s) *</Label>
-                                    <Input 
+                                    <IAstedLabel filledByIasted={filledByIasted.has('lastName')}>Nom(s) *</IAstedLabel>
+                                    <IAstedInput 
                                         placeholder="Mba" 
                                         value={formData.lastName}
                                         onChange={(e) => handleInputChange('lastName', e.target.value)}
+                                        filledByIasted={filledByIasted.has('lastName')}
                                     />
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Date de naissance *</Label>
-                                    <Input 
+                                    <IAstedLabel filledByIasted={filledByIasted.has('dateOfBirth')}>Date de naissance *</IAstedLabel>
+                                    <IAstedInput 
                                         type="date" 
                                         value={formData.dateOfBirth}
                                         onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                                        filledByIasted={filledByIasted.has('dateOfBirth')}
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Lieu de naissance *</Label>
-                                    <Input 
+                                    <IAstedLabel filledByIasted={filledByIasted.has('placeOfBirth')}>Lieu de naissance *</IAstedLabel>
+                                    <IAstedInput 
                                         placeholder="Libreville" 
                                         value={formData.placeOfBirth}
                                         onChange={(e) => handleInputChange('placeOfBirth', e.target.value)}
+                                        filledByIasted={filledByIasted.has('placeOfBirth')}
                                     />
                                 </div>
                             </div>
@@ -229,13 +291,16 @@ export function GabonaisRegistrationForm() {
                     {step === 3 && (
                         <div className="space-y-4">
                             <div className="space-y-2">
-                                <Label>Situation Matrimoniale *</Label>
+                                <IAstedLabel filledByIasted={filledByIasted.has('maritalStatus')}>Situation Matrimoniale *</IAstedLabel>
                                 <Select 
                                     value={formData.maritalStatus}
                                     onValueChange={(value) => handleInputChange('maritalStatus', value)}
                                 >
-                                    <SelectTrigger>
+                                    <SelectTrigger className={filledByIasted.has('maritalStatus') ? "border-primary/30 bg-primary/5" : ""}>
                                         <SelectValue placeholder="Sélectionner" />
+                                        {filledByIasted.has('maritalStatus') && (
+                                            <Mic className="w-3 h-3 text-primary ml-auto" />
+                                        )}
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="SINGLE">Célibataire</SelectItem>
@@ -250,19 +315,21 @@ export function GabonaisRegistrationForm() {
                                 <h3 className="font-medium text-sm">Filiation</h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label>Nom du Père</Label>
-                                        <Input 
+                                        <IAstedLabel filledByIasted={filledByIasted.has('fatherName')}>Nom du Père</IAstedLabel>
+                                        <IAstedInput 
                                             placeholder="Nom complet" 
                                             value={formData.fatherName}
                                             onChange={(e) => handleInputChange('fatherName', e.target.value)}
+                                            filledByIasted={filledByIasted.has('fatherName')}
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Nom de la Mère</Label>
-                                        <Input 
+                                        <IAstedLabel filledByIasted={filledByIasted.has('motherName')}>Nom de la Mère</IAstedLabel>
+                                        <IAstedInput 
                                             placeholder="Nom complet" 
                                             value={formData.motherName}
                                             onChange={(e) => handleInputChange('motherName', e.target.value)}
+                                            filledByIasted={filledByIasted.has('motherName')}
                                         />
                                     </div>
                                 </div>
@@ -273,47 +340,52 @@ export function GabonaisRegistrationForm() {
                     {step === 4 && (
                         <div className="space-y-4">
                             <div className="space-y-2">
-                                <Label>Adresse Complète *</Label>
-                                <Input 
+                                <IAstedLabel filledByIasted={filledByIasted.has('address')}>Adresse Complète *</IAstedLabel>
+                                <IAstedInput 
                                     placeholder="Numéro, Rue, Apt" 
                                     value={formData.address}
                                     onChange={(e) => handleInputChange('address', e.target.value)}
+                                    filledByIasted={filledByIasted.has('address')}
                                 />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Ville *</Label>
-                                    <Input 
+                                    <IAstedLabel filledByIasted={filledByIasted.has('city')}>Ville *</IAstedLabel>
+                                    <IAstedInput 
                                         value={formData.city}
                                         onChange={(e) => handleInputChange('city', e.target.value)}
+                                        filledByIasted={filledByIasted.has('city')}
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Code Postal *</Label>
-                                    <Input 
+                                    <IAstedLabel filledByIasted={filledByIasted.has('postalCode')}>Code Postal *</IAstedLabel>
+                                    <IAstedInput 
                                         value={formData.postalCode}
                                         onChange={(e) => handleInputChange('postalCode', e.target.value)}
+                                        filledByIasted={filledByIasted.has('postalCode')}
                                     />
                                 </div>
                             </div>
 
-                            <div className="p-4 bg-red-50 rounded-lg space-y-4 border border-red-100">
-                                <h3 className="font-medium text-sm text-red-800">Contact d'Urgence</h3>
+                            <div className="p-4 bg-red-50 dark:bg-red-950/30 rounded-lg space-y-4 border border-red-100 dark:border-red-900/50">
+                                <h3 className="font-medium text-sm text-red-800 dark:text-red-300">Contact d'Urgence</h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label>Nom Complet</Label>
-                                        <Input 
+                                        <IAstedLabel filledByIasted={filledByIasted.has('emergencyContactName')}>Nom Complet</IAstedLabel>
+                                        <IAstedInput 
                                             placeholder="Personne à contacter" 
                                             value={formData.emergencyContactName}
                                             onChange={(e) => handleInputChange('emergencyContactName', e.target.value)}
+                                            filledByIasted={filledByIasted.has('emergencyContactName')}
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Téléphone</Label>
-                                        <Input 
+                                        <IAstedLabel filledByIasted={filledByIasted.has('emergencyContactPhone')}>Téléphone</IAstedLabel>
+                                        <IAstedInput 
                                             placeholder="+33..." 
                                             value={formData.emergencyContactPhone}
                                             onChange={(e) => handleInputChange('emergencyContactPhone', e.target.value)}
+                                            filledByIasted={filledByIasted.has('emergencyContactPhone')}
                                         />
                                     </div>
                                 </div>
@@ -324,13 +396,16 @@ export function GabonaisRegistrationForm() {
                     {step === 5 && (
                         <div className="space-y-4">
                             <div className="space-y-2">
-                                <Label>Statut Professionnel</Label>
+                                <IAstedLabel filledByIasted={filledByIasted.has('professionalStatus')}>Statut Professionnel</IAstedLabel>
                                 <Select 
                                     value={formData.professionalStatus}
                                     onValueChange={(value) => handleInputChange('professionalStatus', value)}
                                 >
-                                    <SelectTrigger>
+                                    <SelectTrigger className={filledByIasted.has('professionalStatus') ? "border-primary/30 bg-primary/5" : ""}>
                                         <SelectValue placeholder="Sélectionner" />
+                                        {filledByIasted.has('professionalStatus') && (
+                                            <Mic className="w-3 h-3 text-primary ml-auto" />
+                                        )}
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="EMPLOYED">Salarié</SelectItem>
@@ -342,19 +417,21 @@ export function GabonaisRegistrationForm() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label>Employeur / Établissement</Label>
-                                <Input 
+                                <IAstedLabel filledByIasted={filledByIasted.has('employer')}>Employeur / Établissement</IAstedLabel>
+                                <IAstedInput 
                                     placeholder="Nom de l'entreprise ou école" 
                                     value={formData.employer}
                                     onChange={(e) => handleInputChange('employer', e.target.value)}
+                                    filledByIasted={filledByIasted.has('employer')}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>Profession / Poste</Label>
-                                <Input 
+                                <IAstedLabel filledByIasted={filledByIasted.has('profession')}>Profession / Poste</IAstedLabel>
+                                <IAstedInput 
                                     placeholder="Intitulé du poste" 
                                     value={formData.profession}
                                     onChange={(e) => handleInputChange('profession', e.target.value)}
+                                    filledByIasted={filledByIasted.has('profession')}
                                 />
                             </div>
                         </div>
