@@ -4,12 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AlertCircle, TestTube2, Eye, EyeOff, ArrowRight, Landmark, Shield, ChevronRight } from "lucide-react";
+import { AlertCircle, TestTube2, Eye, EyeOff, ArrowRight, Landmark, Shield, ChevronRight, Building2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import villeImage from "@/assets/ville-gabon.jpg";
 
 export default function Login() {
   const isDev = import.meta.env.DEV;
@@ -41,11 +42,11 @@ export default function Login() {
             <Card className="border-2">
               <CardHeader className="space-y-1 text-center pb-8">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                  <Landmark className="h-8 w-8 text-white" />
+                  <Building2 className="h-8 w-8 text-white" />
                 </div>
-                <CardTitle className="text-2xl font-bold">Connexion</CardTitle>
+                <CardTitle className="text-2xl font-bold">Espace Citoyen</CardTitle>
                 <CardDescription>
-                  Accédez à votre espace consulaire sécurisé
+                  Accédez à vos services municipaux en ligne
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -107,7 +108,7 @@ export default function Login() {
                   </div>
 
                   <Button className="w-full h-12 gap-2" size="lg">
-                    Se connecter
+                    Accéder à mes services
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </form>
@@ -126,7 +127,7 @@ export default function Login() {
 
                   <Link to="/register">
                     <Button variant="outline" className="w-full mt-4 h-12">
-                      Créer un compte
+                      Créer mon compte citoyen
                     </Button>
                   </Link>
                 </div>
@@ -157,7 +158,7 @@ export default function Login() {
                 <Alert className="mt-6 bg-muted/50">
                   <Shield className="h-4 w-4 text-primary" />
                   <AlertDescription className="text-xs">
-                    Vos données sont protégées et chiffrées selon les normes gouvernementales
+                    Vos données sont protégées selon les normes de sécurité gouvernementales
                   </AlertDescription>
                 </Alert>
               </CardContent>
@@ -166,44 +167,57 @@ export default function Login() {
         </div>
 
         {/* Right Side - Visual */}
-        <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-primary/90 via-primary to-secondary/90 items-center justify-center relative overflow-hidden">
-          {/* Background Pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute inset-0" style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-            }} />
-          </div>
+        <div className="hidden lg:flex w-1/2 relative overflow-hidden">
+          {/* Background Image */}
+          <img 
+            src={villeImage} 
+            alt="Ville gabonaise" 
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/90 via-primary/80 to-secondary/90" />
 
-          <div className="relative z-10 text-white text-center px-12 max-w-lg">
-            <div className="w-24 h-24 mx-auto mb-8 rounded-3xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <Landmark className="h-12 w-12" />
-            </div>
-            <h2 className="text-3xl font-bold mb-4">
-              Bienvenue sur e-Gabon
-            </h2>
-            <p className="text-white/90 text-lg mb-8">
-              Votre portail unique pour toutes vos démarches consulaires et administratives
-            </p>
-            <div className="grid grid-cols-2 gap-4 text-left">
-              {[
-                "Services en ligne 24/7",
-                "Suivi en temps réel",
-                "Documents sécurisés",
-                "Support multilingue"
-              ].map((feature, i) => (
-                <div key={i} className="flex items-center gap-2 text-sm text-white/80">
-                  <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-                    <ArrowRight className="h-3 w-3" />
+          <div className="relative z-10 flex items-center justify-center w-full px-12">
+            <div className="text-white text-center max-w-lg">
+              <div className="w-24 h-24 mx-auto mb-8 rounded-3xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <Landmark className="h-12 w-12" />
+              </div>
+              <h2 className="text-3xl font-bold mb-4">
+                Votre Mairie en Ligne
+              </h2>
+              <p className="text-white/90 text-lg mb-8">
+                Simplifiez vos démarches administratives avec le portail citoyen des mairies du Gabon
+              </p>
+              <div className="grid grid-cols-2 gap-4 text-left">
+                {[
+                  "État civil en ligne",
+                  "Suivi des demandes",
+                  "Urbanisme simplifié",
+                  "Prise de rendez-vous"
+                ].map((feature, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm text-white/80">
+                    <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                      <ArrowRight className="h-3 w-3" />
+                    </div>
+                    {feature}
                   </div>
-                  {feature}
-                </div>
-              ))}
+                ))}
+              </div>
+
+              {/* Stats */}
+              <div className="mt-12 grid grid-cols-3 gap-4 pt-8 border-t border-white/20">
+                {[
+                  { value: "52", label: "Mairies" },
+                  { value: "1.8M", label: "Citoyens" },
+                  { value: "24/7", label: "Disponible" },
+                ].map((stat, i) => (
+                  <div key={i} className="text-center">
+                    <div className="text-2xl font-bold">{stat.value}</div>
+                    <div className="text-xs text-white/70">{stat.label}</div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-
-          {/* Decorative Elements */}
-          <div className="absolute top-20 right-20 w-64 h-64 rounded-full bg-white/5 blur-3xl" />
-          <div className="absolute bottom-20 left-20 w-48 h-48 rounded-full bg-white/5 blur-3xl" />
         </div>
       </div>
 

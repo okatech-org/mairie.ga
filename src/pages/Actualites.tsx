@@ -4,87 +4,112 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Tag, Search, ArrowRight, Clock, Eye, ChevronRight } from "lucide-react";
+import { Calendar, Tag, Search, ArrowRight, Clock, Eye, ChevronRight, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import reunionImage from "@/assets/reunion-citoyenne.jpg";
+import serviceImage from "@/assets/service-municipal.jpg";
+import villeImage from "@/assets/ville-gabon.jpg";
+import familleImage from "@/assets/famille-acte-naissance.jpg";
+import entrepreneurImage from "@/assets/entrepreneur-patente.jpg";
+import aideImage from "@/assets/aide-seniors.jpg";
 
 const articles = [
   {
     id: 1,
-    category: "Annonces Consulaires",
-    title: "Nouvelles procédures de demande de visa",
-    description: "À partir du 1er janvier 2025, de nouvelles procédures simplifiées seront mises en place pour les demandes de visa. Ces changements visent à réduire les délais de traitement et à améliorer l'expérience des demandeurs.",
+    category: "Services Municipaux",
+    title: "Nouveau guichet unique pour les actes civils",
+    description: "La mairie de Libreville inaugure un guichet unique permettant aux citoyens d'obtenir leurs actes de naissance, mariage et décès en un seul lieu. Cette initiative vise à réduire les délais d'attente.",
     date: "15 Décembre 2024",
-    badge: "Important",
-    badgeVariant: "destructive" as const,
+    badge: "Nouveau",
+    badgeVariant: "default" as const,
     readTime: "5 min",
-    views: 1250,
-    image: "https://images.unsplash.com/photo-1569974507005-6dc61f97fb5c?w=800&auto=format&fit=crop&q=60"
+    views: 2450,
+    image: serviceImage,
+    location: "Libreville"
   },
   {
     id: 2,
-    category: "Sensibilisation Diaspora",
-    title: "Campagne d'inscription sur les listes électorales",
-    description: "Les membres de la diaspora sont invités à s'inscrire sur les listes électorales avant la date limite. Cette inscription est essentielle pour participer aux prochaines élections.",
+    category: "Vie Citoyenne",
+    title: "Réunion publique sur le budget participatif 2025",
+    description: "Les citoyens sont invités à participer à la réunion publique pour définir les priorités du budget participatif. Voirie, espaces verts, équipements sportifs : donnez votre avis !",
     date: "10 Décembre 2024",
-    badge: "Urgent",
-    badgeVariant: "default" as const,
+    badge: "Important",
+    badgeVariant: "destructive" as const,
     readTime: "3 min",
-    views: 2340,
-    image: "https://images.unsplash.com/photo-1494172961521-33799ddd43a5?w=800&auto=format&fit=crop&q=60"
+    views: 1890,
+    image: reunionImage,
+    location: "Port-Gentil"
   },
   {
     id: 3,
     category: "Événements",
-    title: "Célébration de la fête nationale",
-    description: "Le consulat organise une cérémonie pour célébrer la fête nationale du Gabon le 17 août prochain. Tous les ressortissants sont cordialement invités.",
+    title: "Journée portes ouvertes des mairies",
+    description: "Découvrez les coulisses de votre mairie lors de cette journée exceptionnelle. Rencontrez les agents, visitez les services et participez aux ateliers citoyens.",
     date: "5 Décembre 2024",
     badge: "Événement",
     badgeVariant: "secondary" as const,
     readTime: "2 min",
-    views: 890,
-    image: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&auto=format&fit=crop&q=60"
+    views: 1120,
+    image: villeImage,
+    location: "National"
   },
   {
     id: 4,
-    category: "Annonces Consulaires",
-    title: "Horaires d'ouverture pendant les fêtes",
-    description: "Le consulat sera fermé du 24 décembre au 2 janvier. Les services en ligne restent accessibles pendant cette période.",
+    category: "Services Municipaux",
+    title: "Horaires spéciaux période des fêtes",
+    description: "Les mairies adapteront leurs horaires pendant les fêtes de fin d'année. Consultez les horaires de votre commune et les services maintenus.",
     date: "1 Décembre 2024",
     badge: "Info",
     badgeVariant: "outline" as const,
     readTime: "1 min",
-    views: 560,
-    image: "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&auto=format&fit=crop&q=60"
+    views: 890,
+    image: aideImage,
+    location: "National"
   },
   {
     id: 5,
-    category: "Sensibilisation Diaspora",
-    title: "Programme d'aide au retour volontaire",
-    description: "Un nouveau programme d'assistance est disponible pour les membres de la diaspora souhaitant retourner au Gabon. Ce programme offre un accompagnement complet.",
+    category: "Vie Citoyenne",
+    title: "Programme d'aide aux seniors",
+    description: "La commune lance un nouveau programme d'accompagnement administratif pour les personnes âgées. Des agents se déplaceront à domicile pour faciliter leurs démarches.",
     date: "25 Novembre 2024",
-    badge: "Nouveau",
+    badge: "Social",
     badgeVariant: "default" as const,
     readTime: "4 min",
-    views: 1780,
-    image: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&auto=format&fit=crop&q=60"
+    views: 1560,
+    image: aideImage,
+    location: "Franceville"
   },
   {
     id: 6,
-    category: "Événements",
-    title: "Forum économique de la diaspora",
-    description: "Participez au forum annuel dédié aux opportunités économiques et d'investissement au Gabon. Des intervenants de renom partageront leur expertise.",
+    category: "Entreprises",
+    title: "Simplification des patentes commerciales",
+    description: "Bonne nouvelle pour les entrepreneurs ! Les procédures de demande de patente sont désormais simplifiées. Découvrez les nouvelles modalités.",
     date: "20 Novembre 2024",
-    badge: "Événement",
+    badge: "Entreprises",
     badgeVariant: "secondary" as const,
     readTime: "3 min",
-    views: 1120,
-    image: "https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=800&auto=format&fit=crop&q=60"
+    views: 2340,
+    image: entrepreneurImage,
+    location: "National"
+  },
+  {
+    id: 7,
+    category: "Famille",
+    title: "Célébration collective des naissances",
+    description: "La mairie organise une cérémonie de remise des actes de naissance pour les nouveaux-nés du trimestre. Un moment de partage et de convivialité.",
+    date: "18 Novembre 2024",
+    badge: "Famille",
+    badgeVariant: "default" as const,
+    readTime: "2 min",
+    views: 980,
+    image: familleImage,
+    location: "Oyem"
   },
 ];
 
-const categories = ["Tous", "Annonces Consulaires", "Sensibilisation Diaspora", "Événements"];
+const categories = ["Tous", "Services Municipaux", "Vie Citoyenne", "Événements", "Entreprises", "Famille"];
 
 export default function Actualites() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -113,11 +138,11 @@ export default function Actualites() {
           </div>
           
           <div className="max-w-4xl">
-            <Badge className="mb-4 bg-primary/20 text-primary border-primary/30">Restez informé</Badge>
-            <h1 className="text-4xl md:text-5xl font-bold mb-6">Actualités & Annonces</h1>
+            <Badge className="mb-4 bg-primary/20 text-primary border-primary/30">Votre commune</Badge>
+            <h1 className="text-4xl md:text-5xl font-bold mb-6">Actualités Municipales</h1>
             <p className="text-lg text-muted-foreground max-w-2xl">
-              Suivez les dernières nouvelles consulaires, les événements de la diaspora gabonaise 
-              et les programmes de sensibilisation.
+              Suivez la vie de votre commune, les projets en cours, les événements locaux 
+              et toutes les informations pratiques de votre mairie.
             </p>
           </div>
         </div>
@@ -140,6 +165,10 @@ export default function Actualites() {
                 <span className="text-sm text-muted-foreground flex items-center gap-1">
                   <Tag className="h-3 w-3" />
                   {featuredArticle.category}
+                </span>
+                <span className="text-sm text-muted-foreground flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  {featuredArticle.location}
                 </span>
               </div>
               <h2 className="text-2xl md:text-3xl font-bold mb-4 hover:text-primary transition-colors cursor-pointer">
@@ -182,15 +211,18 @@ export default function Actualites() {
             />
           </div>
           
-          <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-            <TabsList>
-              {categories.map((category) => (
-                <TabsTrigger key={category} value={category} className="text-sm">
-                  {category}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+          <div className="flex flex-wrap gap-2">
+            {categories.map((category) => (
+              <Button
+                key={category}
+                variant={selectedCategory === category ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedCategory(category)}
+              >
+                {category}
+              </Button>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -221,8 +253,8 @@ export default function Actualites() {
                   <div className="flex items-center justify-between mb-2">
                     <Badge variant={article.badgeVariant}>{article.badge}</Badge>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Tag className="h-3 w-3" />
-                      <span>{article.category}</span>
+                      <MapPin className="h-3 w-3" />
+                      <span>{article.location}</span>
                     </div>
                   </div>
                   <CardTitle className="text-lg group-hover:text-primary transition-colors line-clamp-2">
@@ -268,15 +300,6 @@ export default function Actualites() {
             </Button>
           </div>
         )}
-
-        {/* Load More */}
-        {filteredArticles.length > 6 && (
-          <div className="text-center mt-12">
-            <Button variant="outline" size="lg">
-              Charger plus d'articles
-            </Button>
-          </div>
-        )}
       </section>
 
       {/* Newsletter CTA */}
@@ -285,7 +308,7 @@ export default function Actualites() {
           <Card className="max-w-2xl mx-auto text-center p-8">
             <h3 className="text-2xl font-bold mb-4">Restez informé</h3>
             <p className="text-muted-foreground mb-6">
-              Abonnez-vous à notre newsletter pour recevoir les dernières actualités directement dans votre boîte mail.
+              Abonnez-vous aux actualités de votre commune pour recevoir les dernières informations directement dans votre boîte mail.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
               <Input placeholder="Votre adresse email" className="flex-1" />

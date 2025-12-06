@@ -7,9 +7,9 @@ import { Progress } from "@/components/ui/progress";
 import { 
   Heart, 
   Users, 
-  Globe, 
+  Leaf, 
   BookOpen, 
-  Briefcase, 
+  Droplets,
   Home as HomeIcon,
   GraduationCap,
   Building2,
@@ -20,109 +20,128 @@ import {
   MapPin,
   CheckCircle2,
   Star,
-  TrendingUp,
-  Target
+  Recycle,
+  Shield,
+  Baby
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import reunionImage from "@/assets/reunion-citoyenne.jpg";
+import familleImage from "@/assets/famille-acte-naissance.jpg";
+import aideImage from "@/assets/aide-seniors.jpg";
 
 const programs = [
   {
     id: 1,
-    title: "Programme de Retour Volontaire",
-    description: "Accompagnement personnalisé pour les Gabonais de la diaspora souhaitant rentrer au pays. Aide à la réinstallation, orientation professionnelle et soutien administratif.",
-    icon: HomeIcon,
-    category: "Retour",
+    title: "Accompagnement des Seniors",
+    description: "Programme d'aide aux personnes âgées pour leurs démarches administratives. Des agents municipaux se déplacent à domicile pour faciliter l'accès aux services.",
+    icon: Heart,
+    category: "Social",
     color: "bg-primary/10 text-primary",
-    participants: 1250,
-    successRate: 92,
-    features: ["Aide au déménagement", "Orientation emploi", "Logement temporaire", "Accompagnement familial"]
+    participants: 3250,
+    successRate: 98,
+    features: ["Visites à domicile", "Aide aux formulaires", "Accompagnement santé", "Lien social"],
+    image: aideImage
   },
   {
     id: 2,
-    title: "Investir au Gabon",
-    description: "Opportunités d'investissement et création d'entreprise pour la diaspora. Accompagnement juridique, fiscal et accès aux financements locaux.",
-    icon: Briefcase,
-    category: "Investissement",
+    title: "Éducation Citoyenne",
+    description: "Ateliers de sensibilisation sur les droits et devoirs des citoyens. Sessions sur l'état civil, le vote, et la participation à la vie locale.",
+    icon: GraduationCap,
+    category: "Éducation",
     color: "bg-secondary/10 text-secondary",
-    participants: 890,
-    successRate: 78,
-    features: ["Conseil juridique", "Accès financements", "Mise en réseau", "Suivi projet"]
+    participants: 5680,
+    successRate: 92,
+    features: ["Ateliers pratiques", "Documents pédagogiques", "Visites mairie", "Certificats"],
+    image: reunionImage
   },
   {
     id: 3,
-    title: "Bourse Excellence Diaspora",
-    description: "Programme de bourses pour les étudiants gabonais à l'étranger. Financement des études, mentorat et opportunités de stage.",
-    icon: GraduationCap,
-    category: "Éducation",
+    title: "Gabon Propre",
+    description: "Initiative de sensibilisation à la propreté urbaine et au tri des déchets. Mobilisation citoyenne pour un environnement plus sain.",
+    icon: Recycle,
+    category: "Environnement",
     color: "bg-accent/10 text-accent",
-    participants: 2100,
-    successRate: 95,
-    features: ["Bourses d'études", "Programme mentorat", "Stages entreprises", "Réseau alumni"]
+    participants: 12400,
+    successRate: 85,
+    features: ["Journées nettoyage", "Formation tri", "Points de collecte", "Récompenses"],
+    image: reunionImage
   },
   {
     id: 4,
-    title: "Transfert de Compétences",
-    description: "Valorisez vos compétences acquises à l'étranger au service du développement du Gabon. Missions courtes ou longue durée.",
-    icon: TrendingUp,
-    category: "Expertise",
+    title: "Ma Famille, Mes Droits",
+    description: "Programme de sensibilisation sur l'importance de l'état civil. Campagne pour l'enregistrement des naissances et la délivrance des actes.",
+    icon: Baby,
+    category: "État Civil",
     color: "bg-warning/10 text-warning",
-    participants: 560,
-    successRate: 88,
-    features: ["Missions expertise", "Formations", "Consulting", "Partenariats"]
+    participants: 8900,
+    successRate: 95,
+    features: ["Enregistrement gratuit", "Caravanes mobiles", "Formation parents", "Suivi familles"],
+    image: familleImage
   },
 ];
 
 const upcomingEvents = [
   {
     id: 1,
-    title: "Webinaire : Créer son entreprise au Gabon",
-    date: "15 Janvier 2025",
-    time: "18h00 CET",
-    type: "En ligne",
-    registrations: 245
+    title: "Journée portes ouvertes de la mairie",
+    date: "18 Janvier 2025",
+    time: "09h00 - 17h00",
+    type: "Présentiel",
+    location: "Libreville",
+    registrations: 450
   },
   {
     id: 2,
-    title: "Forum Emploi Diaspora Paris",
-    date: "22 Février 2025",
-    time: "09h00 - 18h00",
+    title: "Atelier : Comprendre ses droits citoyens",
+    date: "25 Janvier 2025",
+    time: "14h00 - 16h00",
     type: "Présentiel",
-    location: "Paris",
-    registrations: 180
+    location: "Port-Gentil",
+    registrations: 120
   },
   {
     id: 3,
-    title: "Session d'information : Bourses 2025",
-    date: "5 Mars 2025",
-    time: "14h00 CET",
-    type: "En ligne",
+    title: "Campagne d'enregistrement des naissances",
+    date: "1-15 Février 2025",
+    time: "Toute la journée",
+    type: "Caravane mobile",
+    location: "Woleu-Ntem",
+    registrations: 680
+  },
+  {
+    id: 4,
+    title: "Forum de la participation citoyenne",
+    date: "22 Février 2025",
+    time: "10h00 - 18h00",
+    type: "Présentiel",
+    location: "Franceville",
     registrations: 320
   },
 ];
 
 const testimonials = [
   {
-    name: "Marie-Claire N.",
-    location: "Paris → Libreville",
-    program: "Retour Volontaire",
-    quote: "Le programme m'a permis de rentrer sereinement après 15 ans en France. L'accompagnement a été exceptionnel.",
-    avatar: "MC"
+    name: "Mama Rose O.",
+    location: "Libreville",
+    program: "Accompagnement Seniors",
+    quote: "Grâce au programme, j'ai pu obtenir mon acte de naissance sans me déplacer. L'agent était très patient et gentil.",
+    avatar: "RO"
   },
   {
-    name: "Jean-Paul M.",
-    location: "Bruxelles",
-    program: "Investir au Gabon",
-    quote: "Grâce au programme, j'ai pu créer ma PME à Libreville tout en gardant mes activités en Belgique.",
+    name: "Jean-Pierre M.",
+    location: "Franceville",
+    program: "Éducation Citoyenne",
+    quote: "Les ateliers m'ont permis de comprendre mes droits et de mieux participer à la vie de ma commune.",
     avatar: "JP"
   },
   {
-    name: "Sylvie A.",
-    location: "Lyon",
-    program: "Bourse Excellence",
-    quote: "La bourse m'a permis de financer mon Master. Aujourd'hui je contribue au développement de mon pays.",
-    avatar: "SA"
+    name: "Famille Ndong",
+    location: "Oyem",
+    program: "Ma Famille, Mes Droits",
+    quote: "Nous avons enfin pu enregistrer nos trois enfants lors de la caravane mobile. Un grand merci à la mairie !",
+    avatar: "FN"
   },
 ];
 
@@ -134,14 +153,17 @@ export default function Sensibilisation() {
       <Header />
 
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-accent/20 via-primary/10 to-secondary/10 py-20 overflow-hidden">
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          }} />
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <img 
+            src={reunionImage} 
+            alt="Réunion citoyenne" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/85 to-background/70" />
         </div>
 
-        <div className="container mx-auto px-4 relative">
+        <div className="container mx-auto px-4 relative z-10 py-20">
           <div className="flex items-center gap-2 text-sm mb-6 text-muted-foreground">
             <Link to="/" className="hover:text-primary transition-colors">Accueil</Link>
             <ChevronRight className="h-4 w-4" />
@@ -152,14 +174,14 @@ export default function Sensibilisation() {
             <div>
               <Badge className="mb-4 bg-accent/20 text-accent border-accent/30">
                 <Heart className="h-3 w-3 mr-1" />
-                Diaspora Gabonaise
+                Citoyenneté Active
               </Badge>
               <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
-                Programmes de Sensibilisation & Accompagnement
+                Programmes Citoyens & Sensibilisation
               </h1>
               <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
-                Découvrez nos programmes dédiés à la diaspora gabonaise. Que vous souhaitiez 
-                investir, retourner au pays ou valoriser vos compétences, nous vous accompagnons.
+                Découvrez nos programmes dédiés à l'accompagnement des citoyens. Seniors, familles, 
+                jeunes - des initiatives pour tous au service de notre communauté.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button size="lg" className="gap-2">
@@ -168,19 +190,19 @@ export default function Sensibilisation() {
                 </Button>
                 <Button size="lg" variant="outline" className="gap-2">
                   <Play className="h-4 w-4" />
-                  Voir la vidéo
+                  Voir les témoignages
                 </Button>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               {[
-                { icon: Users, value: "50K+", label: "Diaspora connectée" },
-                { icon: Globe, value: "45", label: "Pays représentés" },
-                { icon: Target, value: "92%", label: "Taux de succès" },
-                { icon: Building2, value: "350+", label: "Entreprises créées" },
+                { icon: Users, value: "25K+", label: "Citoyens touchés" },
+                { icon: MapPin, value: "52", label: "Communes actives" },
+                { icon: Shield, value: "95%", label: "Satisfaction" },
+                { icon: Building2, value: "120+", label: "Événements/an" },
               ].map((stat, index) => (
-                <Card key={index} className="text-center p-6 hover:shadow-lg transition-shadow">
+                <Card key={index} className="text-center p-6 hover:shadow-lg transition-shadow bg-card/80 backdrop-blur-sm">
                   <stat.icon className="h-8 w-8 mx-auto mb-3 text-primary" />
                   <div className="text-3xl font-bold mb-1">{stat.value}</div>
                   <div className="text-sm text-muted-foreground">{stat.label}</div>
@@ -221,14 +243,21 @@ export default function Sensibilisation() {
                     className="group overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 animate-scale-in"
                     style={{ animationDelay: `${index * 0.1}s` }}
                   >
+                    <div className="h-48 overflow-hidden">
+                      <img 
+                        src={program.image} 
+                        alt={program.title}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      />
+                    </div>
                     <CardHeader>
                       <div className="flex items-start justify-between">
-                        <div className={`p-3 rounded-xl ${program.color}`}>
+                        <div className={`p-3 rounded-xl ${program.color} -mt-12 relative z-10 border-4 border-background`}>
                           <program.icon className="h-6 w-6" />
                         </div>
                         <Badge variant="outline">{program.category}</Badge>
                       </div>
-                      <CardTitle className="text-xl mt-4 group-hover:text-primary transition-colors">
+                      <CardTitle className="text-xl mt-2 group-hover:text-primary transition-colors">
                         {program.title}
                       </CardTitle>
                       <CardDescription className="text-base">
@@ -238,11 +267,11 @@ export default function Sensibilisation() {
                     <CardContent className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <p className="text-sm text-muted-foreground">Participants</p>
+                          <p className="text-sm text-muted-foreground">Bénéficiaires</p>
                           <p className="text-2xl font-bold">{program.participants.toLocaleString()}</p>
                         </div>
                         <div>
-                          <p className="text-sm text-muted-foreground">Taux de succès</p>
+                          <p className="text-sm text-muted-foreground">Satisfaction</p>
                           <div className="flex items-center gap-2">
                             <Progress value={program.successRate} className="flex-1" />
                             <span className="text-sm font-medium">{program.successRate}%</span>
@@ -292,15 +321,13 @@ export default function Sensibilisation() {
                                 <Calendar className="h-4 w-4" />
                                 {event.time}
                               </span>
-                              <Badge variant={event.type === "En ligne" ? "default" : "secondary"}>
+                              <Badge variant={event.type === "Présentiel" ? "default" : "secondary"}>
                                 {event.type}
                               </Badge>
-                              {event.location && (
-                                <span className="flex items-center gap-1">
-                                  <MapPin className="h-4 w-4" />
-                                  {event.location}
-                                </span>
-                              )}
+                              <span className="flex items-center gap-1">
+                                <MapPin className="h-4 w-4" />
+                                {event.location}
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -309,7 +336,7 @@ export default function Sensibilisation() {
                             <p className="text-sm text-muted-foreground">Inscrits</p>
                             <p className="font-semibold">{event.registrations}</p>
                           </div>
-                          <Button>S'inscrire</Button>
+                          <Button>Participer</Button>
                         </div>
                       </div>
                     </CardContent>
@@ -349,7 +376,10 @@ export default function Sensibilisation() {
                         </div>
                         <div>
                           <p className="font-semibold">{testimonial.name}</p>
-                          <p className="text-sm text-muted-foreground">{testimonial.location}</p>
+                          <p className="text-sm text-muted-foreground flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {testimonial.location}
+                          </p>
                           <Badge variant="secondary" className="mt-1 text-xs">
                             {testimonial.program}
                           </Badge>
@@ -368,22 +398,22 @@ export default function Sensibilisation() {
       <section className="py-20 bg-gradient-to-r from-primary to-secondary text-white">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-6">
-            Prêt à vous engager ?
+            Participez à la vie de votre commune !
           </h2>
           <p className="text-lg text-white/90 mb-8 max-w-2xl mx-auto">
-            Rejoignez les milliers de Gabonais de la diaspora qui contribuent activement 
-            au développement de notre pays.
+            Rejoignez les milliers de citoyens gabonais qui s'engagent pour leur communauté.
+            Ensemble, construisons un Gabon plus solidaire.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/register">
               <Button size="lg" variant="secondary" className="gap-2">
-                Créer mon compte
+                Créer mon compte citoyen
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
             <Link to="/actualites">
               <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 gap-2">
-                En savoir plus
+                Voir les actualités
               </Button>
             </Link>
           </div>
