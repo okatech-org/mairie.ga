@@ -372,7 +372,8 @@ const GabonMairiesMap = () => {
             </div>
           )}
           
-          {provinceCounts.map((province) => (
+          {/* Estuaire - Full width */}
+          {provinceCounts.filter(p => p.name === "Estuaire").map((province) => (
             <div
               key={province.name}
               className={`p-3 rounded-lg border transition-all cursor-pointer hover:shadow-md ${
@@ -406,6 +407,44 @@ const GabonMairiesMap = () => {
               </p>
             </div>
           ))}
+
+          {/* Other provinces - 2 per row */}
+          <div className="grid grid-cols-2 gap-2">
+            {provinceCounts.filter(p => p.name !== "Estuaire").map((province) => (
+              <div
+                key={province.name}
+                className={`p-2.5 rounded-lg border transition-all cursor-pointer hover:shadow-md ${
+                  activeProvinceFilter === province.name
+                    ? 'border-primary bg-primary/10 shadow-md ring-2 ring-primary/30'
+                    : hoveredProvince === province.name 
+                      ? 'border-primary bg-primary/5 shadow-md' 
+                      : 'border-border hover:border-primary/50'
+                }`}
+                onMouseEnter={() => setHoveredProvince(province.name)}
+                onMouseLeave={() => setHoveredProvince(null)}
+                onClick={() => handleProvinceClick(province.name)}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div 
+                      className="w-2.5 h-2.5 rounded-full" 
+                      style={{ backgroundColor: province.color }}
+                    />
+                    <span className="font-medium text-xs">{province.name}</span>
+                  </div>
+                  <Badge 
+                    variant={activeProvinceFilter === province.name ? "default" : "secondary"} 
+                    className="text-[10px] px-1.5 h-5"
+                  >
+                    {province.count}
+                  </Badge>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-0.5 pl-4 truncate">
+                  {province.capital}
+                </p>
+              </div>
+            ))}
+          </div>
 
           <div className="pt-4 border-t mt-4">
             <div className="flex items-center justify-between text-sm">
