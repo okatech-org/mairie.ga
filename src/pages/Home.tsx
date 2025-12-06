@@ -246,19 +246,19 @@ export default function Home() {
       {/* Mobile Quick Links */}
       <section className="lg:hidden py-8 bg-muted/30">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             {quickLinks.map((link, index) => (
               <Link 
                 key={index}
                 to={link.href}
-                className="flex items-center gap-3 p-4 rounded-lg bg-card border border-border/50 hover:border-primary/30 transition-colors"
+                className="flex items-center gap-2 p-2.5 rounded-lg bg-card border border-border/50 hover:border-primary/30 transition-colors overflow-hidden"
               >
-                <div className={`w-10 h-10 rounded-lg ${link.color} flex items-center justify-center flex-shrink-0`}>
-                  <link.icon className="h-5 w-5" />
+                <div className={`w-8 h-8 rounded-md ${link.color} flex items-center justify-center flex-shrink-0`}>
+                  <link.icon className="h-4 w-4" />
                 </div>
-                <div>
-                  <p className="font-medium text-sm">{link.label}</p>
-                  <p className="text-xs text-muted-foreground">{link.description}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-xs truncate">{link.label}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{link.description}</p>
                 </div>
               </Link>
             ))}
