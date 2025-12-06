@@ -9,41 +9,59 @@ import IAstedInterface from './IAstedInterface';
 export default function IAstedInterfaceWrapper() {
   const { currentUser } = useDemo();
 
-  // Mapper les rôles du système consulaire vers les rôles iAsted
+  // Mapper les rôles du système municipal vers les rôles iAsted
   const mapUserRole = (role?: string): string => {
-    if (!role) return 'citizen';
+    if (!role) return 'unknown'; // Pas de rôle = page d'accueil, on ne sait pas à qui on s'adresse
 
     switch (role.toUpperCase()) {
-      case 'ADMIN':
-      case 'CONSUL_GENERAL':
-        return 'super_admin';
+      // Personnel municipal - Élus
+      case 'MAIRE':
+        return 'maire';
+      case 'MAIRE_ADJOINT':
+      case 'ADJOINT':
+        return 'maire_adjoint';
       
-      case 'CONSUL':
-      case 'VICE_CONSUL':
-      case 'CHARGE_AFFAIRES_CONSULAIRES':
-        return 'admin';
-      
-      case 'AGENT_CONSULAIRE':
+      // Personnel municipal - Administration
+      case 'SECRETAIRE_GENERAL':
+      case 'SG':
+        return 'secretaire_general';
+      case 'CHEF_SERVICE':
+      case 'CHEF_SERVICE_ETAT_CIVIL':
+      case 'CHEF_URBANISME':
+        return 'chef_service';
       case 'AGENT':
-      case 'CHANCELIER':
-      case 'ATTACHE':
+      case 'AGENT_MUNICIPAL':
+      case 'OFFICIER_ETAT_CIVIL':
+      case 'AGENT_ACCUEIL':
         return 'agent';
       
-      case 'CITIZEN':
-      case 'GABONAIS':
-        return 'citizen';
+      // Super Administration
+      case 'SUPER_ADMIN':
+      case 'ADMIN':
+        return 'super_admin';
       
+      // Usagers - Citoyens
+      case 'CITIZEN':
+      case 'CITOYEN':
+      case 'RESIDENT':
+        return 'citizen';
+      case 'CITOYEN_AUTRE_COMMUNE':
+        return 'citizen_other';
       case 'FOREIGNER':
       case 'ETRANGER':
+      case 'ETRANGER_RESIDENT':
         return 'foreigner';
       
-      case 'AMBASSADEUR':
-      case 'MINISTRE_CONSEILLER':
-      case 'CONSEILLER':
-        return 'diplomat';
+      // Usagers - Entités morales
+      case 'COMPANY':
+      case 'ENTREPRISE':
+      case 'SOCIETE':
+        return 'company';
+      case 'ASSOCIATION':
+        return 'association';
       
       default:
-        return 'citizen';
+        return 'unknown'; // Retour inconnu pour salutation neutre
     }
   };
 
