@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Landmark, Menu, X, MapPin, FileText } from "lucide-react";
+import { Landmark, Menu, X, MapPin, FileText, Heart } from "lucide-react";
 import { useState } from "react";
 import { useDemo } from "@/contexts/DemoContext";
 import { GlobalSettings } from "@/components/GlobalSettings";
@@ -41,6 +41,10 @@ export const Header = () => {
           <Link to="/services" className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-1">
             <FileText className="h-4 w-4" />
             Services
+          </Link>
+          <Link to="/sensibilisation" className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-1">
+            <Heart className="h-4 w-4" />
+            Sensibilisation
           </Link>
           <Link to="/actualites" className="text-sm font-medium hover:text-primary transition-colors">
             {t('header.news')}
@@ -96,6 +100,14 @@ export const Header = () => {
             >
               <FileText className="h-4 w-4" />
               Services
+            </Link>
+            <Link
+              to="/sensibilisation"
+              className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-2"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <Heart className="h-4 w-4" />
+              Sensibilisation
             </Link>
             <Link
               to="/actualites"
