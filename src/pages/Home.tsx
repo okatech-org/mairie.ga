@@ -251,14 +251,14 @@ export default function Home() {
               <Link 
                 key={index}
                 to={link.href}
-                className="flex items-center gap-2 p-2.5 rounded-lg bg-card border border-border/50 hover:border-primary/30 transition-colors overflow-hidden"
+                className="flex flex-col items-center text-center gap-2 p-3 rounded-lg bg-card border border-border/50 hover:border-primary/30 transition-colors"
               >
-                <div className={`w-8 h-8 rounded-md ${link.color} flex items-center justify-center flex-shrink-0`}>
-                  <link.icon className="h-4 w-4" />
+                <div className={`w-10 h-10 rounded-lg ${link.color} flex items-center justify-center`}>
+                  <link.icon className="h-5 w-5" />
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-xs truncate">{link.label}</p>
-                  <p className="text-[10px] text-muted-foreground truncate">{link.description}</p>
+                <div>
+                  <p className="font-medium text-xs leading-tight">{link.label}</p>
+                  <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{link.description}</p>
                 </div>
               </Link>
             ))}
