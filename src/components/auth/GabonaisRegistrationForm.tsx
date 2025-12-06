@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,10 +7,81 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CheckCircle2, Upload, Loader2, FileText, User, Users, MapPin, Briefcase, Eye } from "lucide-react";
+import { formAssistantStore, useFormAssistant } from "@/stores/formAssistantStore";
 
 export function GabonaisRegistrationForm() {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
+    
+    // Données du formulaire avec état local
+    const [formData, setFormData] = useState({
+        firstName: '',
+        lastName: '',
+        dateOfBirth: '',
+        placeOfBirth: '',
+        maritalStatus: '',
+        fatherName: '',
+        motherName: '',
+        address: '',
+        city: '',
+        postalCode: '',
+        emergencyContactName: '',
+        emergencyContactPhone: '',
+        professionalStatus: '',
+        employer: '',
+        profession: '',
+    });
+
+    // Synchroniser avec le store
+    const { formData: storeData, currentStep } = useFormAssistant();
+
+    // Écouter les événements d'iAsted
+    useEffect(() => {
+        formAssistantStore.setCurrentForm('gabonais_registration');
+        formAssistantStore.setCurrentStep(step);
+
+        const handleFillField = (event: CustomEvent) => {
+            const { field, value } = event.detail;
+            setFormData(prev => ({ ...prev, [field]: value }));
+        };
+
+        const handleNavigateStep = (event: CustomEvent) => {
+            const { step: targetStep } = event.detail;
+            setStep(targetStep);
+        };
+
+        const handleSubmitForm = () => {
+            handleSubmit();
+        };
+
+        window.addEventListener('iasted-fill-field', handleFillField as EventListener);
+        window.addEventListener('iasted-navigate-step', handleNavigateStep as EventListener);
+        window.addEventListener('iasted-submit-form', handleSubmitForm);
+
+        return () => {
+            window.removeEventListener('iasted-fill-field', handleFillField as EventListener);
+            window.removeEventListener('iasted-navigate-step', handleNavigateStep as EventListener);
+            window.removeEventListener('iasted-submit-form', handleSubmitForm);
+        };
+    }, [step]);
+
+    // Synchroniser le step avec le store
+    useEffect(() => {
+        formAssistantStore.setCurrentStep(step);
+    }, [step]);
+
+    // Mettre à jour le store quand les données changent
+    useEffect(() => {
+        Object.entries(formData).forEach(([key, value]) => {
+            if (value) {
+                formAssistantStore.setField(key, value);
+            }
+        });
+    }, [formData]);
+
+    const handleInputChange = (field: string, value: string) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+    };
 
     const steps = [
         { id: 1, label: "Documents", icon: FileText },
@@ -115,21 +186,37 @@ export function GabonaisRegistrationForm() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>Prénom(s) *</Label>
-                                    <Input placeholder="Jean" />
+                                    <Input 
+                                        placeholder="Jean" 
+                                        value={formData.firstName}
+                                        onChange={(e) => handleInputChange('firstName', e.target.value)}
+                                    />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Nom(s) *</Label>
-                                    <Input placeholder="Mba" />
+                                    <Input 
+                                        placeholder="Mba" 
+                                        value={formData.lastName}
+                                        onChange={(e) => handleInputChange('lastName', e.target.value)}
+                                    />
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>Date de naissance *</Label>
-                                    <Input type="date" />
+                                    <Input 
+                                        type="date" 
+                                        value={formData.dateOfBirth}
+                                        onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                                    />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Lieu de naissance *</Label>
-                                    <Input placeholder="Libreville" />
+                                    <Input 
+                                        placeholder="Libreville" 
+                                        value={formData.placeOfBirth}
+                                        onChange={(e) => handleInputChange('placeOfBirth', e.target.value)}
+                                    />
                                 </div>
                             </div>
                             <div className="space-y-2">
@@ -143,7 +230,10 @@ export function GabonaisRegistrationForm() {
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <Label>Situation Matrimoniale *</Label>
-                                <Select>
+                                <Select 
+                                    value={formData.maritalStatus}
+                                    onValueChange={(value) => handleInputChange('maritalStatus', value)}
+                                >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Sélectionner" />
                                     </SelectTrigger>
@@ -161,11 +251,19 @@ export function GabonaisRegistrationForm() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label>Nom du Père</Label>
-                                        <Input placeholder="Nom complet" />
+                                        <Input 
+                                            placeholder="Nom complet" 
+                                            value={formData.fatherName}
+                                            onChange={(e) => handleInputChange('fatherName', e.target.value)}
+                                        />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Nom de la Mère</Label>
-                                        <Input placeholder="Nom complet" />
+                                        <Input 
+                                            placeholder="Nom complet" 
+                                            value={formData.motherName}
+                                            onChange={(e) => handleInputChange('motherName', e.target.value)}
+                                        />
                                     </div>
                                 </div>
                             </div>
@@ -176,16 +274,26 @@ export function GabonaisRegistrationForm() {
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <Label>Adresse Complète *</Label>
-                                <Input placeholder="Numéro, Rue, Apt" />
+                                <Input 
+                                    placeholder="Numéro, Rue, Apt" 
+                                    value={formData.address}
+                                    onChange={(e) => handleInputChange('address', e.target.value)}
+                                />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>Ville *</Label>
-                                    <Input />
+                                    <Input 
+                                        value={formData.city}
+                                        onChange={(e) => handleInputChange('city', e.target.value)}
+                                    />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Code Postal *</Label>
-                                    <Input />
+                                    <Input 
+                                        value={formData.postalCode}
+                                        onChange={(e) => handleInputChange('postalCode', e.target.value)}
+                                    />
                                 </div>
                             </div>
 
@@ -194,11 +302,19 @@ export function GabonaisRegistrationForm() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label>Nom Complet</Label>
-                                        <Input placeholder="Personne à contacter" />
+                                        <Input 
+                                            placeholder="Personne à contacter" 
+                                            value={formData.emergencyContactName}
+                                            onChange={(e) => handleInputChange('emergencyContactName', e.target.value)}
+                                        />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Téléphone</Label>
-                                        <Input placeholder="+33..." />
+                                        <Input 
+                                            placeholder="+33..." 
+                                            value={formData.emergencyContactPhone}
+                                            onChange={(e) => handleInputChange('emergencyContactPhone', e.target.value)}
+                                        />
                                     </div>
                                 </div>
                             </div>
@@ -209,7 +325,10 @@ export function GabonaisRegistrationForm() {
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <Label>Statut Professionnel</Label>
-                                <Select>
+                                <Select 
+                                    value={formData.professionalStatus}
+                                    onValueChange={(value) => handleInputChange('professionalStatus', value)}
+                                >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Sélectionner" />
                                     </SelectTrigger>
@@ -224,11 +343,19 @@ export function GabonaisRegistrationForm() {
                             </div>
                             <div className="space-y-2">
                                 <Label>Employeur / Établissement</Label>
-                                <Input placeholder="Nom de l'entreprise ou école" />
+                                <Input 
+                                    placeholder="Nom de l'entreprise ou école" 
+                                    value={formData.employer}
+                                    onChange={(e) => handleInputChange('employer', e.target.value)}
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label>Profession / Poste</Label>
-                                <Input placeholder="Intitulé du poste" />
+                                <Input 
+                                    placeholder="Intitulé du poste" 
+                                    value={formData.profession}
+                                    onChange={(e) => handleInputChange('profession', e.target.value)}
+                                />
                             </div>
                         </div>
                     )}

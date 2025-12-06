@@ -6,8 +6,9 @@ import { IASTED_SYSTEM_PROMPT } from '@/config/iasted-config';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useTheme } from 'next-themes';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { resolveRoute } from '@/utils/route-mapping';
+import { formAssistantStore } from '@/stores/formAssistantStore';
 
 interface IAstedInterfaceProps {
     userRole?: string;
@@ -36,6 +37,7 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
     const [questionsRemaining, setQuestionsRemaining] = useState(3);
     const { setTheme, theme } = useTheme();
     const navigate = useNavigate();
+    const location = useLocation();
 
     // Initialize voice from localStorage and reset question counter on new session
     useEffect(() => {
@@ -104,6 +106,12 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
         }
     }, [userRole]);
 
+    // Détermine si on est sur une page de formulaire d'inscription
+    const isOnRegistrationPage = location.pathname.startsWith('/register');
+    const registrationFormType = location.pathname.includes('/gabonais') ? 'gabonais' 
+        : location.pathname.includes('/etranger') ? 'etranger' 
+        : 'choice';
+
     // Format system prompt with context
     const formattedSystemPrompt = useMemo(() => {
         // Détermine si l'utilisateur est identifié ou non
@@ -111,13 +119,19 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
         const displayTitle = isIdentified ? userTitle : '';
         const identificationMode = isIdentified ? 'DÉSACTIVÉ' : 'ACTIVÉ';
         
+        // Contexte d'assistance au formulaire
+        const formContext = isOnRegistrationPage 
+            ? `\n\n## MODE ASSISTANCE FORMULAIRE ACTIF\nVous êtes actuellement sur la page d'inscription (${registrationFormType}). Aidez l'utilisateur à remplir le formulaire en lui posant des questions et en remplissant les champs avec les outils disponibles.\n\nÉtape actuelle: ${formAssistantStore.getCurrentStep()}/6\nChamps remplis: ${JSON.stringify(formAssistantStore.getFormData())}\n\nPour aider l'utilisateur:\n1. Demandez-lui ses informations une par une\n2. Utilisez fill_form_field pour remplir chaque champ\n3. Utilisez navigate_form_step pour passer à l'étape suivante\n4. Confirmez ce que vous avez rempli\n\nExemple: "Quel est votre prénom ?" → utilisateur répond "Jean" → call fill_form_field(field="firstName", value="Jean") → "Parfait Jean, et quel est votre nom de famille ?"`
+            : '';
+        
         return IASTED_SYSTEM_PROMPT
             .replace(/{USER_TITLE}/g, displayTitle)
             .replace(/{CURRENT_TIME_OF_DAY}/g, timeOfDay)
             .replace(/{APPELLATION_COURTE}/g, isIdentified ? (userTitle.split(' ').slice(-1)[0] || '') : '')
             .replace(/{IDENTIFICATION_MODE}/g, identificationMode)
-            .replace(/{QUESTIONS_REMAINING}/g, String(questionsRemaining));
-    }, [timeOfDay, userTitle, userRole, questionsRemaining]);
+            .replace(/{QUESTIONS_REMAINING}/g, String(questionsRemaining))
+            + formContext;
+    }, [timeOfDay, userTitle, userRole, questionsRemaining, isOnRegistrationPage, registrationFormType]);
 
     // Initialize OpenAI RTC with tool call handler
     const openaiRTC = useRealtimeVoiceWebRTC(async (toolName, args) => {
@@ -424,6 +438,114 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
             }, 500);
             
             return { success: true, message: `Informations sur ${args.service_type}` };
+        }
+
+        // ========== OUTILS D'ASSISTANCE AU FORMULAIRE ==========
+        
+        if (toolName === 'fill_form_field') {
+            console.log('📝 [IAstedInterface] Remplissage de champ:', args);
+            const { field, value } = args;
+            
+            // Mettre à jour le store
+            formAssistantStore.setField(field, value);
+            
+            // Déclencher un événement pour que le formulaire réagisse
+            window.dispatchEvent(new CustomEvent('iasted-fill-field', { 
+                detail: { field, value } 
+            }));
+            
+            const fieldLabels: Record<string, string> = {
+                firstName: 'Prénom',
+                lastName: 'Nom',
+                dateOfBirth: 'Date de naissance',
+                placeOfBirth: 'Lieu de naissance',
+                maritalStatus: 'Situation matrimoniale',
+                fatherName: 'Nom du père',
+                motherName: 'Nom de la mère',
+                address: 'Adresse',
+                city: 'Ville',
+                postalCode: 'Code postal',
+                emergencyContactName: 'Contact d\'urgence',
+                emergencyContactPhone: 'Téléphone urgence',
+                professionalStatus: 'Statut professionnel',
+                employer: 'Employeur',
+                profession: 'Profession',
+                email: 'Email',
+                phone: 'Téléphone'
+            };
+            
+            toast.success(`${fieldLabels[field] || field} rempli: ${value}`);
+            return { success: true, field, value, message: `Champ ${fieldLabels[field] || field} rempli avec "${value}"` };
+        }
+
+        if (toolName === 'select_citizen_type') {
+            console.log('👤 [IAstedInterface] Sélection type citoyen:', args);
+            const { type } = args;
+            
+            if (type === 'gabonais') {
+                navigate('/register/gabonais');
+                formAssistantStore.setCurrentForm('gabonais_registration');
+                toast.success('Formulaire d\'inscription Gabonais sélectionné');
+            } else if (type === 'etranger') {
+                navigate('/register/etranger');
+                formAssistantStore.setCurrentForm('foreigner_registration');
+                toast.success('Formulaire d\'inscription Étranger sélectionné');
+            }
+            
+            return { success: true, type, message: `Type ${type} sélectionné, navigation vers le formulaire` };
+        }
+
+        if (toolName === 'navigate_form_step') {
+            console.log('📋 [IAstedInterface] Navigation étape formulaire:', args);
+            const { step, direction } = args;
+            
+            let targetStep = formAssistantStore.getCurrentStep();
+            
+            if (direction === 'next') {
+                targetStep = Math.min(6, targetStep + 1);
+            } else if (direction === 'previous') {
+                targetStep = Math.max(1, targetStep - 1);
+            } else if (direction === 'goto' && step) {
+                targetStep = Math.max(1, Math.min(6, step));
+            }
+            
+            formAssistantStore.setCurrentStep(targetStep);
+            
+            // Déclencher l'événement pour le formulaire
+            window.dispatchEvent(new CustomEvent('iasted-navigate-step', { 
+                detail: { step: targetStep, direction } 
+            }));
+            
+            const stepLabels = ['', 'Documents', 'Infos de base', 'Famille', 'Coordonnées', 'Profession', 'Révision'];
+            toast.success(`Étape ${targetStep}: ${stepLabels[targetStep]}`);
+            
+            return { success: true, step: targetStep, message: `Navigation vers l'étape ${targetStep}: ${stepLabels[targetStep]}` };
+        }
+
+        if (toolName === 'get_form_status') {
+            console.log('📊 [IAstedInterface] Statut du formulaire');
+            const currentStep = formAssistantStore.getCurrentStep();
+            const formData = formAssistantStore.getFormData();
+            const filledFields = Object.keys(formData).filter(k => formData[k]);
+            
+            return { 
+                success: true, 
+                currentStep,
+                totalSteps: 6,
+                filledFields,
+                formData,
+                message: `Étape ${currentStep}/6, ${filledFields.length} champs remplis`
+            };
+        }
+
+        if (toolName === 'submit_form') {
+            console.log('✅ [IAstedInterface] Soumission du formulaire');
+            
+            // Déclencher la soumission via événement
+            window.dispatchEvent(new CustomEvent('iasted-submit-form'));
+            
+            toast.success('Soumission du formulaire en cours...');
+            return { success: true, message: 'Formulaire soumis pour validation' };
         }
 
         if (toolName === 'security_override') {
