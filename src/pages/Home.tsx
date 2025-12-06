@@ -29,7 +29,6 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { GabonMairiesSection } from "@/components/home/GabonMairiesSection";
-import IAstedButtonFull from "@/components/iasted/IAstedButtonFull";
 import heroImage from "@/assets/mairie-accueil.jpg";
 import serviceImage from "@/assets/service-municipal.jpg";
 import familleImage from "@/assets/famille-acte-naissance.jpg";
@@ -394,19 +393,42 @@ export default function Home() {
             <div className="relative order-2 lg:order-1">
               <div className="relative mx-auto w-72 h-72 md:w-96 md:h-96 flex items-center justify-center">
                 {/* Animated rings */}
-                <div className="absolute inset-0 rounded-full border-2 border-violet-500/20 animate-ping" style={{ animationDuration: '3s' }} />
-                <div className="absolute inset-4 rounded-full border-2 border-violet-500/30 animate-ping" style={{ animationDuration: '3s', animationDelay: '0.5s' }} />
-                <div className="absolute inset-8 rounded-full border-2 border-violet-500/40 animate-ping" style={{ animationDuration: '3s', animationDelay: '1s' }} />
+                <div className="absolute inset-0 rounded-full border-2 border-cyan-500/20 animate-ping" style={{ animationDuration: '3s' }} />
+                <div className="absolute inset-4 rounded-full border-2 border-cyan-500/30 animate-ping" style={{ animationDuration: '3s', animationDelay: '0.5s' }} />
+                <div className="absolute inset-8 rounded-full border-2 border-cyan-500/40 animate-ping" style={{ animationDuration: '3s', animationDelay: '1s' }} />
                 
-                {/* Center - Real iAsted Button */}
-                <div className="relative z-10">
-                  <IAstedButtonFull size="lg" />
-                </div>
+                {/* Center - Demo iAsted Button (Static visual) */}
+                <Link 
+                  to="/iasted-guide" 
+                  className="relative z-10 group cursor-pointer"
+                >
+                  <div 
+                    className="w-28 h-28 md:w-36 md:h-36 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 group-hover:scale-110"
+                    style={{
+                      background: 'linear-gradient(135deg, #00aaff 0%, #0066ff 50%, #00ddff 100%)',
+                      boxShadow: '0 0 40px rgba(0, 170, 255, 0.4), 0 0 80px rgba(0, 170, 255, 0.2), 0 8px 32px rgba(0, 102, 255, 0.3), inset 0 -5px 15px rgba(0, 102, 255, 0.2), inset 0 5px 15px rgba(255, 255, 255, 0.3)',
+                      animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+                    }}
+                  >
+                    {/* Inner glow */}
+                    <div className="absolute inset-2 rounded-full bg-gradient-to-br from-white/20 to-transparent" />
+                    
+                    {/* Mic icon */}
+                    <Mic className="h-10 w-10 md:h-14 md:w-14 text-white drop-shadow-lg relative z-10" />
+                    
+                    {/* Hover text */}
+                    <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                      <Badge className="bg-card text-foreground border shadow-lg">
+                        Découvrir iAsted
+                      </Badge>
+                    </div>
+                  </div>
+                </Link>
 
                 {/* Floating feature cards */}
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-card rounded-xl p-3 shadow-lg border border-border animate-fade-in z-20" style={{ animationDelay: '0.2s' }}>
                   <div className="flex items-center gap-2">
-                    <Mic className="h-4 w-4 text-violet-500" />
+                    <Mic className="h-4 w-4 text-cyan-500" />
                     <span className="text-xs font-medium">Commande vocale</span>
                   </div>
                 </div>
