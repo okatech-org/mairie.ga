@@ -1,70 +1,86 @@
 import { useNavigate } from "react-router-dom";
 import { useDemo } from "@/contexts/DemoContext";
 import { DemoUser } from "@/types/roles";
-import { ConsularRole } from "@/types/consular-roles";
+import { MunicipalRole, MUNICIPAL_ROLE_MAPPING, getRoleLabel } from "@/types/municipal-roles";
 import { getEntityById } from "@/data/mock-entities";
-import { SERVICE_CATALOG, ServiceType } from "@/types/services";
-import { COUNTRY_FLAGS } from "@/types/entity";
+import { getMairieById } from "@/data/mock-mairies-network";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, Briefcase, Award } from "lucide-react";
+import { Check, Briefcase } from "lucide-react";
 
 interface DemoUserCardProps {
   user: DemoUser;
 }
 
+// Couleurs par rôle municipal
+const ROLE_COLORS: Record<string, string> = {
+  ADMIN: 'bg-red-600',
+  [MunicipalRole.MAIRE]: 'bg-yellow-600',
+  [MunicipalRole.MAIRE_ADJOINT]: 'bg-orange-500',
+  [MunicipalRole.SECRETAIRE_GENERAL]: 'bg-slate-600',
+  [MunicipalRole.CHEF_SERVICE]: 'bg-blue-600',
+  [MunicipalRole.CHEF_BUREAU]: 'bg-blue-500',
+  [MunicipalRole.AGENT_MUNICIPAL]: 'bg-green-600',
+  [MunicipalRole.AGENT_ETAT_CIVIL]: 'bg-emerald-600',
+  [MunicipalRole.AGENT_TECHNIQUE]: 'bg-cyan-600',
+  [MunicipalRole.AGENT_ACCUEIL]: 'bg-teal-500',
+  [MunicipalRole.STAGIAIRE]: 'bg-purple-500',
+  [MunicipalRole.CITOYEN]: 'bg-gray-500',
+  [MunicipalRole.ETRANGER_RESIDENT]: 'bg-indigo-500',
+  [MunicipalRole.PERSONNE_MORALE]: 'bg-amber-600',
+};
+
 export function DemoUserCard({ user }: DemoUserCardProps) {
   const navigate = useNavigate();
   const { simulateUser } = useDemo();
-  const entity = user.entityId ? getEntityById(user.entityId) : null;
+  
+  // Essayer d'abord les mairies puis les anciennes entités
+  const mairie = user.entityId ? getMairieById(user.entityId) : null;
+  const entity = !mairie && user.entityId ? getEntityById(user.entityId) : null;
+  const entityInfo = mairie || entity;
 
   const handleSimulate = () => {
     simulateUser(user.id);
 
-    switch (user.role) {
-      case 'ADMIN':
-        navigate("/dashboard/super-admin");
-        break;
-      case ConsularRole.CITIZEN:
-        navigate("/dashboard/citizen");
-        break;
-      case ConsularRole.FOREIGNER:
-        navigate("/dashboard/foreigner");
-        break;
-      default:
-        // For all consular roles (Agent, Consul, etc.)
-        navigate("/dashboard/agent");
-        break;
+    // Navigation selon le rôle
+    if (user.role === 'ADMIN') {
+      navigate("/dashboard/super-admin");
+    } else if (user.role === MunicipalRole.CITOYEN) {
+      navigate("/dashboard/citizen");
+    } else if (user.role === MunicipalRole.ETRANGER_RESIDENT) {
+      navigate("/dashboard/foreigner");
+    } else if (user.role === MunicipalRole.PERSONNE_MORALE) {
+      navigate("/dashboard/citizen"); // Pour l'instant, même dashboard
+    } else {
+      // Tous les rôles municipaux staff (Maire, Agents, etc.)
+      navigate("/dashboard/agent");
     }
   };
 
   const getRoleColor = () => {
-    switch (user.role) {
-      case 'ADMIN': return 'bg-red-600';
-      case ConsularRole.CONSUL_GENERAL: return 'bg-yellow-600'; // Gold
-      case ConsularRole.CONSUL: return 'bg-slate-500'; // Silver
-      case ConsularRole.VICE_CONSUL: return 'bg-orange-600'; // Bronze
-      case ConsularRole.CHARGE_AFFAIRES_CONSULAIRES: return 'bg-blue-600';
-      case ConsularRole.AGENT_CONSULAIRE: return 'bg-green-600';
-      case ConsularRole.STAGIAIRE: return 'bg-purple-500';
-      case ConsularRole.CITIZEN: return 'bg-gray-400';
-      case ConsularRole.FOREIGNER: return 'bg-teal-500';
-      default: return 'bg-gray-500';
-    }
+    return ROLE_COLORS[user.role] || 'bg-gray-500';
   };
 
-  const allServices = Object.keys(SERVICE_CATALOG) as ServiceType[];
-  const enabledServices = entity?.enabledServices || allServices;
+  const getRoleDisplayLabel = () => {
+    if (user.role === 'ADMIN') return 'Super Admin';
+    
+    const roleMapping = MUNICIPAL_ROLE_MAPPING[user.role as MunicipalRole];
+    if (roleMapping) {
+      return roleMapping.label;
+    }
+    
+    return user.role.replace(/_/g, ' ');
+  };
 
   return (
-    <Card className="hover-scale transition-all duration-300 border-l-4" style={{ borderLeftColor: getRoleColor().replace('bg-', '') }}>
-      <CardHeader>
+    <Card className="hover-scale transition-all duration-300 border-l-4" style={{ borderLeftColor: 'hsl(var(--primary))' }}>
+      <CardHeader className="pb-2">
         <div className="flex items-center justify-between mb-2">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Badge className={getRoleColor()}>
               <span className="mr-1">{user.badge}</span>
-              {user.role === 'CITIZEN' ? 'CITOYEN' : user.role.replace(/_/g, ' ')}
+              {getRoleDisplayLabel()}
             </Badge>
             {user.hierarchyLevel && (
               <Badge variant="outline" className="text-xs border-primary/50 text-primary">
@@ -72,14 +88,12 @@ export function DemoUserCard({ user }: DemoUserCardProps) {
               </Badge>
             )}
           </div>
-          {entity && (
-            <span className="text-2xl">
-              {COUNTRY_FLAGS[entity.countryCode] || '🌍'}
-            </span>
+          {entityInfo && (
+            <span className="text-2xl">🇬🇦</span>
           )}
         </div>
-        <CardTitle className="text-xl">{user.name}</CardTitle>
-        <CardDescription>{user.description}</CardDescription>
+        <CardTitle className="text-lg">{user.name}</CardTitle>
+        <CardDescription className="text-sm">{user.description}</CardDescription>
 
         {user.employmentStatus && (
           <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
@@ -88,58 +102,38 @@ export function DemoUserCard({ user }: DemoUserCardProps) {
           </div>
         )}
 
-        {entity && (
+        {entityInfo && (
           <p className="text-xs text-muted-foreground mt-1">
-            📍 {entity.city}, {entity.country}
+            📍 {mairie?.city || (entity as any)?.city}, {mairie?.province || 'Gabon'}
           </p>
         )}
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="py-2">
         <div>
-          <h4 className="font-semibold text-sm mb-2">Permissions :</h4>
+          <h4 className="font-semibold text-xs mb-2 text-muted-foreground">PERMISSIONS :</h4>
           <ul className="space-y-1">
             {user.permissions.slice(0, 3).map((permission, index) => (
-              <li key={index} className="text-sm flex items-start gap-2">
-                <Check className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+              <li key={index} className="text-xs flex items-start gap-2">
+                <Check className="h-3 w-3 text-green-600 mt-0.5 flex-shrink-0" />
                 <span className="text-muted-foreground">{permission}</span>
               </li>
             ))}
+            {user.permissions.length > 3 && (
+              <li className="text-xs text-muted-foreground italic">
+                +{user.permissions.length - 3} autres permissions
+              </li>
+            )}
           </ul>
         </div>
-
-        {entity && user.role !== 'CITIZEN' && (
-          <div>
-            <h4 className="font-semibold text-sm mb-2">Services disponibles :</h4>
-            <div className="grid grid-cols-2 gap-2">
-              {allServices.map((serviceType) => {
-                const isEnabled = enabledServices.includes(serviceType);
-                const service = SERVICE_CATALOG[serviceType];
-                return (
-                  <div
-                    key={serviceType}
-                    className={`flex items-center gap-1 text-xs p-1.5 rounded ${isEnabled ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-500 line-through'
-                      }`}
-                  >
-                    {isEnabled ? (
-                      <Check className="h-3 w-3" />
-                    ) : (
-                      <X className="h-3 w-3" />
-                    )}
-                    <span>{service.name}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </CardContent>
 
-      <CardFooter>
+      <CardFooter className="pt-2">
         <Button
           onClick={handleSimulate}
           className="w-full"
           variant="default"
+          size="sm"
         >
           Simuler cet utilisateur
         </Button>
