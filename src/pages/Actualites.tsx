@@ -3,11 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, Tag, Search, ArrowRight, Clock, Eye, ChevronRight, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
 import reunionImage from "@/assets/reunion-citoyenne.jpg";
 import serviceImage from "@/assets/service-municipal.jpg";
 import villeImage from "@/assets/ville-gabon.jpg";
@@ -125,9 +122,7 @@ export default function Actualites() {
   const featuredArticle = articles[0];
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
-      
+    <div className="flex flex-col">
       {/* Hero Section */}
       <section className="bg-gradient-to-b from-primary/10 via-background to-background py-16">
         <div className="container mx-auto px-4">
@@ -317,8 +312,6 @@ export default function Actualites() {
           </Card>
         </div>
       </section>
-
-      <Footer />
     </div>
   );
 }
