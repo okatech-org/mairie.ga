@@ -216,7 +216,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                         parameters: {
                             type: 'object',
                             properties: {
-                                path: { type: 'string', description: 'Le chemin de la route (ex: /admin-space)' }
+                                path: { type: 'string', description: 'Le chemin de la route (ex: /register, /register/gabonais, /login)' }
                             },
                             required: ['path']
                         }
@@ -236,6 +236,78 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                             },
                             required: ['action']
                         }
+                    },
+                    {
+                        type: 'function',
+                        name: 'fill_form_field',
+                        description: 'Remplir un champ du formulaire d\'inscription. Utilise cette fonction quand l\'utilisateur te donne une information pour son inscription.',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                field: { 
+                                    type: 'string', 
+                                    enum: [
+                                        'firstName', 'lastName', 'dateOfBirth', 'placeOfBirth',
+                                        'maritalStatus', 'fatherName', 'motherName',
+                                        'address', 'city', 'postalCode',
+                                        'emergencyContactName', 'emergencyContactPhone',
+                                        'professionalStatus', 'employer', 'profession',
+                                        'email', 'phone'
+                                    ],
+                                    description: 'Le nom du champ à remplir'
+                                },
+                                value: { type: 'string', description: 'La valeur à mettre dans le champ' }
+                            },
+                            required: ['field', 'value']
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'select_citizen_type',
+                        description: 'Sélectionner le type de citoyen pour l\'inscription (gabonais ou étranger)',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                type: { 
+                                    type: 'string', 
+                                    enum: ['gabonais', 'etranger'],
+                                    description: 'Type de citoyen: gabonais ou étranger'
+                                }
+                            },
+                            required: ['type']
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'navigate_form_step',
+                        description: 'Naviguer vers une étape spécifique du formulaire d\'inscription',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                step: { 
+                                    type: 'number', 
+                                    description: 'Numéro de l\'étape (1-6 pour gabonais: Documents, Infos Base, Famille, Contacts, Profession, Révision)'
+                                },
+                                direction: {
+                                    type: 'string',
+                                    enum: ['next', 'previous', 'goto'],
+                                    description: 'Direction de navigation'
+                                }
+                            },
+                            required: ['direction']
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'get_form_status',
+                        description: 'Obtenir le statut actuel du formulaire (étape courante, champs remplis)',
+                        parameters: { type: 'object', properties: {} }
+                    },
+                    {
+                        type: 'function',
+                        name: 'submit_form',
+                        description: 'Soumettre le formulaire d\'inscription une fois complété',
+                        parameters: { type: 'object', properties: {} }
                     },
                     {
                         type: 'function',
@@ -261,23 +333,18 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                     {
                         type: 'function',
                         name: 'request_consular_service',
-                        description: 'Initier une demande de service consulaire (passeport, visa, attestation, etc.)',
+                        description: 'Initier une demande de service municipal',
                         parameters: {
                             type: 'object',
                             properties: {
                                 service_type: {
                                     type: 'string',
-                                    enum: ['passport', 'visa', 'residence_certificate', 'nationality_certificate', 'consular_card', 'document_legalization', 'birth_certificate', 'marriage_certificate'],
-                                    description: 'Type de service consulaire demandé'
+                                    description: 'Type de service demandé'
                                 },
                                 urgency: {
                                     type: 'string',
                                     enum: ['normal', 'urgent'],
-                                    description: 'Niveau d\'urgence de la demande'
-                                },
-                                notes: {
-                                    type: 'string',
-                                    description: 'Notes ou informations complémentaires'
+                                    description: 'Niveau d\'urgence'
                                 }
                             },
                             required: ['service_type']
@@ -286,51 +353,23 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                     {
                         type: 'function',
                         name: 'schedule_appointment',
-                        description: 'Prendre un rendez-vous au consulat',
+                        description: 'Prendre un rendez-vous à la mairie',
                         parameters: {
                             type: 'object',
                             properties: {
-                                service_type: {
-                                    type: 'string',
-                                    description: 'Type de service pour le rendez-vous'
-                                },
-                                preferred_date: {
-                                    type: 'string',
-                                    description: 'Date souhaitée au format YYYY-MM-DD'
-                                },
-                                notes: {
-                                    type: 'string',
-                                    description: 'Notes complémentaires'
-                                }
-                            }
-                        }
-                    },
-                    {
-                        type: 'function',
-                        name: 'view_requests',
-                        description: 'Consulter l\'état des demandes en cours',
-                        parameters: {
-                            type: 'object',
-                            properties: {
-                                filter: {
-                                    type: 'string',
-                                    enum: ['pending', 'in_progress', 'completed', 'all'],
-                                    description: 'Filtre pour le statut des demandes'
-                                }
+                                service_type: { type: 'string' },
+                                preferred_date: { type: 'string' }
                             }
                         }
                     },
                     {
                         type: 'function',
                         name: 'get_service_info',
-                        description: 'Obtenir des informations détaillées sur un service consulaire',
+                        description: 'Obtenir des informations sur un service municipal',
                         parameters: {
                             type: 'object',
                             properties: {
-                                service_type: {
-                                    type: 'string',
-                                    description: 'Type de service consulaire'
-                                }
+                                service_type: { type: 'string' }
                             },
                             required: ['service_type']
                         }
