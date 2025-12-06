@@ -14,6 +14,7 @@ export enum MunicipalRole {
     AGENT_MUNICIPAL = 'AGENT_MUNICIPAL',
     AGENT_ETAT_CIVIL = 'AGENT_ETAT_CIVIL',
     AGENT_TECHNIQUE = 'AGENT_TECHNIQUE',
+    AGENT_ACCUEIL = 'AGENT_ACCUEIL',
     STAGIAIRE = 'STAGIAIRE',
     
     // Usagers
@@ -180,11 +181,27 @@ export const MUNICIPAL_ROLE_MAPPING: Record<MunicipalRole, RoleMunicipalMapping>
         employmentStatus: EmploymentStatus.CONTRACTUEL,
         hierarchyLevel: 6,
         department: ServiceDepartment.ACCUEIL,
-        canManageRoles: [MunicipalRole.STAGIAIRE],
+        canManageRoles: [MunicipalRole.STAGIAIRE, MunicipalRole.AGENT_ACCUEIL],
         permissions: [
             'Traitement demandes',
             'Accueil usagers',
             'Saisie données'
+        ]
+    },
+
+    [MunicipalRole.AGENT_ACCUEIL]: {
+        role: MunicipalRole.AGENT_ACCUEIL,
+        label: 'Agent d\'Accueil',
+        labelFeminin: 'Agente d\'Accueil',
+        allowedOrgTypes: ['MAIRIE_CENTRALE', 'MAIRIE_ARRONDISSEMENT', 'MAIRIE_COMMUNE', 'COMMUNAUTE_URBAINE'],
+        employmentStatus: EmploymentStatus.CONTRACTUEL,
+        hierarchyLevel: 7,
+        department: ServiceDepartment.ACCUEIL,
+        canManageRoles: [],
+        permissions: [
+            'Accueil usagers',
+            'Orientation',
+            'Information générale'
         ]
     },
 
