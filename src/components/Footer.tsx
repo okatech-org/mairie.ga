@@ -1,4 +1,5 @@
 import { Landmark } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export const Footer = () => {
   return (
@@ -19,7 +20,15 @@ export const Footer = () => {
 
         <div className="max-w-6xl mx-auto mt-4 pt-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
           <p>© {new Date().getFullYear()} Réseau des Mairies du Gabon</p>
-          <p>v1.0.0</p>
+          <div className="flex items-center gap-4">
+            <Link to="/mentions-legales" className="hover:text-primary transition-colors">
+              Mentions légales
+            </Link>
+            <Link to="/politique-confidentialite" className="hover:text-primary transition-colors">
+              Confidentialité
+            </Link>
+            <span>v1.0.0</span>
+          </div>
         </div>
       </div>
     </footer>
