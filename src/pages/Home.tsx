@@ -390,14 +390,14 @@ export default function Home() {
 
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { icon: GraduationCap, title: "Éducation", desc: "Bourses scolaires" },
-                  { icon: Briefcase, title: "Emploi", desc: "Insertion jeunes" },
-                  { icon: Heart, title: "Solidarité", desc: "Aide familles" },
-                  { icon: TreePine, title: "Écologie", desc: "Actions vertes" },
+                  { icon: GraduationCap, title: "Éducation", desc: "Bourses scolaires", color: "text-emerald-500", bgColor: "bg-emerald-500/10" },
+                  { icon: Briefcase, title: "Emploi", desc: "Insertion jeunes", color: "text-orange-500", bgColor: "bg-orange-500/10" },
+                  { icon: Heart, title: "Solidarité", desc: "Aide familles", color: "text-pink-500", bgColor: "bg-pink-500/10" },
+                  { icon: TreePine, title: "Écologie", desc: "Actions vertes", color: "text-blue-500", bgColor: "bg-blue-500/10" },
                 ].map((item, index) => (
                   <div key={index} className="flex flex-col items-center text-center gap-2 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <item.icon className="h-5 w-5 text-primary" />
+                    <div className={`w-10 h-10 rounded-lg ${item.bgColor} flex items-center justify-center`}>
+                      <item.icon className={`h-5 w-5 ${item.color}`} />
                     </div>
                     <div>
                       <p className="font-semibold text-xs leading-tight">{item.title}</p>
