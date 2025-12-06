@@ -1,56 +1,63 @@
 import { supabase } from "@/integrations/supabase/client";
+import { Tables } from "@/integrations/supabase/types";
 
-export interface Profile {
-    id: string;
-    first_name: string;
-    last_name: string;
-    email: string;
-    role: string; // 'super_admin', 'admin', 'agent', 'citizen'
-    organization_id?: string;
-    phone?: string;
-    avatar_url?: string;
-    created_at: string;
-    updated_at: string;
+// Types basés sur la table profiles de Supabase
+export type Profile = Tables<"profiles">;
 
-    // Joined fields
+export interface ProfileWithRole extends Profile {
+    role?: string;
     organization?: {
         name: string;
-        metadata: any; // JSONB
+        settings: any;
     };
 }
 
 export const profileService = {
-    async getAll(): Promise<Profile[]> {
+    async getAll(): Promise<ProfileWithRole[]> {
         const { data, error } = await supabase
             .from('profiles')
             .select(`
                 *,
-                organization:organizations(name, metadata)
+                organization:organizations(name, settings)
             `)
             .order('created_at', { ascending: false });
 
         if (error) throw error;
-        return data as unknown as Profile[];
+        return data as unknown as ProfileWithRole[];
     },
 
-    async getById(id: string): Promise<Profile | null> {
+    async getById(id: string): Promise<ProfileWithRole | null> {
         const { data, error } = await supabase
             .from('profiles')
             .select(`
                 *,
-                organization:organizations(name, metadata)
+                organization:organizations(name, settings)
             `)
             .eq('id', id)
             .single();
 
         if (error) throw error;
-        return data as unknown as Profile;
+        return data as unknown as ProfileWithRole;
+    },
+
+    async getByUserId(userId: string): Promise<ProfileWithRole | null> {
+        const { data, error } = await supabase
+            .from('profiles')
+            .select(`
+                *,
+                organization:organizations(name, settings)
+            `)
+            .eq('user_id', userId)
+            .single();
+
+        if (error) throw error;
+        return data as unknown as ProfileWithRole;
     },
 
     async update(id: string, updates: Partial<Profile>): Promise<Profile> {
         const { data, error } = await supabase
             .from('profiles')
-            .update(updates)
+            .update(updates as any)
             .eq('id', id)
             .select()
             .single();
@@ -59,8 +66,15 @@ export const profileService = {
         return data as Profile;
     },
 
-    // Note: Creating profiles usually happens via Auth signup triggers, 
-    // but admins might create agent accounts. 
-    // For now, we'll assume profile creation is handled by Auth or a separate admin function that creates auth user + profile.
-    // We can add a create method if we have an Edge Function to create users.
+    async updateByUserId(userId: string, updates: Partial<Profile>): Promise<Profile> {
+        const { data, error } = await supabase
+            .from('profiles')
+            .update(updates as any)
+            .eq('user_id', userId)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data as Profile;
+    }
 };

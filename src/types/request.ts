@@ -1,78 +1,50 @@
-export enum RequestType {
-    PASSPORT = 'PASSPORT',
-    VISA = 'VISA',
-    CIVIL_REGISTRY = 'CIVIL_REGISTRY',
-    LEGALIZATION = 'LEGALIZATION',
-    CONSULAR_CARD = 'CONSULAR_CARD',
-    ATTESTATION = 'ATTESTATION'
-}
+import { Tables } from "@/integrations/supabase/types";
 
-export enum RequestStatus {
-    PENDING = 'PENDING',
-    IN_PROGRESS = 'IN_PROGRESS',
-    AWAITING_DOCUMENTS = 'AWAITING_DOCUMENTS',
-    VALIDATED = 'VALIDATED',
-    REJECTED = 'REJECTED',
-    COMPLETED = 'COMPLETED'
-}
+// Types basés sur Supabase
+export type ServiceRequest = Tables<"requests"> & {
+    service?: { name: string; category: string };
+    organization?: { name: string };
+};
 
-export enum RequestPriority {
-    LOW = 'LOW',
-    NORMAL = 'NORMAL',
-    HIGH = 'HIGH',
-    URGENT = 'URGENT'
-}
+export type RequestStatus = ServiceRequest["status"];
+export type RequestType = ServiceRequest["type"];
+export type RequestPriority = ServiceRequest["priority"];
 
-export interface ServiceRequest {
-    id: string;
-    profile_id: string;
-    service_id: string;
-    status: RequestStatus;
-    data: Record<string, any>; // JSONB
-    documents: Record<string, string>; // JSONB: { "docName": "url" }
-    created_at: string;
-    updated_at: string;
+// Enums pour compatibilité
+export const RequestStatusEnum = {
+    PENDING: 'PENDING',
+    IN_PROGRESS: 'IN_PROGRESS',
+    AWAITING_DOCUMENTS: 'AWAITING_DOCUMENTS',
+    VALIDATED: 'VALIDATED',
+    REJECTED: 'REJECTED',
+    COMPLETED: 'COMPLETED'
+} as const;
 
-    // Joined fields (optional)
-    service?: {
-        name: string;
-        type: string;
-    };
-    profile?: {
-        first_name: string;
-        last_name: string;
-        email: string;
-    };
-}
+export const RequestPriorityEnum = {
+    LOW: 'LOW',
+    NORMAL: 'NORMAL',
+    HIGH: 'HIGH',
+    URGENT: 'URGENT'
+} as const;
 
-export interface Request {
-    id: string;
-    type: RequestType;
-    status: RequestStatus;
-    priority: RequestPriority;
-
-    // Citizen information
-    citizenName: string;
-    citizenEmail: string;
-    citizenPhone?: string;
-
-    // Request details
-    subject: string;
-    description: string;
-
-    // Documents
-    attachedDocuments: string[];
-    requiredDocuments: string[];
-
-    // Dates
-    createdAt: Date;
-    updatedAt: Date;
-    expectedCompletionDate?: Date;
-
-    // Assignment
-    assignedTo?: string; // Agent ID
-    assignedToName?: string;
-
-    // Notes
-    internalNotes?: string;
-}
+// Types de démarches municipales
+export const RequestTypeLabels: Record<string, string> = {
+    'ACTE_NAISSANCE': 'Acte de naissance',
+    'ACTE_MARIAGE': 'Acte de mariage',
+    'ACTE_DECES': 'Acte de décès',
+    'CERTIFICAT_RESIDENCE': 'Certificat de résidence',
+    'CERTIFICAT_CELIBAT': 'Certificat de célibat',
+    'CERTIFICAT_VIE': 'Certificat de vie',
+    'LIVRET_FAMILLE': 'Livret de famille',
+    'PERMIS_CONSTRUIRE': 'Permis de construire',
+    'PATENTE': 'Patente commerciale',
+    'TAXE_FONCIERE': 'Taxe foncière',
+    'AUTORISATION_COMMERCE': 'Autorisation commerciale',
+    'ATTESTATION': 'Attestation',
+    'LEGALISATION': 'Légalisation',
+    // Legacy
+    'PASSPORT': 'Passeport',
+    'VISA': 'Visa',
+    'CIVIL_REGISTRY': 'État civil',
+    'CONSULAR_CARD': 'Carte consulaire'
+};

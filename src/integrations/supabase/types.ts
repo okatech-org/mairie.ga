@@ -81,51 +81,191 @@ export type Database = {
           },
         ]
       }
+      conversation_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          role: string
+          session_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          role: string
+          session_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          role?: string
+          session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "conversation_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversation_sessions: {
+        Row: {
+          context: Json | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      documents: {
+        Row: {
+          category: string | null
+          created_at: string
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          id: string
+          name: string
+          request_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          name: string
+          request_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          name?: string
+          request_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
+          address: string | null
           city: string | null
+          contact_email: string | null
+          contact_phone: string | null
           country: string | null
           country_code: string | null
           created_at: string
+          departement: string | null
           enabled_services: string[] | null
           id: string
           jurisdiction: string[]
+          logo_url: string | null
+          maire_name: string | null
           name: string
+          population: number | null
+          province: string | null
           settings: Json | null
           type: Database["public"]["Enums"]["organization_type"]
           updated_at: string
+          website: string | null
         }
         Insert: {
+          address?: string | null
           city?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
           country?: string | null
           country_code?: string | null
           created_at?: string
+          departement?: string | null
           enabled_services?: string[] | null
           id?: string
           jurisdiction: string[]
+          logo_url?: string | null
+          maire_name?: string | null
           name: string
+          population?: number | null
+          province?: string | null
           settings?: Json | null
           type: Database["public"]["Enums"]["organization_type"]
           updated_at?: string
+          website?: string | null
         }
         Update: {
+          address?: string | null
           city?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
           country?: string | null
           country_code?: string | null
           created_at?: string
+          departement?: string | null
           enabled_services?: string[] | null
           id?: string
           jurisdiction?: string[]
+          logo_url?: string | null
+          maire_name?: string | null
           name?: string
+          population?: number | null
+          province?: string | null
           settings?: Json | null
           type?: Database["public"]["Enums"]["organization_type"]
           updated_at?: string
+          website?: string | null
         }
         Relationships: []
       }
       profiles: {
         Row: {
           address: Json | null
+          arrondissement: string | null
           consulate_file: string | null
           created_at: string
           date_of_birth: string | null
@@ -133,13 +273,19 @@ export type Database = {
           first_name: string
           id: string
           last_name: string
+          lieu_naissance: string | null
           nationality: string | null
+          numero_cni: string | null
           phone: string | null
+          profession: string | null
+          quartier: string | null
+          situation_matrimoniale: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           address?: Json | null
+          arrondissement?: string | null
           consulate_file?: string | null
           created_at?: string
           date_of_birth?: string | null
@@ -147,13 +293,19 @@ export type Database = {
           first_name: string
           id?: string
           last_name: string
+          lieu_naissance?: string | null
           nationality?: string | null
+          numero_cni?: string | null
           phone?: string | null
+          profession?: string | null
+          quartier?: string | null
+          situation_matrimoniale?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           address?: Json | null
+          arrondissement?: string | null
           consulate_file?: string | null
           created_at?: string
           date_of_birth?: string | null
@@ -161,8 +313,13 @@ export type Database = {
           first_name?: string
           id?: string
           last_name?: string
+          lieu_naissance?: string | null
           nationality?: string | null
+          numero_cni?: string | null
           phone?: string | null
+          profession?: string | null
+          quartier?: string | null
+          situation_matrimoniale?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -178,11 +335,17 @@ export type Database = {
           citizen_name: string
           citizen_phone: string | null
           created_at: string
+          date_rdv: string | null
+          demandeur_type: string | null
           description: string | null
           expected_completion_date: string | null
           id: string
           internal_notes: string | null
+          montant_frais: number | null
+          motif_rejet: string | null
+          numero_dossier: string | null
           organization_id: string | null
+          paiement_statut: string | null
           priority: Database["public"]["Enums"]["request_priority"]
           required_documents: string[] | null
           service_id: string | null
@@ -200,11 +363,17 @@ export type Database = {
           citizen_name: string
           citizen_phone?: string | null
           created_at?: string
+          date_rdv?: string | null
+          demandeur_type?: string | null
           description?: string | null
           expected_completion_date?: string | null
           id?: string
           internal_notes?: string | null
+          montant_frais?: number | null
+          motif_rejet?: string | null
+          numero_dossier?: string | null
           organization_id?: string | null
+          paiement_statut?: string | null
           priority?: Database["public"]["Enums"]["request_priority"]
           required_documents?: string[] | null
           service_id?: string | null
@@ -222,11 +391,17 @@ export type Database = {
           citizen_name?: string
           citizen_phone?: string | null
           created_at?: string
+          date_rdv?: string | null
+          demandeur_type?: string | null
           description?: string | null
           expected_completion_date?: string | null
           id?: string
           internal_notes?: string | null
+          montant_frais?: number | null
+          motif_rejet?: string | null
+          numero_dossier?: string | null
           organization_id?: string | null
+          paiement_statut?: string | null
           priority?: Database["public"]["Enums"]["request_priority"]
           required_documents?: string[] | null
           service_id?: string | null

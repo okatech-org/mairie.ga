@@ -101,11 +101,11 @@ export const DocumentUploadZone: React.FC<DocumentUploadZoneProps> = ({ onDocume
                 .from('documents')
                 .insert({
                     user_id: user.id,
-                    filename: uploadedFile.file.name,
+                    name: uploadedFile.file.name,
                     file_path: filePath,
                     file_type: uploadedFile.file.type,
                     file_size: uploadedFile.file.size,
-                })
+                } as any)
                 .select()
                 .single();
 

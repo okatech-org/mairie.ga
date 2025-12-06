@@ -1,29 +1,31 @@
 import { supabase } from "@/integrations/supabase/client";
-import { Appointment, AppointmentStatus } from "@/types/appointment";
+import { Tables } from "@/integrations/supabase/types";
+
+// Types basés sur la table appointments de Supabase
+export type Appointment = Tables<"appointments">;
+export type AppointmentStatus = Appointment["status"];
 
 export const appointmentService = {
-    async getAll(filters?: { organizationId?: string; profileId?: string; date?: string }): Promise<Appointment[]> {
+    async getAll(filters?: { organizationId?: string; citizenId?: string; date?: string }): Promise<Appointment[]> {
         let query = supabase
             .from('appointments')
             .select(`
                 *,
-                service:consular_services(name, type),
-                profile:profiles(first_name, last_name, email, phone),
+                service:services(name, category),
                 organization:organizations(name)
             `)
-            .order('date', { ascending: true });
+            .order('appointment_date', { ascending: true });
 
         if (filters?.organizationId) {
             query = query.eq('organization_id', filters.organizationId);
         }
-        if (filters?.profileId) {
-            query = query.eq('profile_id', filters.profileId);
+        if (filters?.citizenId) {
+            query = query.eq('citizen_id', filters.citizenId);
         }
         if (filters?.date) {
-            // Assuming date is YYYY-MM-DD, we filter for that day
             const startOfDay = `${filters.date}T00:00:00`;
             const endOfDay = `${filters.date}T23:59:59`;
-            query = query.gte('date', startOfDay).lte('date', endOfDay);
+            query = query.gte('appointment_date', startOfDay).lte('appointment_date', endOfDay);
         }
 
         const { data, error } = await query;
@@ -37,8 +39,7 @@ export const appointmentService = {
             .from('appointments')
             .select(`
                 *,
-                service:consular_services(name, type),
-                profile:profiles(first_name, last_name, email, phone),
+                service:services(name, category),
                 organization:organizations(name)
             `)
             .eq('id', id)
@@ -48,10 +49,10 @@ export const appointmentService = {
         return data as unknown as Appointment;
     },
 
-    async create(appointment: Omit<Appointment, 'id' | 'created_at' | 'updated_at' | 'service' | 'profile' | 'organization'>): Promise<Appointment> {
+    async create(appointment: Omit<Appointment, 'id' | 'created_at' | 'updated_at'>): Promise<Appointment> {
         const { data, error } = await supabase
             .from('appointments')
-            .insert(appointment)
+            .insert(appointment as any)
             .select()
             .single();
 
@@ -74,7 +75,7 @@ export const appointmentService = {
     async update(id: string, updates: Partial<Appointment>): Promise<Appointment> {
         const { data, error } = await supabase
             .from('appointments')
-            .update(updates)
+            .update(updates as any)
             .eq('id', id)
             .select()
             .single();

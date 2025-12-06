@@ -1,34 +1,19 @@
-export enum AppointmentStatus {
-    PENDING = 'PENDING',
-    CONFIRMED = 'CONFIRMED',
-    CANCELLED = 'CANCELLED',
-    COMPLETED = 'COMPLETED',
-    NO_SHOW = 'NO_SHOW'
-}
+import { Tables } from "@/integrations/supabase/types";
 
-export interface Appointment {
-    id: string;
-    profile_id: string;
-    service_id: string;
-    organization_id: string;
-    date: string; // ISO timestamp
-    status: AppointmentStatus;
-    notes?: string;
-    created_at: string;
-    updated_at: string;
+// Types basés sur Supabase
+export type Appointment = Tables<"appointments"> & {
+    service?: { name: string; category: string };
+    organization?: { name: string };
+    profile?: { first_name: string; last_name: string; email: string; phone?: string };
+};
 
-    // Joined fields (optional)
-    service?: {
-        name: string;
-        type: string;
-    };
-    profile?: {
-        first_name: string;
-        last_name: string;
-        email: string;
-        phone?: string;
-    };
-    organization?: {
-        name: string;
-    };
-}
+export type AppointmentStatus = Appointment["status"];
+
+// Enum pour compatibilité legacy
+export const AppointmentStatusEnum = {
+    SCHEDULED: 'SCHEDULED',
+    CONFIRMED: 'CONFIRMED',
+    COMPLETED: 'COMPLETED',
+    CANCELLED: 'CANCELLED',
+    NO_SHOW: 'NO_SHOW'
+} as const;
