@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,16 @@ import familleImage from "@/assets/famille-acte-naissance.jpg";
 import entrepreneurImage from "@/assets/entrepreneur-patente.jpg";
 
 export default function Home() {
+  const [scrollY, setScrollY] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrollY(window.scrollY);
+    };
+    
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
   const services = [
     {
       icon: Baby,
@@ -130,11 +141,14 @@ export default function Home() {
       {/* Hero Section */}
       <section className="relative overflow-hidden min-h-[85vh] flex items-center">
         {/* Background Image with Strong Overlay for Better Contrast */}
-        <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 z-0 overflow-hidden">
           <img 
             src={heroImage} 
             alt="Mairie du Gabon - Accueil citoyens" 
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover transition-transform duration-100 will-change-transform"
+            style={{ 
+              transform: `translateY(${scrollY * 0.3}px) scale(${1 + scrollY * 0.0002})`,
+            }}
           />
           {/* Dark overlay for text readability */}
           <div className="absolute inset-0 bg-black/60" />
