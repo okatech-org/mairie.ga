@@ -52,6 +52,7 @@ import SettingsPage from './pages/SettingsPage';
 import MessagingPage from "./pages/MessagingPage";
 import IAstedInterfaceWrapper from "@/components/iasted/IAstedInterfaceWrapper";
 import ServicesCatalog from "./pages/ServicesCatalog";
+import Sensibilisation from "./pages/Sensibilisation";
 
 const queryClient = new QueryClient();
 
@@ -69,6 +70,7 @@ const App = () => (
                 <Route element={<PublicLayout />}>
                   <Route path="/" element={<GlobalHub />} />
                   <Route path="/services" element={<ServicesCatalog />} />
+                  <Route path="/sensibilisation" element={<Sensibilisation />} />
                   <Route path="/actualites" element={<Actualites />} />
                   <Route path="/login" element={<Login />} />
 
