@@ -3,10 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MOCK_GABONAIS_CITIZENS } from "@/data/mock-citizens";
 import { MOCK_CHILDREN } from "@/data/mock-children";
-import { FileText, Plane, UserCheck, Stamp, Plus, TrendingUp, Building2, MapPin } from "lucide-react";
+import { FileText, Plane, UserCheck, Stamp, Plus, TrendingUp, Building2, MapPin, ChevronRight } from "lucide-react";
 import { QuickChildProfileModal } from "@/components/registration/QuickChildProfileModal";
 import { useState } from "react";
-import DashboardLayout from "@/layouts/DashboardLayout";
+import { MunicipalServicesList } from "@/components/services/MunicipalServicesList";
+import { Link } from "react-router-dom";
 
 export default function CitizenDashboard() {
     const user = MOCK_GABONAIS_CITIZENS[0]; // Simulate logged in user
@@ -118,22 +119,16 @@ export default function CitizenDashboard() {
                 </div>
             </div>
 
-            <h2 className="text-xl font-bold mb-4">Mes Services Disponibles</h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                    { name: "Passeport", icon: FileText, color: "text-blue-500", bg: "bg-blue-50" },
-                    { name: "Visa de Sortie", icon: Plane, color: "text-green-500", bg: "bg-green-50" },
-                    { name: "État Civil", icon: UserCheck, color: "text-purple-500", bg: "bg-purple-50" },
-                    { name: "Légalisation", icon: Stamp, color: "text-orange-500", bg: "bg-orange-50" },
-                ].map((service) => (
-                    <div key={service.name} className="neu-raised p-6 rounded-xl hover:shadow-neo-lg transition-all cursor-pointer flex flex-col items-center text-center gap-4">
-                        <div className={`p-4 rounded-full neu-inset ${service.bg}`}>
-                            <service.icon className={`h-6 w-6 ${service.color}`} />
-                        </div>
-                        <span className="font-medium">{service.name}</span>
-                    </div>
-                ))}
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">Services Municipaux Disponibles</h2>
+                <Link to="/services">
+                    <Button variant="ghost" size="sm" className="gap-1">
+                        Voir tout
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </Link>
             </div>
+            <MunicipalServicesList maxItems={6} showSearch={false} />
 
             <QuickChildProfileModal
                 open={isChildModalOpen}

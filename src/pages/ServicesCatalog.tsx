@@ -37,12 +37,20 @@ const CATEGORY_INFO: Record<ServiceCategory, { label: string; icon: typeof Landm
   [ServiceCategory.VOIRIE]: { label: "Voirie", icon: Truck, color: "bg-slate-500" }
 };
 
-const ServiceCard = ({ service }: { service: MunicipalServiceInfo }) => {
+interface ServiceCardProps {
+  service: MunicipalServiceInfo;
+  onClick: () => void;
+}
+
+const ServiceCard = ({ service, onClick }: ServiceCardProps) => {
   const Icon = service.icon;
   const categoryInfo = CATEGORY_INFO[service.category];
   
   return (
-    <Card className="group hover:shadow-lg transition-all duration-300 hover:border-primary/50">
+    <Card 
+      className="group hover:shadow-lg transition-all duration-300 hover:border-primary/50 cursor-pointer"
+      onClick={onClick}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className={`p-2 rounded-lg ${categoryInfo.color}/10`}>
@@ -97,10 +105,29 @@ const ServiceCard = ({ service }: { service: MunicipalServiceInfo }) => {
   );
 };
 
+import { ServiceDetailModal } from "@/components/services/ServiceDetailModal";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
+
 const ServicesCatalog = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | "all">("all");
+  const [selectedService, setSelectedService] = useState<MunicipalServiceInfo | null>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+
+  const handleServiceClick = (service: MunicipalServiceInfo) => {
+    setSelectedService(service);
+    setDetailModalOpen(true);
+  };
+
+  const handleCreateRequest = (service: MunicipalServiceInfo) => {
+    toast.success("Demande initiée", {
+      description: `Vous allez créer une demande pour : ${service.name}`
+    });
+    navigate("/dashboard/citizen/requests");
+  };
   
   const services = useMemo(() => Object.values(MUNICIPAL_SERVICE_CATALOG), []);
   
@@ -200,7 +227,11 @@ const ServicesCatalog = () => {
         {filteredServices.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredServices.map((service) => (
-              <ServiceCard key={service.id} service={service} />
+              <ServiceCard 
+                key={service.id} 
+                service={service} 
+                onClick={() => handleServiceClick(service)}
+              />
             ))}
           </div>
         ) : (
@@ -261,6 +292,13 @@ const ServicesCatalog = () => {
           </div>
         </div>
       </div>
+
+      <ServiceDetailModal
+        service={selectedService}
+        open={detailModalOpen}
+        onOpenChange={setDetailModalOpen}
+        onCreateRequest={handleCreateRequest}
+      />
     </div>
   );
 };

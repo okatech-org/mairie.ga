@@ -6,6 +6,7 @@ import { FileText, BookKey, Users, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { InteractiveWorldMap } from "@/components/InteractiveWorldMap";
+import { GabonMairiesSection } from "@/components/home/GabonMairiesSection";
 
 export default function Home() {
   const { t } = useTranslation();
@@ -104,6 +105,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Gabon Mairies Section */}
+      <GabonMairiesSection />
 
       {/* CTA Section */}
       <section className="py-20 md:py-24 bg-muted/50">
