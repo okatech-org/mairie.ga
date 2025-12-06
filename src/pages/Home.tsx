@@ -163,11 +163,11 @@ export default function Home() {
               {/* Left Content */}
               <div className="max-w-2xl animate-fade-in">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-14 h-14 rounded-xl bg-white/20 dark:bg-primary/20 border border-white/30 dark:border-primary/30 flex items-center justify-center backdrop-blur-sm">
+                  <div className="w-14 h-14 rounded-xl bg-white/20 dark:bg-primary/20 border border-white/30 dark:border-primary/30 flex items-center justify-center backdrop-blur-sm dark:backdrop-blur-none">
                     <Landmark className="h-8 w-8 text-white dark:text-primary" />
                   </div>
                   <div>
-                    <Badge className="bg-emerald-500/20 text-emerald-100 dark:text-success border-emerald-500/30 dark:border-success/30 hover:bg-emerald-500/30 dark:hover:bg-success/30 backdrop-blur-sm">
+                    <Badge className="bg-emerald-500/20 text-emerald-100 dark:text-success border-emerald-500/30 dark:border-success/30 hover:bg-emerald-500/30 dark:hover:bg-success/30 backdrop-blur-sm dark:backdrop-blur-none">
                       🇬🇦 République Gabonaise
                     </Badge>
                   </div>
@@ -194,7 +194,7 @@ export default function Home() {
                     </Button>
                   </Link>
                   <Link to="/services">
-                    <Button size="lg" variant="outline" className="w-full sm:w-auto min-w-[200px] gap-2 h-12 text-base bg-white/10 dark:bg-white/5 border-white/30 dark:border-white/20 text-white hover:bg-white/20 dark:hover:bg-white/10 backdrop-blur-sm">
+                    <Button size="lg" variant="outline" className="w-full sm:w-auto min-w-[200px] gap-2 h-12 text-base bg-white/10 dark:bg-white/5 border-white/30 dark:border-white/20 text-white hover:bg-white/20 dark:hover:bg-white/10 backdrop-blur-sm dark:backdrop-blur-none">
                       <FileText className="h-5 w-5" />
                       Nos Services
                     </Button>
@@ -206,7 +206,7 @@ export default function Home() {
                   {features.map((feature, index) => (
                     <div 
                       key={index}
-                      className="flex items-center gap-3 p-3 rounded-lg bg-white/10 dark:bg-black/40 backdrop-blur-md border border-white/20 dark:border-white/10 hover:border-white/40 dark:hover:border-primary/50 transition-colors"
+                      className="flex items-center gap-3 p-3 rounded-lg bg-white/10 dark:bg-black/40 backdrop-blur-md dark:backdrop-blur-sm border border-white/20 dark:border-white/10 hover:border-white/40 dark:hover:border-primary/50 transition-colors"
                     >
                       <div className="w-10 h-10 rounded-lg bg-white/20 dark:bg-primary/20 flex items-center justify-center flex-shrink-0">
                         <feature.icon className="h-5 w-5 text-white dark:text-primary" />
@@ -227,7 +227,7 @@ export default function Home() {
                     <Link 
                       key={index}
                       to={link.href}
-                      className="group p-6 rounded-xl bg-white/95 dark:bg-card/90 backdrop-blur-sm border border-white/50 dark:border-border/50 shadow-lg dark:shadow-none hover:shadow-xl hover:border-primary/30 transition-all hover:-translate-y-1"
+                      className="group p-6 rounded-xl bg-white/95 dark:bg-card/90 backdrop-blur-sm dark:backdrop-blur-none border border-white/50 dark:border-border/50 shadow-lg dark:shadow-none hover:shadow-xl hover:border-primary/30 transition-all hover:-translate-y-1"
                     >
                       <div className={`w-14 h-14 rounded-xl ${link.color} flex items-center justify-center mb-4 transition-transform group-hover:scale-110`}>
                         <link.icon className="h-7 w-7" />
