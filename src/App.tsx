@@ -10,6 +10,8 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import Home from "./pages/Home";
 import Actualites from "./pages/Actualites";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import DemoPortal from "./pages/DemoPortal";
 import EntityPortal from "./pages/EntityPortal";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -81,6 +83,8 @@ const App = () => (
                   
                   <Route path="/actualites" element={<Actualites />} />
                   <Route path="/login" element={<Login />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
 
                   {/* REGISTRATION FLOW */}
                   <Route path="/register" element={<RegistrationChoice />} />

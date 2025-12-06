@@ -83,38 +83,32 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // First verify the PIN code
-      const { data: profiles, error: profileError } = await supabase
-        .from('profiles')
-        .select('user_id, pin_code, pin_enabled, first_name, last_name')
-        .eq('email', pinEmail)
-        .eq('pin_enabled', true)
-        .maybeSingle();
+      // Call the edge function for secure PIN verification
+      const { data, error: fnError } = await supabase.functions.invoke('auth-pin-login', {
+        body: { email: pinEmail, pinCode: pinCode }
+      });
 
-      if (profileError) {
-        setError("Erreur lors de la vérification");
+      if (fnError) {
+        setError("Erreur de connexion au serveur");
         setLoading(false);
         return;
       }
 
-      if (!profiles) {
-        setError("Email non trouvé ou code PIN non activé");
+      if (data.error) {
+        setError(data.error);
         setLoading(false);
         return;
       }
 
-      if (profiles.pin_code !== pinCode) {
-        setError("Code PIN incorrect");
-        setLoading(false);
-        return;
+      if (data.authLink) {
+        // Use the magic link to authenticate
+        toast.success(`Bienvenue ${data.user.firstName} !`);
+        
+        // Redirect to the auth link which will sign in the user
+        window.location.href = data.authLink;
+      } else {
+        setError("Erreur lors de l'authentification");
       }
-
-      // PIN is correct - switch to email/password with email pre-filled
-      toast.success(`Bienvenue ${profiles.first_name} ! Entrez votre mot de passe pour continuer.`);
-      setEmail(pinEmail);
-      setActiveTab("email");
-      setPinCode("");
-      
     } catch (err: any) {
       setError(err.message || "Erreur de connexion");
     } finally {

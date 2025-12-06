@@ -102,29 +102,20 @@ export async function loginWithEmail(email: string, password: string) {
 }
 
 export async function loginWithPin(email: string, pinCode: string) {
-  // First, verify the PIN code matches
-  const { data: profiles, error: profileError } = await supabase
-    .from('profiles')
-    .select('user_id, pin_code, pin_enabled')
-    .eq('email', email)
-    .eq('pin_enabled', true)
-    .maybeSingle();
+  // Call the edge function for secure PIN verification
+  const { data, error } = await supabase.functions.invoke('auth-pin-login', {
+    body: { email, pinCode }
+  });
 
-  if (profileError || !profiles) {
-    throw new Error("Email non trouvé ou code PIN non activé");
+  if (error) {
+    throw new Error("Erreur de connexion au serveur");
   }
 
-  if (profiles.pin_code !== pinCode) {
-    throw new Error("Code PIN incorrect");
+  if (data.error) {
+    throw new Error(data.error);
   }
 
-  // PIN is correct, but we need the password to sign in
-  // For PIN login, we use a special flow - the user must have been authenticated before
-  // and we'll use their session or a magic link
-  
-  // For now, return profile info - in production, you'd implement a more secure flow
-  // using Supabase custom tokens or a backend verification
-  throw new Error("La connexion par code PIN nécessite une première connexion par mot de passe");
+  return data;
 }
 
 export async function logout() {
