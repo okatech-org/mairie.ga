@@ -34,7 +34,14 @@ export function GabonaisRegistrationForm() {
         professionalStatus: '',
         employer: '',
         profession: '',
+        email: '',
+        phone: '',
+        password: '',
+        confirmPassword: '',
     });
+    
+    const [acceptTerms, setAcceptTerms] = useState(false);
+    const [acceptPrivacy, setAcceptPrivacy] = useState(false);
 
     // Écouter les événements d'iAsted
     useEffect(() => {
@@ -375,21 +382,121 @@ export function GabonaisRegistrationForm() {
                     )}
 
                     {step === 6 && (
-                        <div className="space-y-4">
-                            <Alert className="bg-blue-50 border-blue-200">
-                                <CheckCircle2 className="h-4 w-4 text-blue-600" />
+                        <div className="space-y-6">
+                            {/* Champs de contact et compte */}
+                            <div className="space-y-4">
+                                <h3 className="font-medium text-sm text-muted-foreground">Créer votre compte</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <IAstedLabel filledByIasted={filledByIasted.has('email')}>Email *</IAstedLabel>
+                                        <IAstedInput 
+                                            type="email"
+                                            placeholder="votre@email.com" 
+                                            value={formData.email}
+                                            onChange={(e) => handleInputChange('email', e.target.value)}
+                                            filledByIasted={filledByIasted.has('email')}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <IAstedLabel filledByIasted={filledByIasted.has('phone')}>Téléphone *</IAstedLabel>
+                                        <IAstedInput 
+                                            type="tel"
+                                            placeholder="+241 XX XX XX XX" 
+                                            value={formData.phone}
+                                            onChange={(e) => handleInputChange('phone', e.target.value)}
+                                            filledByIasted={filledByIasted.has('phone')}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Mot de passe *</Label>
+                                        <Input 
+                                            type="password"
+                                            placeholder="••••••••" 
+                                            value={formData.password}
+                                            onChange={(e) => handleInputChange('password', e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Confirmer mot de passe *</Label>
+                                        <Input 
+                                            type="password"
+                                            placeholder="••••••••" 
+                                            value={formData.confirmPassword}
+                                            onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Récapitulatif */}
+                            <div className="p-4 bg-muted/30 rounded-lg space-y-3">
+                                <h3 className="font-medium text-sm">Récapitulatif de votre inscription</h3>
+                                <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Nom complet:</span>
+                                        <span className="font-medium">{formData.firstName} {formData.lastName}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Date de naissance:</span>
+                                        <span className="font-medium">{formData.dateOfBirth || '-'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Lieu de naissance:</span>
+                                        <span className="font-medium">{formData.placeOfBirth || '-'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Situation:</span>
+                                        <span className="font-medium">
+                                            {formData.maritalStatus === 'SINGLE' ? 'Célibataire' :
+                                             formData.maritalStatus === 'MARRIED' ? 'Marié(e)' :
+                                             formData.maritalStatus === 'DIVORCED' ? 'Divorcé(e)' :
+                                             formData.maritalStatus === 'WIDOWED' ? 'Veuf/Veuve' : '-'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Ville:</span>
+                                        <span className="font-medium">{formData.city || '-'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Profession:</span>
+                                        <span className="font-medium">{formData.profession || '-'}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <Alert className="bg-primary/5 border-primary/20">
+                                <CheckCircle2 className="h-4 w-4 text-primary" />
                                 <AlertTitle>Prêt à soumettre</AlertTitle>
                                 <AlertDescription>
-                                    Votre dossier sera transmis au service consulaire pour validation.
-                                    Vous recevrez une notification dès que votre statut changera.
+                                    Votre dossier sera transmis au service municipal pour validation.
+                                    Vous recevrez une notification par email dès que votre statut changera.
                                 </AlertDescription>
                             </Alert>
 
-                            <div className="space-y-2">
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox id="terms" />
-                                    <label htmlFor="terms" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                        Je certifie sur l'honneur l'exactitude des informations fournies
+                            <div className="space-y-3">
+                                <div className="flex items-start space-x-2">
+                                    <Checkbox 
+                                        id="terms" 
+                                        checked={acceptTerms}
+                                        onCheckedChange={(checked) => setAcceptTerms(checked === true)}
+                                    />
+                                    <label htmlFor="terms" className="text-sm leading-tight cursor-pointer">
+                                        Je certifie sur l'honneur l'exactitude des informations fournies et j'accepte les{' '}
+                                        <a href="/cgu" className="text-primary underline">conditions générales d'utilisation</a>
+                                    </label>
+                                </div>
+                                <div className="flex items-start space-x-2">
+                                    <Checkbox 
+                                        id="privacy" 
+                                        checked={acceptPrivacy}
+                                        onCheckedChange={(checked) => setAcceptPrivacy(checked === true)}
+                                    />
+                                    <label htmlFor="privacy" className="text-sm leading-tight cursor-pointer">
+                                        J'accepte la{' '}
+                                        <a href="/politique-confidentialite" className="text-primary underline">politique de confidentialité</a>{' '}
+                                        et le traitement de mes données personnelles
                                     </label>
                                 </div>
                             </div>
@@ -409,9 +516,12 @@ export function GabonaisRegistrationForm() {
                                     Suivant
                                 </Button>
                             ) : (
-                                <Button onClick={handleSubmit} disabled={loading}>
+                                <Button 
+                                    onClick={handleSubmit} 
+                                    disabled={loading || !acceptTerms || !acceptPrivacy || !formData.email || !formData.password || formData.password !== formData.confirmPassword}
+                                >
                                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Soumettre le dossier
+                                    Créer mon compte
                                 </Button>
                             )}
                         </div>

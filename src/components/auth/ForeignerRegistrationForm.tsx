@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle2, Upload, Loader2, Clock, AlertTriangle, Plane, MapPin, User, FileText, Briefcase } from "lucide-react";
 import { RequestReason } from "@/types/citizen";
-import { formAssistantStore, useFormAssistant } from "@/stores/formAssistantStore";
+import { formAssistantStore } from "@/stores/formAssistantStore";
 import { IAstedLabel, IAstedInput, IAstedSelectIndicator, getIAstedSelectClasses } from "@/components/ui/iasted-form-fields";
 
 export function ForeignerRegistrationForm() {
@@ -39,7 +40,12 @@ export function ForeignerRegistrationForm() {
         accommodationType: '',
         gabonAddress: '',
         additionalNotes: '',
+        password: '',
+        confirmPassword: '',
     });
+    
+    const [acceptTerms, setAcceptTerms] = useState(false);
+    const [acceptLaws, setAcceptLaws] = useState(false);
 
     // Écouter les événements d'iAsted
     useEffect(() => {
@@ -432,6 +438,90 @@ export function ForeignerRegistrationForm() {
 
                     {step === 6 && (
                         <div className="space-y-6">
+                            {/* Champs de compte */}
+                            <div className="space-y-4">
+                                <h3 className="font-medium text-sm text-muted-foreground">Créer votre compte</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <IAstedLabel filledByIasted={filledByIasted.has('email')}>Email *</IAstedLabel>
+                                        <IAstedInput 
+                                            type="email"
+                                            placeholder="your@email.com" 
+                                            value={formData.email}
+                                            onChange={(e) => handleInputChange('email', e.target.value)}
+                                            filledByIasted={filledByIasted.has('email')}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <IAstedLabel filledByIasted={filledByIasted.has('phone')}>Téléphone *</IAstedLabel>
+                                        <IAstedInput 
+                                            type="tel"
+                                            placeholder="+XX XXX XXX XXX" 
+                                            value={formData.phone}
+                                            onChange={(e) => handleInputChange('phone', e.target.value)}
+                                            filledByIasted={filledByIasted.has('phone')}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Mot de passe *</Label>
+                                        <Input 
+                                            type="password"
+                                            placeholder="••••••••" 
+                                            value={formData.password}
+                                            onChange={(e) => handleInputChange('password', e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Confirmer mot de passe *</Label>
+                                        <Input 
+                                            type="password"
+                                            placeholder="••••••••" 
+                                            value={formData.confirmPassword}
+                                            onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Récapitulatif */}
+                            <div className="p-4 bg-muted/30 rounded-lg space-y-3">
+                                <h3 className="font-medium text-sm">Récapitulatif de votre demande</h3>
+                                <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Nom complet:</span>
+                                        <span className="font-medium">{formData.firstName} {formData.lastName}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Nationalité:</span>
+                                        <span className="font-medium">{formData.nationality || '-'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Passeport:</span>
+                                        <span className="font-medium">{formData.passportNumber || '-'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Motif:</span>
+                                        <span className="font-medium">
+                                            {reason === RequestReason.VISA_REQUEST ? 'Demande de visa' :
+                                             reason === RequestReason.LEGALIZATION ? 'Légalisation' :
+                                             reason === RequestReason.CERTIFICATE_OF_LIFE ? 'Certificat de vie' :
+                                             reason === RequestReason.SPECIAL_ASSISTANCE ? 'Assistance spéciale' : 
+                                             reason === RequestReason.DOCUMENT_VERIFICATION ? 'Vérification de documents' : '-'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Arrivée:</span>
+                                        <span className="font-medium">{formData.arrivalDate || '-'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Départ:</span>
+                                        <span className="font-medium">{formData.departureDate || '-'}</span>
+                                    </div>
+                                </div>
+                            </div>
+
                             <Alert className="bg-yellow-50 dark:bg-yellow-950/30 border-yellow-200 dark:border-yellow-900/50">
                                 <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
                                 <AlertTitle>Délai de traitement</AlertTitle>
@@ -442,16 +532,25 @@ export function ForeignerRegistrationForm() {
                             </Alert>
 
                             <div className="space-y-3">
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox id="terms1" />
-                                    <label htmlFor="terms1" className="text-sm font-medium leading-none">
-                                        Je certifie que toutes les informations sont exactes
+                                <div className="flex items-start space-x-2">
+                                    <Checkbox 
+                                        id="terms1" 
+                                        checked={acceptTerms}
+                                        onCheckedChange={(checked) => setAcceptTerms(checked === true)}
+                                    />
+                                    <label htmlFor="terms1" className="text-sm leading-tight cursor-pointer">
+                                        Je certifie que toutes les informations sont exactes et j'accepte les{' '}
+                                        <a href="/cgu" className="text-primary underline">conditions générales d'utilisation</a>
                                     </label>
                                 </div>
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox id="terms2" />
-                                    <label htmlFor="terms2" className="text-sm font-medium leading-none">
-                                        Je m'engage à respecter les lois de la République Gabonaise
+                                <div className="flex items-start space-x-2">
+                                    <Checkbox 
+                                        id="terms2" 
+                                        checked={acceptLaws}
+                                        onCheckedChange={(checked) => setAcceptLaws(checked === true)}
+                                    />
+                                    <label htmlFor="terms2" className="text-sm leading-tight cursor-pointer">
+                                        Je m'engage à respecter les lois de la République Gabonaise durant mon séjour
                                     </label>
                                 </div>
                             </div>
@@ -471,9 +570,13 @@ export function ForeignerRegistrationForm() {
                                     Suivant
                                 </Button>
                             ) : (
-                                <Button onClick={handleSubmit} disabled={loading} className="bg-blue-600 hover:bg-blue-700">
+                                <Button 
+                                    onClick={handleSubmit} 
+                                    disabled={loading || !acceptTerms || !acceptLaws || !formData.email || !formData.password || formData.password !== formData.confirmPassword} 
+                                    className="bg-blue-600 hover:bg-blue-700"
+                                >
                                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Soumettre la demande
+                                    Créer mon compte
                                 </Button>
                             )}
                         </div>
