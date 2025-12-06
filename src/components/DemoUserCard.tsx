@@ -74,68 +74,55 @@ export function DemoUserCard({ user }: DemoUserCardProps) {
   };
 
   return (
-    <Card className="hover-scale transition-all duration-300 border-l-4" style={{ borderLeftColor: 'hsl(var(--primary))' }}>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex gap-2 flex-wrap">
-            <Badge className={getRoleColor()}>
-              <span className="mr-1">{user.badge}</span>
-              {getRoleDisplayLabel()}
-            </Badge>
-            {user.hierarchyLevel && (
-              <Badge variant="outline" className="text-xs border-primary/50 text-primary">
-                Niveau {user.hierarchyLevel}
-              </Badge>
-            )}
-          </div>
+    <Card className="transition-all duration-200 hover:shadow-md border-l-4" style={{ borderLeftColor: 'hsl(var(--primary))' }}>
+      <CardHeader className="p-3 pb-2">
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <Badge className={`${getRoleColor()} text-[10px] md:text-xs`}>
+            <span className="mr-1">{user.badge}</span>
+            <span className="hidden sm:inline">{getRoleDisplayLabel()}</span>
+            <span className="sm:hidden">{getRoleDisplayLabel().split(' ')[0]}</span>
+          </Badge>
           {entityInfo && (
-            <span className="text-2xl">🇬🇦</span>
+            <span className="text-lg">🇬🇦</span>
           )}
         </div>
-        <CardTitle className="text-lg">{user.name}</CardTitle>
-        <CardDescription className="text-sm">{user.description}</CardDescription>
-
-        {user.employmentStatus && (
-          <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-            <Briefcase className="h-3 w-3" />
-            <span className="font-medium">{user.employmentStatus}</span>
-          </div>
-        )}
+        <CardTitle className="text-sm md:text-base leading-tight">{user.name}</CardTitle>
+        <CardDescription className="text-xs line-clamp-2">{user.description}</CardDescription>
 
         {entityInfo && (
-          <p className="text-xs text-muted-foreground mt-1">
-            📍 {mairie?.city || (entity as any)?.city}, {mairie?.province || 'Gabon'}
+          <p className="text-[10px] md:text-xs text-muted-foreground mt-1">
+            📍 {mairie?.city || (entity as any)?.city}
           </p>
         )}
       </CardHeader>
 
-      <CardContent className="py-2">
+      <CardContent className="p-3 pt-0">
         <div>
-          <h4 className="font-semibold text-xs mb-2 text-muted-foreground">PERMISSIONS :</h4>
-          <ul className="space-y-1">
-            {user.permissions.slice(0, 3).map((permission, index) => (
-              <li key={index} className="text-xs flex items-start gap-2">
+          <h4 className="font-semibold text-[10px] md:text-xs mb-1 text-muted-foreground">PERMISSIONS :</h4>
+          <ul className="space-y-0.5">
+            {user.permissions.slice(0, 2).map((permission, index) => (
+              <li key={index} className="text-[10px] md:text-xs flex items-start gap-1">
                 <Check className="h-3 w-3 text-green-600 mt-0.5 flex-shrink-0" />
-                <span className="text-muted-foreground">{permission}</span>
+                <span className="text-muted-foreground line-clamp-1">{permission}</span>
               </li>
             ))}
-            {user.permissions.length > 3 && (
-              <li className="text-xs text-muted-foreground italic">
-                +{user.permissions.length - 3} autres permissions
+            {user.permissions.length > 2 && (
+              <li className="text-[10px] md:text-xs text-muted-foreground italic">
+                +{user.permissions.length - 2} autres
               </li>
             )}
           </ul>
         </div>
       </CardContent>
 
-      <CardFooter className="pt-2">
+      <CardFooter className="p-3 pt-0">
         <Button
           onClick={handleSimulate}
-          className="w-full"
+          className="w-full h-8 text-xs"
           variant="default"
           size="sm"
         >
-          Simuler cet utilisateur
+          Simuler
         </Button>
       </CardFooter>
     </Card>
