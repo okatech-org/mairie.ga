@@ -1,8 +1,8 @@
-import { Organization, OrganizationType, OrganizationStatus } from '@/types/organization';
-import { DIPLOMATIC_NETWORK } from './mock-diplomatic-network';
+import { Organization, OrganizationType } from '@/types/organization';
+import { MAIRIES_GABON } from './mock-mairies-network';
 
 export const MOCK_ORGANIZATIONS: Organization[] = [
-    ...DIPLOMATIC_NETWORK
+    ...MAIRIES_GABON
 ];
 
 // Re-export for compatibility
