@@ -277,6 +277,8 @@ export type Database = {
           nationality: string | null
           numero_cni: string | null
           phone: string | null
+          pin_code: string | null
+          pin_enabled: boolean | null
           profession: string | null
           quartier: string | null
           situation_matrimoniale: string | null
@@ -297,6 +299,8 @@ export type Database = {
           nationality?: string | null
           numero_cni?: string | null
           phone?: string | null
+          pin_code?: string | null
+          pin_enabled?: boolean | null
           profession?: string | null
           quartier?: string | null
           situation_matrimoniale?: string | null
@@ -317,6 +321,8 @@ export type Database = {
           nationality?: string | null
           numero_cni?: string | null
           phone?: string | null
+          pin_code?: string | null
+          pin_enabled?: boolean | null
           profession?: string | null
           quartier?: string | null
           situation_matrimoniale?: string | null

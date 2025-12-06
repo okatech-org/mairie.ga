@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,13 +7,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { CheckCircle2, Upload, Loader2, FileText, User, Users, MapPin, Briefcase, Eye } from "lucide-react";
+import { CheckCircle2, Upload, Loader2, FileText, User, Users, MapPin, Briefcase, Eye, Key, Copy, Check } from "lucide-react";
 import { formAssistantStore, useFormAssistant } from "@/stores/formAssistantStore";
 import { IAstedLabel, IAstedInput, IAstedSelectIndicator, getIAstedSelectClasses } from "@/components/ui/iasted-form-fields";
+import { registerUser, generatePinCode } from "@/services/authService";
+import { PinCodeInput } from "./PinCodeInput";
+import { toast } from "sonner";
 
 export function GabonaisRegistrationForm() {
+    const navigate = useNavigate();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [registrationComplete, setRegistrationComplete] = useState(false);
+    const [generatedPin, setGeneratedPin] = useState("");
+    const [pinCopied, setPinCopied] = useState(false);
     
     // Tracker les champs remplis par iAsted
     const [filledByIasted, setFilledByIasted] = useState<Set<string>>(new Set());
@@ -106,12 +114,63 @@ export function GabonaisRegistrationForm() {
         }, 800);
     };
 
-    const handleSubmit = () => {
+    const copyPinToClipboard = () => {
+        navigator.clipboard.writeText(generatedPin);
+        setPinCopied(true);
+        toast.success("Code PIN copié !");
+        setTimeout(() => setPinCopied(false), 2000);
+    };
+
+    const handleSubmit = async () => {
         setLoading(true);
-        setTimeout(() => {
+        
+        try {
+            // Validate passwords match
+            if (formData.password !== formData.confirmPassword) {
+                toast.error("Les mots de passe ne correspondent pas");
+                setLoading(false);
+                return;
+            }
+
+            if (formData.password.length < 6) {
+                toast.error("Le mot de passe doit contenir au moins 6 caractères");
+                setLoading(false);
+                return;
+            }
+
+            // Generate PIN code
+            const pinCode = generatePinCode();
+            setGeneratedPin(pinCode);
+
+            // Register user
+            await registerUser({
+                email: formData.email,
+                password: formData.password,
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                dateOfBirth: formData.dateOfBirth,
+                phone: formData.phone,
+                nationality: 'Gabonaise',
+                placeOfBirth: formData.placeOfBirth,
+                profession: formData.profession,
+                maritalStatus: formData.maritalStatus,
+                address: formData.address,
+                city: formData.city,
+                pinCode,
+            });
+
+            setRegistrationComplete(true);
+            toast.success("Compte créé avec succès !");
+        } catch (error: any) {
+            console.error('Registration error:', error);
+            if (error.message?.includes('User already registered')) {
+                toast.error("Cet email est déjà utilisé");
+            } else {
+                toast.error(error.message || "Erreur lors de l'inscription");
+            }
+        } finally {
             setLoading(false);
-            alert("Inscription soumise pour validation !");
-        }, 1500);
+        }
     };
 
     return (
@@ -466,66 +525,126 @@ export function GabonaisRegistrationForm() {
                                 </div>
                             </div>
 
-                            <Alert className="bg-primary/5 border-primary/20">
-                                <CheckCircle2 className="h-4 w-4 text-primary" />
-                                <AlertTitle>Prêt à soumettre</AlertTitle>
-                                <AlertDescription>
-                                    Votre dossier sera transmis au service municipal pour validation.
-                                    Vous recevrez une notification par email dès que votre statut changera.
-                                </AlertDescription>
-                            </Alert>
+                            {!registrationComplete && (
+                                <Alert className="bg-primary/5 border-primary/20">
+                                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                                    <AlertTitle>Prêt à soumettre</AlertTitle>
+                                    <AlertDescription>
+                                        Votre dossier sera transmis au service municipal pour validation.
+                                        Vous recevrez une notification par email dès que votre statut changera.
+                                    </AlertDescription>
+                                </Alert>
+                            )}
 
-                            <div className="space-y-3">
-                                <div className="flex items-start space-x-2">
-                                    <Checkbox 
-                                        id="terms" 
-                                        checked={acceptTerms}
-                                        onCheckedChange={(checked) => setAcceptTerms(checked === true)}
-                                    />
-                                    <label htmlFor="terms" className="text-sm leading-tight cursor-pointer">
-                                        Je certifie sur l'honneur l'exactitude des informations fournies et j'accepte les{' '}
-                                        <a href="/cgu" className="text-primary underline">conditions générales d'utilisation</a>
-                                    </label>
+                            {registrationComplete && (
+                                <div className="space-y-6">
+                                    <Alert className="bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900/50">
+                                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                        <AlertTitle className="text-green-800 dark:text-green-300">Inscription réussie !</AlertTitle>
+                                        <AlertDescription className="text-green-700 dark:text-green-400">
+                                            Votre compte a été créé avec succès. Conservez précieusement votre code PIN ci-dessous.
+                                        </AlertDescription>
+                                    </Alert>
+
+                                    <div className="p-6 bg-primary/5 rounded-lg border-2 border-primary/20 space-y-4">
+                                        <div className="flex items-center justify-center gap-2 text-primary">
+                                            <Key className="h-5 w-5" />
+                                            <h3 className="font-semibold">Votre Code PIN de Connexion</h3>
+                                        </div>
+                                        
+                                        <PinCodeInput 
+                                            value={generatedPin} 
+                                            onChange={() => {}} 
+                                            disabled 
+                                        />
+
+                                        <Button 
+                                            variant="outline" 
+                                            onClick={copyPinToClipboard}
+                                            className="w-full"
+                                        >
+                                            {pinCopied ? (
+                                                <>
+                                                    <Check className="mr-2 h-4 w-4" />
+                                                    Copié !
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Copy className="mr-2 h-4 w-4" />
+                                                    Copier le code PIN
+                                                </>
+                                            )}
+                                        </Button>
+
+                                        <p className="text-xs text-center text-muted-foreground">
+                                            Ce code vous permettra de vous connecter rapidement lors de vos prochaines visites.
+                                        </p>
+                                    </div>
+
+                                    <Button 
+                                        onClick={() => navigate('/login')} 
+                                        className="w-full"
+                                    >
+                                        Accéder à mon espace
+                                    </Button>
                                 </div>
-                                <div className="flex items-start space-x-2">
-                                    <Checkbox 
-                                        id="privacy" 
-                                        checked={acceptPrivacy}
-                                        onCheckedChange={(checked) => setAcceptPrivacy(checked === true)}
-                                    />
-                                    <label htmlFor="privacy" className="text-sm leading-tight cursor-pointer">
-                                        J'accepte la{' '}
-                                        <a href="/politique-confidentialite" className="text-primary underline">politique de confidentialité</a>{' '}
-                                        et le traitement de mes données personnelles
-                                    </label>
+                            )}
+
+                            {!registrationComplete && (
+                                <div className="space-y-3">
+                                    <div className="flex items-start space-x-2">
+                                        <Checkbox 
+                                            id="terms" 
+                                            checked={acceptTerms}
+                                            onCheckedChange={(checked) => setAcceptTerms(checked === true)}
+                                        />
+                                        <label htmlFor="terms" className="text-sm leading-tight cursor-pointer">
+                                            Je certifie sur l'honneur l'exactitude des informations fournies et j'accepte les{' '}
+                                            <a href="/cgu" className="text-primary underline">conditions générales d'utilisation</a>
+                                        </label>
+                                    </div>
+                                    <div className="flex items-start space-x-2">
+                                        <Checkbox 
+                                            id="privacy" 
+                                            checked={acceptPrivacy}
+                                            onCheckedChange={(checked) => setAcceptPrivacy(checked === true)}
+                                        />
+                                        <label htmlFor="privacy" className="text-sm leading-tight cursor-pointer">
+                                            J'accepte la{' '}
+                                            <a href="/politique-confidentialite" className="text-primary underline">politique de confidentialité</a>{' '}
+                                            et le traitement de mes données personnelles
+                                        </label>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     )}
 
-                    <div className="flex justify-between pt-4">
-                        {step > 1 && (
-                            <Button variant="outline" onClick={() => setStep(step - 1)} disabled={loading}>
-                                Précédent
-                            </Button>
-                        )}
-                        <div className="ml-auto">
-                            {step < 6 ? (
-                                <Button onClick={handleNext} disabled={loading}>
-                                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Suivant
-                                </Button>
-                            ) : (
-                                <Button 
-                                    onClick={handleSubmit} 
-                                    disabled={loading || !acceptTerms || !acceptPrivacy || !formData.email || !formData.password || formData.password !== formData.confirmPassword}
-                                >
-                                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Créer mon compte
+                    {!registrationComplete && (
+                        <div className="flex justify-between pt-4">
+                            {step > 1 && (
+                                <Button variant="outline" onClick={() => setStep(step - 1)} disabled={loading}>
+                                    Précédent
                                 </Button>
                             )}
+                            <div className="ml-auto">
+                                {step < 6 ? (
+                                    <Button onClick={handleNext} disabled={loading}>
+                                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        Suivant
+                                    </Button>
+                                ) : (
+                                    <Button 
+                                        onClick={handleSubmit} 
+                                        disabled={loading || !acceptTerms || !acceptPrivacy || !formData.email || !formData.password || formData.password !== formData.confirmPassword}
+                                    >
+                                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        Créer mon compte
+                                    </Button>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </CardContent>
             </Card>
         </div>
