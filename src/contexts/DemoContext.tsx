@@ -17,7 +17,7 @@ interface DemoContextValue {
   isSimulating: boolean;
 }
 
-const DemoContext = createContext<DemoContextValue | undefined>(undefined);
+export const DemoContext = createContext<DemoContextValue | undefined>(undefined);
 
 const STORAGE_KEY = 'mairies_demo_simulation';
 
