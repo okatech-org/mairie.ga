@@ -13,14 +13,14 @@
     "success": "Succès"
   },
   "header": {
-    "title": "Consulat.ga",
-    "subtitleNormal": "Réseau Consulaire Gabonais",
+    "title": "Mairies.ga",
+    "subtitleNormal": "Réseau des Mairies du Gabon",
     "subtitleDemo": "Mode Simulation Active",
-    "worldNetwork": "Réseau Mondial",
+    "nationalNetwork": "Réseau National",
     "news": "Actualités",
     "demoPortal": "Portail Démo",
     "messaging": "Messagerie",
-    "admin": "Admin"
+    "admin": "Administration"
   },
   "simulation": {
     "active": "Mode Démo Actif:",
@@ -28,27 +28,27 @@
   },
   "home": {
     "hero": {
-      "title": "Consulat du Gabon",
-      "subtitle": "Vos services consulaires en ligne",
-      "description": "Plateforme numérique moderne pour tous vos besoins consulaires"
+      "title": "Mairies du Gabon",
+      "subtitle": "Vos services municipaux en ligne",
+      "description": "Plateforme numérique moderne pour tous vos services administratifs locaux"
     },
     "services": {
-      "title": "Nos Services",
-      "passport": {
-        "title": "Passeports",
-        "description": "Demande et renouvellement de passeport"
-      },
-      "visa": {
-        "title": "Visas",
-        "description": "Demandes de visa pour le Gabon"
-      },
-      "civilRegistry": {
+      "title": "Nos Services Municipaux",
+      "etatCivil": {
         "title": "État Civil",
         "description": "Actes de naissance, mariage, décès"
       },
-      "legalization": {
+      "urbanisme": {
+        "title": "Urbanisme",
+        "description": "Permis de construire, certificats"
+      },
+      "fiscalite": {
+        "title": "Fiscalité Locale",
+        "description": "Patentes, taxes foncières"
+      },
+      "legalisation": {
         "title": "Légalisation",
-        "description": "Légalisation de documents"
+        "description": "Certification de documents"
       }
     },
     "features": {
@@ -75,18 +75,20 @@
     "firstName": "Prénom",
     "lastName": "Nom",
     "citizenship": {
-      "title": "Type de Citoyen",
+      "title": "Type d'Usager",
       "gabonese": "Citoyen Gabonais",
-      "foreign": "Étranger"
+      "foreign": "Étranger Résident",
+      "company": "Personne Morale"
     },
     "register": {
       "gabonese": "S'inscrire en tant que Gabonais",
-      "foreigner": "S'inscrire en tant qu'étranger"
+      "foreigner": "S'inscrire en tant qu'étranger",
+      "company": "S'inscrire en tant qu'entreprise"
     }
   },
   "dashboard": {
     "citizen": {
-      "title": "Tableau de Bord Citoyen",
+      "title": "Tableau de Bord Usager",
       "requests": "Mes Demandes",
       "documents": "Mes Documents",
       "associations": "Mes Associations",
@@ -100,10 +102,42 @@
       "appointments": "Rendez-vous"
     },
     "admin": {
-      "title": "Tableau de Bord Admin",
-      "agents": "Agents",
+      "title": "Tableau de Bord Mairie",
+      "agents": "Personnel",
       "organization": "Organisation",
       "settings": "Paramètres"
+    }
+  },
+  "municipal": {
+    "services": {
+      "etatCivil": "État Civil",
+      "urbanisme": "Urbanisme & Habitat",
+      "fiscalite": "Fiscalité Locale",
+      "affairesSociales": "Affaires Sociales",
+      "legalisation": "Légalisation",
+      "entreprises": "Entreprises & Commerce",
+      "environnement": "Environnement",
+      "voirie": "Voirie & Travaux"
+    },
+    "roles": {
+      "maire": "Maire",
+      "maireAdjoint": "Maire Adjoint",
+      "secretaireGeneral": "Secrétaire Général",
+      "chefService": "Chef de Service",
+      "agentMunicipal": "Agent Municipal",
+      "agentEtatCivil": "Officier d'État Civil",
+      "agentAccueil": "Agent d'Accueil"
+    },
+    "provinces": {
+      "estuaire": "Estuaire",
+      "hautOgooue": "Haut-Ogooué",
+      "moyenOgooue": "Moyen-Ogooué",
+      "ngounie": "Ngounié",
+      "nyanga": "Nyanga",
+      "ogooueLolo": "Ogooué-Lolo",
+      "ogooueIvindo": "Ogooué-Ivindo",
+      "ogooueMaritime": "Ogooué-Maritime",
+      "woleuNtem": "Woleu-Ntem"
     }
   },
   "settings": {

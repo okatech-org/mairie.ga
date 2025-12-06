@@ -1,6 +1,56 @@
 import { Organization, OrganizationType } from '@/types/organization';
 
-// Réseau des Mairies du Gabon par Province
+// Provinces du Gabon
+export enum GabonProvince {
+    ESTUAIRE = 'ESTUAIRE',
+    HAUT_OGOOUE = 'HAUT_OGOOUE',
+    MOYEN_OGOOUE = 'MOYEN_OGOOUE',
+    NGOUNIE = 'NGOUNIE',
+    NYANGA = 'NYANGA',
+    OGOOUE_LOLO = 'OGOOUE_LOLO',
+    OGOOUE_IVINDO = 'OGOOUE_IVINDO',
+    OGOOUE_MARITIME = 'OGOOUE_MARITIME',
+    WOLEU_NTEM = 'WOLEU_NTEM'
+}
+
+// Type pour les informations de mairie utilisées par la carte
+export interface MairieInfo {
+    id: string;
+    name: string;
+    province: GabonProvince;
+    city: string;
+    population?: number;
+    isCapital?: boolean;
+    type: OrganizationType;
+}
+
+// Réseau des Mairies simplifié pour la carte
+export const MOCK_MAIRIES_NETWORK: MairieInfo[] = [
+    // ESTUAIRE
+    { id: 'estuaire-libreville-centrale', name: 'Libreville', province: GabonProvince.ESTUAIRE, city: 'Libreville', population: 850000, isCapital: true, type: OrganizationType.MAIRIE_CENTRALE },
+    { id: 'estuaire-owendo', name: 'Owendo', province: GabonProvince.ESTUAIRE, city: 'Owendo', population: 80000, type: OrganizationType.MAIRIE_COMMUNE },
+    { id: 'estuaire-ntoum', name: 'Ntoum', province: GabonProvince.ESTUAIRE, city: 'Ntoum', population: 25000, type: OrganizationType.MAIRIE_COMMUNE },
+    // HAUT-OGOOUÉ
+    { id: 'haut-ogoue-franceville', name: 'Franceville', province: GabonProvince.HAUT_OGOOUE, city: 'Franceville', population: 110000, isCapital: true, type: OrganizationType.MAIRIE_CENTRALE },
+    { id: 'haut-ogoue-moanda', name: 'Moanda', province: GabonProvince.HAUT_OGOOUE, city: 'Moanda', population: 45000, type: OrganizationType.MAIRIE_COMMUNE },
+    // MOYEN-OGOOUÉ
+    { id: 'moyen-ogoue-lambarene', name: 'Lambaréné', province: GabonProvince.MOYEN_OGOOUE, city: 'Lambaréné', population: 40000, isCapital: true, type: OrganizationType.MAIRIE_CENTRALE },
+    // NGOUNIÉ
+    { id: 'ngounie-mouila', name: 'Mouila', province: GabonProvince.NGOUNIE, city: 'Mouila', population: 30000, isCapital: true, type: OrganizationType.MAIRIE_CENTRALE },
+    // NYANGA
+    { id: 'nyanga-tchibanga', name: 'Tchibanga', province: GabonProvince.NYANGA, city: 'Tchibanga', population: 25000, isCapital: true, type: OrganizationType.MAIRIE_CENTRALE },
+    // OGOOUÉ-IVINDO
+    { id: 'ogoue-ivindo-makokou', name: 'Makokou', province: GabonProvince.OGOOUE_IVINDO, city: 'Makokou', population: 20000, isCapital: true, type: OrganizationType.MAIRIE_CENTRALE },
+    // OGOOUÉ-LOLO
+    { id: 'ogoue-lolo-koulamoutou', name: 'Koulamoutou', province: GabonProvince.OGOOUE_LOLO, city: 'Koulamoutou', population: 20000, isCapital: true, type: OrganizationType.MAIRIE_CENTRALE },
+    // OGOOUÉ-MARITIME
+    { id: 'ogoue-maritime-port-gentil', name: 'Port-Gentil', province: GabonProvince.OGOOUE_MARITIME, city: 'Port-Gentil', population: 150000, isCapital: true, type: OrganizationType.MAIRIE_CENTRALE },
+    // WOLEU-NTEM
+    { id: 'woleu-ntem-oyem', name: 'Oyem', province: GabonProvince.WOLEU_NTEM, city: 'Oyem', population: 60000, isCapital: true, type: OrganizationType.MAIRIE_CENTRALE },
+    { id: 'woleu-ntem-bitam', name: 'Bitam', province: GabonProvince.WOLEU_NTEM, city: 'Bitam', population: 15000, type: OrganizationType.MAIRIE_COMMUNE },
+];
+
+// Réseau des Mairies du Gabon par Province (données complètes)
 export const MAIRIES_GABON: Organization[] = [
     // ========== ESTUAIRE ==========
     {
