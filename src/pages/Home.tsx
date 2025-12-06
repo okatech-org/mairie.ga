@@ -129,14 +129,17 @@ export default function Home() {
     <div className="flex flex-col">
       {/* Hero Section */}
       <section className="relative overflow-hidden min-h-[85vh] flex items-center">
-        {/* Background Image with Overlay */}
+        {/* Background Image with Strong Overlay for Better Contrast */}
         <div className="absolute inset-0 z-0">
           <img 
             src={heroImage} 
             alt="Mairie du Gabon - Accueil citoyens" 
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-background/98 via-background/90 to-background/60 dark:from-background/99 dark:via-background/95 dark:to-background/70" />
+          {/* Dark overlay for text readability */}
+          <div className="absolute inset-0 bg-black/60" />
+          {/* Gradient overlay for depth */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent" />
         </div>
 
         <div className="relative z-10 py-20 md:py-28 w-full">
@@ -156,14 +159,14 @@ export default function Home() {
                 </div>
                 
                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
-                  <span className="text-primary">Mairies.ga</span>
+                  <span className="text-primary drop-shadow-lg">Mairies.ga</span>
                   <br />
-                  <span className="text-muted-foreground text-3xl md:text-4xl lg:text-5xl font-medium">
+                  <span className="text-white text-3xl md:text-4xl lg:text-5xl font-medium drop-shadow-lg">
                     Le Portail des Communes du Gabon
                   </span>
                 </h1>
                 
-                <p className="text-lg md:text-xl mb-8 text-muted-foreground leading-relaxed">
+                <p className="text-lg md:text-xl mb-8 text-white/90 leading-relaxed drop-shadow-md">
                   Accédez aux services de votre mairie en ligne. État civil, urbanisme, 
                   fiscalité locale — toutes vos démarches administratives municipales simplifiées et sécurisées.
                 </p>
@@ -188,14 +191,14 @@ export default function Home() {
                   {features.map((feature, index) => (
                     <div 
                       key={index}
-                      className="flex items-center gap-3 p-3 rounded-lg bg-background/60 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-colors"
+                      className="flex items-center gap-3 p-3 rounded-lg bg-black/40 backdrop-blur-md border border-white/20 hover:border-primary/50 transition-colors"
                     >
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
                         <feature.icon className="h-5 w-5 text-primary" />
                       </div>
                       <div>
-                        <p className="font-medium text-sm">{feature.title}</p>
-                        <p className="text-xs text-muted-foreground">{feature.description}</p>
+                        <p className="font-medium text-sm text-white">{feature.title}</p>
+                        <p className="text-xs text-white/70">{feature.description}</p>
                       </div>
                     </div>
                   ))}
