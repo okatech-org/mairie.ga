@@ -7,17 +7,12 @@ import {
   Calendar, 
   Search, 
   Moon, 
-  Sun,
-  ChevronRight,
-  ChevronLeft,
-  Sparkles,
-  Users,
-  Building2,
-  Shield,
   Volume2,
   Navigation,
   CheckCircle2,
-  Headphones
+  ChevronRight,
+  ChevronLeft,
+  Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -65,24 +60,79 @@ const VOICE_EXAMPLES = [
   { phrase: "Passe en mode sombre", action: "Change le thème" },
 ];
 
+// Smooth spring animation config
+const springTransition = {
+  type: "spring" as const,
+  stiffness: 300,
+  damping: 30,
+  mass: 0.8
+};
+
+const fadeSlideVariants = {
+  initial: (direction: number) => ({
+    opacity: 0,
+    x: direction > 0 ? 40 : -40,
+    scale: 0.95
+  }),
+  animate: {
+    opacity: 1,
+    x: 0,
+    scale: 1,
+    transition: springTransition
+  },
+  exit: (direction: number) => ({
+    opacity: 0,
+    x: direction > 0 ? -40 : 40,
+    scale: 0.95,
+    transition: { ...springTransition, duration: 0.2 }
+  })
+};
+
+const staggerContainer = {
+  animate: {
+    transition: {
+      staggerChildren: 0.06,
+      delayChildren: 0.1
+    }
+  }
+};
+
+const staggerItem = {
+  initial: { opacity: 0, y: 15, scale: 0.9 },
+  animate: { 
+    opacity: 1, 
+    y: 0, 
+    scale: 1,
+    transition: springTransition
+  }
+};
+
 interface IAstedGuideInlineProps {
   onClose?: () => void;
 }
 
 export const IAstedGuideInline = ({ onClose }: IAstedGuideInlineProps) => {
   const [currentStep, setCurrentStep] = useState(0);
+  const [direction, setDirection] = useState(0);
   const step = GUIDE_STEPS[currentStep];
 
   const nextStep = () => {
     if (currentStep < GUIDE_STEPS.length - 1) {
+      setDirection(1);
       setCurrentStep(prev => prev + 1);
     }
   };
 
   const prevStep = () => {
     if (currentStep > 0) {
+      setDirection(-1);
       setCurrentStep(prev => prev - 1);
     }
+  };
+
+  const goToStep = (index: number) => {
+    setDirection(index > currentStep ? 1 : -1);
+    setCurrentStep(index);
   };
 
   const renderStepContent = () => {
@@ -90,20 +140,25 @@ export const IAstedGuideInline = ({ onClose }: IAstedGuideInlineProps) => {
       case "intro":
         return (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
+            variants={staggerContainer}
+            initial="initial"
+            animate="animate"
             className="space-y-4"
           >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+            <motion.div variants={staggerItem} className="flex items-center gap-3 mb-4">
+              <motion.div 
+                className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center"
+                whileHover={{ scale: 1.1, rotate: 5 }}
+                transition={springTransition}
+              >
                 <Volume2 className="w-6 h-6 text-white" />
-              </div>
+              </motion.div>
               <div>
                 <h3 className="font-bold text-lg">{step.title}</h3>
                 <p className="text-sm text-muted-foreground">{step.description}</p>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
+            </motion.div>
+            <motion.div variants={staggerItem} className="flex items-center gap-2">
               <Badge variant="outline" className="text-xs py-1 px-2">
                 <Mic className="w-3 h-3 mr-1" />
                 Vocal
@@ -112,26 +167,26 @@ export const IAstedGuideInline = ({ onClose }: IAstedGuideInlineProps) => {
                 <MessageSquare className="w-3 h-3 mr-1" />
                 Chat
               </Badge>
-            </div>
+            </motion.div>
           </motion.div>
         );
 
       case "capabilities":
         return (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
+            variants={staggerContainer}
+            initial="initial"
+            animate="animate"
             className="space-y-3"
           >
-            <h3 className="font-bold text-lg mb-3">{step.title}</h3>
+            <motion.h3 variants={staggerItem} className="font-bold text-lg mb-3">{step.title}</motion.h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {CAPABILITIES.map((cap, index) => (
+              {CAPABILITIES.map((cap) => (
                 <motion.div
                   key={cap.title}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                  variants={staggerItem}
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-default"
                 >
                   <cap.icon className="w-4 h-4 text-violet-500 shrink-0" />
                   <div className="min-w-0">
@@ -147,21 +202,26 @@ export const IAstedGuideInline = ({ onClose }: IAstedGuideInlineProps) => {
       case "commands":
         return (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
+            variants={staggerContainer}
+            initial="initial"
+            animate="animate"
             className="space-y-3"
           >
-            <h3 className="font-bold text-lg mb-3">{step.title}</h3>
+            <motion.h3 variants={staggerItem} className="font-bold text-lg mb-3">{step.title}</motion.h3>
             <div className="space-y-2">
-              {VOICE_EXAMPLES.map((cmd, index) => (
+              {VOICE_EXAMPLES.map((cmd) => (
                 <motion.div
                   key={cmd.phrase}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="flex items-start gap-2 p-2 rounded-lg bg-muted/50"
+                  variants={staggerItem}
+                  whileHover={{ scale: 1.01, x: 4 }}
+                  className="flex items-start gap-2 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
                 >
-                  <Mic className="w-3 h-3 mt-1 text-violet-500 shrink-0" />
+                  <motion.div
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
+                  >
+                    <Mic className="w-3 h-3 mt-1 text-violet-500 shrink-0" />
+                  </motion.div>
                   <div>
                     <p className="text-xs font-medium">"{cmd.phrase}"</p>
                     <p className="text-[10px] text-muted-foreground">{cmd.action}</p>
@@ -175,25 +235,44 @@ export const IAstedGuideInline = ({ onClose }: IAstedGuideInlineProps) => {
       case "start":
         return (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
+            variants={staggerContainer}
+            initial="initial"
+            animate="animate"
             className="space-y-4"
           >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+            <motion.div variants={staggerItem} className="flex items-center gap-3 mb-4">
+              <motion.div 
+                className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center"
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
                 <CheckCircle2 className="w-6 h-6 text-white" />
-              </div>
+              </motion.div>
               <div>
                 <h3 className="font-bold text-lg">{step.title}</h3>
                 <p className="text-sm text-muted-foreground">{step.description}</p>
               </div>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 rounded-lg bg-violet-500/10 border border-violet-500/20">
-              <div className="w-8 h-8 rounded-full bg-violet-500 flex items-center justify-center animate-pulse shrink-0">
+            </motion.div>
+            <motion.div 
+              variants={staggerItem}
+              className="flex items-center gap-2 text-sm text-muted-foreground p-3 rounded-lg bg-violet-500/10 border border-violet-500/20"
+            >
+              <motion.div 
+                className="w-8 h-8 rounded-full bg-violet-500 flex items-center justify-center shrink-0"
+                animate={{ 
+                  scale: [1, 1.15, 1],
+                  boxShadow: [
+                    "0 0 0 0 rgba(139, 92, 246, 0.4)",
+                    "0 0 0 10px rgba(139, 92, 246, 0)",
+                    "0 0 0 0 rgba(139, 92, 246, 0)"
+                  ]
+                }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              >
                 <Mic className="w-4 h-4 text-white" />
-              </div>
+              </motion.div>
               <span className="text-xs">← Cherchez ce bouton en bas de l'écran</span>
-            </div>
+            </motion.div>
           </motion.div>
         );
 
@@ -204,73 +283,90 @@ export const IAstedGuideInline = ({ onClose }: IAstedGuideInlineProps) => {
 
   return (
     <div className="space-y-4">
-      {/* Progress dots */}
+      {/* Progress dots with smooth transitions */}
       <div className="flex items-center justify-center gap-1.5 mb-2">
         {GUIDE_STEPS.map((s, index) => (
-          <button
+          <motion.button
             key={s.id}
-            onClick={() => setCurrentStep(index)}
-            className={`h-1.5 rounded-full transition-all ${
+            onClick={() => goToStep(index)}
+            className={`h-1.5 rounded-full transition-colors ${
               index === currentStep 
-                ? "bg-violet-500 w-6" 
+                ? "bg-violet-500" 
                 : index < currentStep 
-                  ? "bg-violet-500/60 w-1.5" 
-                  : "bg-muted-foreground/30 w-1.5"
+                  ? "bg-violet-500/60" 
+                  : "bg-muted-foreground/30"
             }`}
+            animate={{ 
+              width: index === currentStep ? 24 : 6,
+              scale: index === currentStep ? 1 : 0.9
+            }}
+            whileHover={{ scale: 1.2 }}
+            transition={springTransition}
           />
         ))}
       </div>
 
-      {/* Content */}
-      <AnimatePresence mode="wait">
+      {/* Content with direction-aware animations */}
+      <AnimatePresence mode="wait" custom={direction}>
         <motion.div
           key={currentStep}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.2 }}
+          custom={direction}
+          variants={fadeSlideVariants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
           className="min-h-[180px]"
         >
           {renderStepContent()}
         </motion.div>
       </AnimatePresence>
 
-      {/* Navigation */}
+      {/* Navigation with hover effects */}
       <div className="flex items-center justify-between pt-2 border-t border-border/50">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={prevStep}
-          disabled={currentStep === 0}
-          className="gap-1 h-8 px-2 text-xs"
+        <motion.div whileHover={{ x: -2 }} whileTap={{ scale: 0.95 }}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={prevStep}
+            disabled={currentStep === 0}
+            className="gap-1 h-8 px-2 text-xs"
+          >
+            <ChevronLeft className="w-3 h-3" />
+            Préc.
+          </Button>
+        </motion.div>
+
+        <motion.span 
+          className="text-xs text-muted-foreground"
+          key={currentStep}
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={springTransition}
         >
-          <ChevronLeft className="w-3 h-3" />
-          Préc.
-        </Button>
-
-        <span className="text-xs text-muted-foreground">
           {currentStep + 1} / {GUIDE_STEPS.length}
-        </span>
+        </motion.span>
 
-        {currentStep < GUIDE_STEPS.length - 1 ? (
-          <Button 
-            size="sm" 
-            onClick={nextStep} 
-            className="gap-1 h-8 px-2 text-xs bg-violet-500 hover:bg-violet-600"
-          >
-            Suiv.
-            <ChevronRight className="w-3 h-3" />
-          </Button>
-        ) : (
-          <Button 
-            size="sm" 
-            onClick={onClose} 
-            className="gap-1 h-8 px-2 text-xs bg-emerald-500 hover:bg-emerald-600"
-          >
-            Terminer
-            <CheckCircle2 className="w-3 h-3" />
-          </Button>
-        )}
+        <motion.div whileHover={{ x: 2 }} whileTap={{ scale: 0.95 }}>
+          {currentStep < GUIDE_STEPS.length - 1 ? (
+            <Button 
+              size="sm" 
+              onClick={nextStep} 
+              className="gap-1 h-8 px-2 text-xs bg-violet-500 hover:bg-violet-600"
+            >
+              Suiv.
+              <ChevronRight className="w-3 h-3" />
+            </Button>
+          ) : (
+            <Button 
+              size="sm" 
+              onClick={onClose} 
+              className="gap-1 h-8 px-2 text-xs bg-emerald-500 hover:bg-emerald-600"
+            >
+              Terminer
+              <CheckCircle2 className="w-3 h-3" />
+            </Button>
+          )}
+        </motion.div>
       </div>
     </div>
   );
