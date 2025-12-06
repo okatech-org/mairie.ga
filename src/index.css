@@ -24,12 +24,12 @@
     --popover: 0 0% 100%;
     --popover-foreground: 210 25% 12%;
 
-    /* Turquoise moderne - Couleur principale #17CCB9 */
-    --primary: 173 78% 45%;
+    /* Bleu professionnel - Couleur principale */
+    --primary: 214 80% 50%;
     --primary-foreground: 0 0% 100%;
-    --primary-light: 173 70% 92%;
+    --primary-light: 214 70% 92%;
 
-    /* Bleu électrique - Couleur secondaire #00A1FE */
+    /* Bleu électrique - Couleur secondaire */
     --secondary: 202 100% 50%;
     --secondary-foreground: 0 0% 100%;
 
@@ -52,12 +52,12 @@
 
     --border: 214 32% 88%;
     --input: 214 32% 91%;
-    --ring: 173 78% 45%;
+    --ring: 214 80% 50%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
     /* Chart colors */
-    --chart-1: 173 78% 45%;
+    --chart-1: 214 80% 50%;
     --chart-2: 202 100% 50%;
     --chart-3: 338 80% 57%;
     --chart-4: 41 100% 50%;
@@ -75,10 +75,10 @@
     --popover: 220 25% 8%;
     --popover-foreground: 0 0% 98%;
 
-    /* Primary - Turquoise plus lumineux */
-    --primary: 173 85% 55%;
+    /* Primary - Bleu lumineux */
+    --primary: 214 90% 60%;
     --primary-foreground: 220 25% 6%;
-    --primary-light: 173 70% 25%;
+    --primary-light: 214 70% 25%;
 
     /* Secondary - Bleu électrique plus vif */
     --secondary: 202 100% 60%;
@@ -106,10 +106,10 @@
     /* Bordures plus visibles */
     --border: 220 20% 20%;
     --input: 220 20% 16%;
-    --ring: 173 85% 55%;
+    --ring: 214 90% 60%;
 
     /* Chart colors - Plus vifs en mode sombre */
-    --chart-1: 173 85% 55%;
+    --chart-1: 214 90% 60%;
     --chart-2: 202 100% 60%;
     --chart-3: 338 85% 65%;
     --chart-4: 45 100% 60%;
