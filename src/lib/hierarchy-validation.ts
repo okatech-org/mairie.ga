@@ -1,11 +1,14 @@
-import { ConsularRole, ROLE_ENTITY_MAPPING } from '../types/consular-roles';
+import { MunicipalRole, ROLE_ENTITY_MAPPING } from '../types/municipal-roles';
 import { EntityType } from '../types/entity';
+
+const MUNICIPAL_ROLE_ENTITY_MAPPING = ROLE_ENTITY_MAPPING;
 
 /**
  * Valide si un rôle est autorisé pour un type d'entité donné.
  */
-export function validateRoleForEntity(role: ConsularRole, entityType: EntityType): boolean {
-    const mapping = ROLE_ENTITY_MAPPING[role];
+export function validateRoleForEntity(role: string, entityType: EntityType): boolean {
+    const mapping = MUNICIPAL_ROLE_ENTITY_MAPPING[role as keyof typeof MUNICIPAL_ROLE_ENTITY_MAPPING];
+    if (!mapping) return false;
     return mapping.allowedEntityTypes.includes(entityType);
 }
 
@@ -14,8 +17,8 @@ export function validateRoleForEntity(role: ConsularRole, entityType: EntityType
  * Prend également en compte le type d'entité pour valider la cohérence.
  */
 export function canAssignRole(
-    currentUserRole: ConsularRole,
-    targetRole: ConsularRole,
+    currentUserRole: string,
+    targetRole: string,
     entityType: EntityType
 ): boolean {
     // 1. Valider que le rôle cible est valide pour ce type d'entité
@@ -25,22 +28,23 @@ export function canAssignRole(
     }
 
     // 2. Vérifier que l'utilisateur actuel peut gérer ce rôle selon la hiérarchie
-    const currentUserMapping = ROLE_ENTITY_MAPPING[currentUserRole];
+    const currentUserMapping = MUNICIPAL_ROLE_ENTITY_MAPPING[currentUserRole as keyof typeof MUNICIPAL_ROLE_ENTITY_MAPPING];
 
     // Si l'utilisateur n'a pas de mapping (ex: CITIZEN), il ne peut rien gérer
     if (!currentUserMapping) {
         return false;
     }
 
-    return currentUserMapping.canManageRoles.includes(targetRole);
+    return currentUserMapping.canManageRoles.includes(targetRole as MunicipalRole);
 }
 
 /**
  * Retourne la liste des rôles disponibles pour un type d'entité donné.
  */
-export function getAvailableRolesForEntity(entityType: EntityType): ConsularRole[] {
-    return Object.values(ConsularRole).filter(role => {
-        const mapping = ROLE_ENTITY_MAPPING[role];
+export function getAvailableRolesForEntity(entityType: EntityType): string[] {
+    return Object.values(MunicipalRole).filter(role => {
+        const mapping = MUNICIPAL_ROLE_ENTITY_MAPPING[role as keyof typeof MUNICIPAL_ROLE_ENTITY_MAPPING];
+        if (!mapping) return false;
         return mapping.allowedEntityTypes.includes(entityType);
     });
 }

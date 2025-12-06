@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ConsularRole } from "@/types/consular-roles";
+import { MunicipalRole } from "@/types/municipal-roles";
 import { DemoUser } from "@/types/roles";
 import { UserFunction, BillingFeature } from "@/types/user-management";
 import { serviceCatalog } from "@/services/serviceCatalog";
@@ -30,7 +30,7 @@ export function UserDialog({ open, onOpenChange, initialData, onSave }: UserDial
     const [services, setServices] = useState<ConsularService[]>([]);
     const [formData, setFormData] = useState<any>({
         name: "",
-        role: ConsularRole.CITIZEN,
+        role: MunicipalRole.CITOYEN,
         entityId: "",
         email: "",
         functions: [],
@@ -71,7 +71,7 @@ export function UserDialog({ open, onOpenChange, initialData, onSave }: UserDial
         } else {
             setFormData({
                 name: "",
-                role: ConsularRole.CITIZEN,
+                role: MunicipalRole.CITOYEN,
                 entityId: "",
                 email: "",
                 functions: [],
@@ -180,19 +180,20 @@ export function UserDialog({ open, onOpenChange, initialData, onSave }: UserDial
                                             <Label htmlFor="role">Rôle Principal</Label>
                                             <Select
                                                 value={formData.role}
-                                                onValueChange={(v) => setFormData((p: any) => ({ ...p, role: v as ConsularRole }))}
+                                                onValueChange={(v) => setFormData((p: any) => ({ ...p, role: v }))}
                                             >
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Sélectionner un rôle" />
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="ADMIN">Super Admin</SelectItem>
-                                                    <SelectItem value={ConsularRole.CONSUL_GENERAL}>Consul Général</SelectItem>
-                                                    <SelectItem value={ConsularRole.CONSUL}>Consul</SelectItem>
-                                                    <SelectItem value={ConsularRole.VICE_CONSUL}>Vice-Consul</SelectItem>
-                                                    <SelectItem value={ConsularRole.CHARGE_AFFAIRES_CONSULAIRES}>Chargé d'Affaires</SelectItem>
-                                                    <SelectItem value={ConsularRole.AGENT_CONSULAIRE}>Agent Consulaire</SelectItem>
-                                                    <SelectItem value={ConsularRole.STAGIAIRE}>Stagiaire</SelectItem>
+                                                    <SelectItem value={MunicipalRole.MAIRE}>Maire</SelectItem>
+                                                    <SelectItem value={MunicipalRole.MAIRE_ADJOINT}>Maire Adjoint</SelectItem>
+                                                    <SelectItem value={MunicipalRole.SECRETAIRE_GENERAL}>Secrétaire Général</SelectItem>
+                                                    <SelectItem value={MunicipalRole.CHEF_SERVICE}>Chef de Service</SelectItem>
+                                                    <SelectItem value={MunicipalRole.AGENT_MUNICIPAL}>Agent Municipal</SelectItem>
+                                                    <SelectItem value={MunicipalRole.AGENT_ETAT_CIVIL}>Agent État Civil</SelectItem>
+                                                    <SelectItem value={MunicipalRole.AGENT_ACCUEIL}>Agent Accueil</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>

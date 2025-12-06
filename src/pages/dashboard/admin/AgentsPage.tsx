@@ -14,18 +14,18 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ConsularRole } from "@/types/consular-roles";
+import { MunicipalRole } from "@/types/municipal-roles";
 
 // Mock Agent Data
 interface Agent {
     id: string;
     name: string;
-    role: ConsularRole;
+    role: string;
     email: string;
     avatar?: string;
     status: 'active' | 'inactive' | 'leave';
     assignedServices: string[];
-    assignedCountries: string[];
+    assignedLocations: string[];
     managerId?: string;
 }
 
@@ -33,40 +33,40 @@ const MOCK_AGENTS: Agent[] = [
     {
         id: '1',
         name: 'Jean-Pierre Mba',
-        role: ConsularRole.CONSUL,
-        email: 'jp.mba@consulat.ga',
+        role: MunicipalRole.MAIRE,
+        email: 'jp.mba@mairie-libreville.ga',
         status: 'active',
-        assignedServices: ['Passeports', 'Visas'],
-        assignedCountries: ['France'],
+        assignedServices: ['État Civil', 'Urbanisme'],
+        assignedLocations: ['Libreville'],
     },
     {
         id: '2',
         name: 'Sophie Nze',
-        role: ConsularRole.VICE_CONSUL,
-        email: 's.nze@consulat.ga',
+        role: MunicipalRole.MAIRE_ADJOINT,
+        email: 's.nze@mairie-libreville.ga',
         status: 'active',
-        assignedServices: ['État Civil'],
-        assignedCountries: ['France'],
+        assignedServices: ['Affaires Sociales'],
+        assignedLocations: ['Libreville'],
         managerId: '1'
     },
     {
         id: '3',
         name: 'Marc Ondo',
-        role: ConsularRole.AGENT_CONSULAIRE,
-        email: 'm.ondo@consulat.ga',
+        role: MunicipalRole.AGENT_MUNICIPAL,
+        email: 'm.ondo@mairie-libreville.ga',
         status: 'leave',
-        assignedServices: ['Légalisations'],
-        assignedCountries: ['France'],
+        assignedServices: ['État Civil'],
+        assignedLocations: ['Libreville 1er Arrondissement'],
         managerId: '2'
     },
     {
         id: '4',
         name: 'Alice Koumba',
-        role: ConsularRole.STAGIAIRE,
-        email: 'a.koumba@consulat.ga',
+        role: MunicipalRole.AGENT_ACCUEIL,
+        email: 'a.koumba@mairie-libreville.ga',
         status: 'active',
         assignedServices: ['Accueil'],
-        assignedCountries: ['France'],
+        assignedLocations: ['Libreville'],
         managerId: '2'
     }
 ];
@@ -166,9 +166,9 @@ export default function AgentsPage() {
                                         </Badge>
                                     ))}
                                 </div>
-                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                     <MapPin className="h-3 w-3" />
-                                    {agent.assignedCountries.join(', ')}
+                                    {agent.assignedLocations.join(', ')}
                                 </div>
                             </div>
 
