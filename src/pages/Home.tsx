@@ -388,20 +388,20 @@ export default function Home() {
                 du Gabon pour améliorer le quotidien des citoyens.
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 {[
-                  { icon: GraduationCap, title: "Éducation", desc: "Bourses et soutien scolaire" },
-                  { icon: Briefcase, title: "Emploi Local", desc: "Insertion professionnelle des jeunes" },
-                  { icon: Heart, title: "Solidarité", desc: "Aide aux familles vulnérables" },
-                  { icon: TreePine, title: "Environnement", desc: "Actions écologiques communales" },
+                  { icon: GraduationCap, title: "Éducation", desc: "Bourses scolaires" },
+                  { icon: Briefcase, title: "Emploi", desc: "Insertion jeunes" },
+                  { icon: Heart, title: "Solidarité", desc: "Aide familles" },
+                  { icon: TreePine, title: "Écologie", desc: "Actions vertes" },
                 ].map((item, index) => (
-                  <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <div key={index} className="flex flex-col items-center text-center gap-2 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                       <item.icon className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="font-semibold text-sm">{item.title}</p>
-                      <p className="text-xs text-muted-foreground">{item.desc}</p>
+                      <p className="font-semibold text-xs leading-tight">{item.title}</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{item.desc}</p>
                     </div>
                   </div>
                 ))}
