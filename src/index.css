@@ -15,26 +15,26 @@
     /* #3A75C4 */
 
     /* Base colors - Mode Clair */
-    --background: 0 0% 98%;
-    --foreground: 210 20% 15%;
+    --background: 0 0% 100%;
+    --foreground: 210 25% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 210 20% 15%;
+    --card-foreground: 210 25% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 210 20% 15%;
+    --popover-foreground: 210 25% 12%;
 
     /* Turquoise moderne - Couleur principale #17CCB9 */
     --primary: 173 78% 45%;
     --primary-foreground: 0 0% 100%;
-    --primary-light: 173 70% 85%;
+    --primary-light: 173 70% 92%;
 
     /* Bleu électrique - Couleur secondaire #00A1FE */
     --secondary: 202 100% 50%;
     --secondary-foreground: 0 0% 100%;
 
     --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted-foreground: 215 20% 40%;
 
     /* Rose vibrant - Couleur accent #E63B7A */
     --accent: 338 80% 57%;
@@ -42,15 +42,15 @@
     
     /* Jaune doré - Couleur warning/highlight #FDAD00 */
     --warning: 41 100% 50%;
-    --warning-foreground: 0 0% 100%;
+    --warning-foreground: 210 25% 12%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     
-    --success: 173 78% 45%;
+    --success: 146 76% 31%;
     --success-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;
+    --border: 214 32% 88%;
     --input: 214 32% 91%;
     --ring: 173 78% 45%;
 
