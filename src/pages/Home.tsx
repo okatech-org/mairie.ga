@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { IAstedDemoButton } from "@/components/iasted/IAstedDemoButton";
+import { IAstedGuideInline } from "@/components/iasted/IAstedGuideInline";
 import { GabonMairiesSection } from "@/components/home/GabonMairiesSection";
 import heroImage from "@/assets/mairie-accueil.jpg";
 import serviceImage from "@/assets/service-municipal.jpg";
@@ -432,53 +433,23 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Right - Content */}
+            {/* Right - Content with inline guide */}
             <div className="order-1 lg:order-2">
               <Badge className="mb-4 bg-violet-500/20 text-violet-600 dark:text-violet-400 border-violet-500/30">
                 <Sparkles className="h-3 w-3 mr-1" />
                 Intelligence Artificielle
               </Badge>
-              <h2 className="text-3xl md:text-4xl font-bold mb-6">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">
                 Rencontrez <span className="text-violet-500">iAsted</span>
               </h2>
-              <p className="text-muted-foreground text-lg mb-8">
+              <p className="text-muted-foreground text-base mb-6">
                 Votre assistant municipal intelligent qui vous accompagne dans toutes vos démarches 
                 administratives. Parlez-lui naturellement, il comprend et agit pour vous.
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                {[
-                  { icon: Mic, title: "Parlez naturellement", desc: "Dites simplement ce que vous voulez" },
-                  { icon: FileText, title: "Demandes simplifiées", desc: "Initiez vos démarches par la voix" },
-                  { icon: Calendar, title: "Rendez-vous faciles", desc: "Planifiez en quelques mots" },
-                  { icon: Headphones, title: "Disponible 24/7", desc: "Toujours prêt à vous aider" },
-                ].map((feature, index) => (
-                  <div 
-                    key={index}
-                    className="flex items-start gap-3 p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors"
-                  >
-                    <div className="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center flex-shrink-0">
-                      <feature.icon className="h-5 w-5 text-violet-500" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">{feature.title}</p>
-                      <p className="text-xs text-muted-foreground">{feature.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Link to="/iasted-guide">
-                  <Button size="lg" className="w-full sm:w-auto gap-2 bg-violet-500 hover:bg-violet-600">
-                    <Sparkles className="h-4 w-4" />
-                    Découvrir iAsted
-                  </Button>
-                </Link>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground px-4">
-                  <MessageSquare className="h-4 w-4" />
-                  <span>Ou cliquez sur le bouton en bas de l'écran</span>
-                </div>
+              {/* Inline Guide */}
+              <div className="p-4 rounded-xl bg-card border border-border shadow-sm">
+                <IAstedGuideInline />
               </div>
             </div>
           </div>
