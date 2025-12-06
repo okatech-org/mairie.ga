@@ -19,7 +19,11 @@ import {
   Store,
   TreePine,
   Truck,
-  Star
+  Star,
+  Sparkles,
+  ArrowRight,
+  Users,
+  CheckCircle2
 } from "lucide-react";
 import { 
   MUNICIPAL_SERVICE_CATALOG, 
@@ -31,6 +35,7 @@ import { BeneficiaryFilter, BeneficiaryType } from "@/components/services/Benefi
 import { useFavoriteServices } from "@/hooks/useFavoriteServices";
 import { AnimatePresence } from "framer-motion";
 import { FavoriteServiceCard } from "@/components/services/FavoriteServiceCard";
+import heroImage from "@/assets/service-municipal.jpg";
 
 const CATEGORY_INFO: Record<ServiceCategory, { label: string; icon: typeof Landmark; color: string }> = {
   [ServiceCategory.ETAT_CIVIL]: { label: "État Civil", icon: FileText, color: "bg-blue-500" },
@@ -54,7 +59,7 @@ const ServiceCard = ({ service, onClick, isFavorite, onToggleFavorite }: Service
   
   return (
     <Card 
-      className="group hover:shadow-lg transition-all duration-300 hover:border-primary/50 cursor-pointer relative"
+      className="group hover:shadow-lg transition-all duration-300 hover:border-primary/50 hover:-translate-y-1 cursor-pointer relative"
       onClick={onClick}
     >
       <Button
@@ -68,29 +73,29 @@ const ServiceCard = ({ service, onClick, isFavorite, onToggleFavorite }: Service
       >
         <Star className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
       </Button>
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-2 sm:pb-3">
         <div className="flex items-start justify-between pr-8">
-          <div className={`p-2 rounded-lg ${categoryInfo.color}/10`}>
-            <Icon className={`h-5 w-5 ${service.color}`} />
+          <div className={`p-1.5 sm:p-2 rounded-lg ${categoryInfo.color}/10`}>
+            <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${service.color}`} />
           </div>
-          <Badge variant="outline" className="text-xs">
+          <Badge variant="outline" className="text-[10px] sm:text-xs">
             {categoryInfo.label}
           </Badge>
         </div>
-        <CardTitle className="text-lg mt-3 group-hover:text-primary transition-colors">
+        <CardTitle className="text-base sm:text-lg mt-2 sm:mt-3 group-hover:text-primary transition-colors line-clamp-2">
           {service.name}
         </CardTitle>
-        <CardDescription className="line-clamp-2">
+        <CardDescription className="line-clamp-2 text-xs sm:text-sm">
           {service.description}
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
+        <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground mb-2 sm:mb-3">
           <div className="flex items-center gap-1">
-            <Clock className="h-3.5 w-3.5" />
+            <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
             <span>{service.processingDays} jour{service.processingDays > 1 ? 's' : ''}</span>
           </div>
-          <div className="font-semibold text-foreground">
+          <div className="font-semibold text-foreground text-xs sm:text-sm">
             {service.price === 0 ? (
               <span className="text-green-600">Gratuit</span>
             ) : service.priceRange ? (
@@ -101,21 +106,21 @@ const ServiceCard = ({ service, onClick, isFavorite, onToggleFavorite }: Service
           </div>
         </div>
         
-        <div className="flex flex-wrap gap-1 mb-3">
+        <div className="flex flex-wrap gap-1 mb-2 sm:mb-3">
           {service.forCitoyen && (
-            <Badge variant="secondary" className="text-xs">Citoyens</Badge>
+            <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 py-0">Citoyens</Badge>
           )}
           {service.forEtranger && (
-            <Badge variant="secondary" className="text-xs">Étrangers</Badge>
+            <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 py-0">Étrangers</Badge>
           )}
           {service.forPersonneMorale && (
-            <Badge variant="secondary" className="text-xs">Entreprises</Badge>
+            <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 py-0">Entreprises</Badge>
           )}
         </div>
 
-        <div className="flex items-center text-sm text-muted-foreground">
-          <FileText className="h-3.5 w-3.5 mr-1" />
-          <span>{service.requiredDocuments.length} document{service.requiredDocuments.length > 1 ? 's' : ''} requis</span>
+        <div className="flex items-center text-xs sm:text-sm text-muted-foreground">
+          <FileText className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1" />
+          <span>{service.requiredDocuments.length} doc{service.requiredDocuments.length > 1 ? 's' : ''} requis</span>
         </div>
       </CardContent>
     </Card>
@@ -195,45 +200,120 @@ const ServicesCatalog = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <div className="bg-gradient-hero text-primary-foreground py-16">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center gap-2 text-sm mb-4 opacity-80">
-            <Link to="/" className="hover:underline">Accueil</Link>
+      {/* Hero Section - Inspired by Home page */}
+      <section className="relative min-h-[60vh] md:min-h-[70vh] flex items-center overflow-hidden">
+        {/* Background with gradient overlay */}
+        <div className="absolute inset-0 z-0">
+          <img 
+            src={heroImage} 
+            alt="Services municipaux" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/95 to-background/60" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
+        </div>
+
+        {/* Decorative elements */}
+        <div className="absolute inset-0 z-[1] overflow-hidden pointer-events-none">
+          <div className="absolute top-20 right-10 w-64 h-64 md:w-96 md:h-96 rounded-full bg-primary/5 blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-10 w-48 h-48 md:w-72 md:h-72 rounded-full bg-secondary/5 blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        </div>
+
+        <div className="container mx-auto px-4 relative z-10">
+          {/* Breadcrumb */}
+          <div className="flex items-center gap-2 text-sm mb-4 md:mb-6 text-muted-foreground">
+            <Link to="/" className="hover:text-primary transition-colors">Accueil</Link>
             <ChevronRight className="h-4 w-4" />
-            <span>Services Municipaux</span>
+            <span className="text-foreground font-medium">Services Municipaux</span>
           </div>
-          <h1 className="text-4xl font-bold mb-4">Catalogue des Services Municipaux</h1>
-          <p className="text-lg opacity-90 max-w-2xl">
-            Découvrez l'ensemble des services proposés par les mairies du Gabon. 
-            Consultez les tarifs, délais et documents requis pour chaque démarche.
-          </p>
-          
-          {/* Search Bar */}
-          <div className="mt-8 max-w-xl">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher un service (ex: acte de naissance, permis...)"
-                className="pl-10 h-12 bg-background text-foreground"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+            {/* Left Content */}
+            <div className="text-center lg:text-left">
+              <Badge className="mb-4 md:mb-6 bg-primary/20 text-primary border-primary/30 px-4 py-1.5">
+                <Sparkles className="h-3 w-3 mr-2" />
+                Démarches simplifiées
+              </Badge>
+              
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 md:mb-6 leading-tight">
+                <span className="block">Catalogue des</span>
+                <span className="block text-primary">Services</span>
+                <span className="block text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-muted-foreground font-medium mt-2">
+                  Municipaux
+                </span>
+              </h1>
+              
+              <p className="text-base md:text-lg text-muted-foreground mb-6 md:mb-8 leading-relaxed max-w-xl mx-auto lg:mx-0">
+                Découvrez l'ensemble des services proposés par les mairies du Gabon. 
+                Consultez les tarifs, délais et documents requis pour chaque démarche.
+              </p>
+
+              {/* Search Bar */}
+              <div className="max-w-xl mx-auto lg:mx-0">
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    placeholder="Rechercher un service..."
+                    className="pl-12 h-12 md:h-14 bg-card/80 backdrop-blur-sm border-border/50 text-base"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Mobile Stats */}
+              <div className="grid grid-cols-3 gap-2 mt-6 lg:hidden">
+                {[
+                  { value: services.length + "+", label: "Services" },
+                  { value: "8", label: "Catégories" },
+                  { value: "100%", label: "En ligne" },
+                ].map((stat, index) => (
+                  <div 
+                    key={index} 
+                    className="p-3 rounded-xl bg-card/80 backdrop-blur-sm border border-border/50 text-center"
+                  >
+                    <div className="text-lg font-bold text-primary">{stat.value}</div>
+                    <div className="text-xs text-muted-foreground">{stat.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right Content - Stats Cards (Desktop) */}
+            <div className="hidden lg:grid grid-cols-2 gap-4">
+              {[
+                { icon: FileText, value: services.length + "+", label: "Services disponibles", delay: "0.1s" },
+                { icon: Landmark, value: "8", label: "Catégories", delay: "0.2s" },
+                { icon: Users, value: "100K+", label: "Citoyens servis", delay: "0.3s" },
+                { icon: CheckCircle2, value: "24/7", label: "Accessible", delay: "0.4s" },
+              ].map((stat, index) => (
+                <Card 
+                  key={index} 
+                  className="text-center p-6 hover:shadow-xl transition-all duration-300 bg-card/80 backdrop-blur-sm border-border/50 hover:-translate-y-1 animate-fade-in"
+                  style={{ animationDelay: stat.delay }}
+                >
+                  <div className="p-3 rounded-xl bg-primary/10 w-fit mx-auto mb-4">
+                    <stat.icon className="h-8 w-8 text-primary" />
+                  </div>
+                  <div className="text-4xl font-bold mb-1">{stat.value}</div>
+                  <div className="text-sm text-muted-foreground">{stat.label}</div>
+                </Card>
+              ))}
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 md:py-12">
         {/* Favorites Section */}
         {favoriteServices.length > 0 && (
-          <div className="mb-8">
-            <div className="flex items-center gap-2 mb-4">
-              <Star className="h-5 w-5 text-amber-500 fill-amber-500" />
-              <h2 className="text-lg font-semibold">Mes services favoris</h2>
-              <Badge variant="secondary">{favoriteServices.length}</Badge>
+          <div className="mb-6 md:mb-8">
+            <div className="flex items-center gap-2 mb-3 md:mb-4">
+              <Star className="h-4 w-4 md:h-5 md:w-5 text-amber-500 fill-amber-500" />
+              <h2 className="text-base md:text-lg font-semibold">Mes services favoris</h2>
+              <Badge variant="secondary" className="text-xs">{favoriteServices.length}</Badge>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
               <AnimatePresence>
                 {favoriteServices.map((service) => (
                   <FavoriteServiceCard
@@ -245,13 +325,13 @@ const ServicesCatalog = () => {
                 ))}
               </AnimatePresence>
             </div>
-            <Separator className="mt-8" />
+            <Separator className="mt-6 md:mt-8" />
           </div>
         )}
 
         {/* Beneficiary Filter */}
-        <div className="mb-6">
-          <p className="text-sm font-medium text-muted-foreground mb-3">Filtrer par bénéficiaire</p>
+        <div className="mb-4 md:mb-6">
+          <p className="text-xs md:text-sm font-medium text-muted-foreground mb-2 md:mb-3">Filtrer par bénéficiaire</p>
           <BeneficiaryFilter
             selected={selectedBeneficiary}
             onChange={setSelectedBeneficiary}
@@ -259,49 +339,55 @@ const ServicesCatalog = () => {
           />
         </div>
 
-        {/* Category Filters */}
-        <div className="flex flex-wrap gap-2 mb-8">
-          <Button
-            variant={selectedCategory === "all" ? "default" : "outline"}
-            onClick={() => setSelectedCategory("all")}
-            className="gap-2"
-          >
-            <Filter className="h-4 w-4" />
-            Tous les services
-            <Badge variant="secondary" className="ml-1">{categoryCounts.all}</Badge>
-          </Button>
-          
-          {Object.entries(CATEGORY_INFO).map(([category, info]) => {
-            const Icon = info.icon;
-            const count = categoryCounts[category] || 0;
-            if (count === 0) return null;
+        {/* Category Filters - Horizontal scroll on mobile */}
+        <div className="mb-6 md:mb-8 -mx-4 px-4 overflow-x-auto">
+          <div className="flex gap-2 pb-2 min-w-max">
+            <Button
+              variant={selectedCategory === "all" ? "default" : "outline"}
+              onClick={() => setSelectedCategory("all")}
+              className="gap-1.5 sm:gap-2 text-xs sm:text-sm h-8 sm:h-10 px-3 sm:px-4"
+              size="sm"
+            >
+              <Filter className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Tous les services</span>
+              <span className="sm:hidden">Tous</span>
+              <Badge variant="secondary" className="ml-1 text-[10px] sm:text-xs">{categoryCounts.all}</Badge>
+            </Button>
             
-            return (
-              <Button
-                key={category}
-                variant={selectedCategory === category ? "default" : "outline"}
-                onClick={() => setSelectedCategory(category as ServiceCategory)}
-                className="gap-2"
-              >
-                <Icon className="h-4 w-4" />
-                {info.label}
-                <Badge variant="secondary" className="ml-1">{count}</Badge>
-              </Button>
-            );
-          })}
+            {Object.entries(CATEGORY_INFO).map(([category, info]) => {
+              const Icon = info.icon;
+              const count = categoryCounts[category] || 0;
+              if (count === 0) return null;
+              
+              return (
+                <Button
+                  key={category}
+                  variant={selectedCategory === category ? "default" : "outline"}
+                  onClick={() => setSelectedCategory(category as ServiceCategory)}
+                  className="gap-1.5 sm:gap-2 text-xs sm:text-sm h-8 sm:h-10 px-3 sm:px-4 whitespace-nowrap"
+                  size="sm"
+                >
+                  <Icon className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden md:inline">{info.label}</span>
+                  <span className="md:hidden">{info.label.split(' ')[0]}</span>
+                  <Badge variant="secondary" className="ml-1 text-[10px] sm:text-xs">{count}</Badge>
+                </Button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Results Count */}
-        <div className="flex items-center justify-between mb-6">
-          <p className="text-muted-foreground">
+        <div className="flex items-center justify-between mb-4 md:mb-6">
+          <p className="text-sm text-muted-foreground">
             {filteredServices.length} service{filteredServices.length > 1 ? 's' : ''} trouvé{filteredServices.length > 1 ? 's' : ''}
-            {searchQuery && ` pour "${searchQuery}"`}
+            {searchQuery && <span className="hidden sm:inline"> pour "{searchQuery}"</span>}
           </p>
         </div>
 
         {/* Services Grid */}
         {filteredServices.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-6">
             {filteredServices.map((service) => (
               <ServiceCard 
                 key={service.id} 
@@ -313,15 +399,15 @@ const ServicesCatalog = () => {
             ))}
           </div>
         ) : (
-          <div className="text-center py-16">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
-              <Search className="h-8 w-8 text-muted-foreground" />
+          <div className="text-center py-12 md:py-16">
+            <div className="inline-flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-full bg-muted mb-4">
+              <Search className="h-6 w-6 md:h-8 md:w-8 text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">Aucun service trouvé</h3>
-            <p className="text-muted-foreground mb-4">
+            <h3 className="text-base md:text-lg font-semibold mb-2">Aucun service trouvé</h3>
+            <p className="text-sm text-muted-foreground mb-4">
               Essayez de modifier vos critères de recherche
             </p>
-            <Button variant="outline" onClick={() => {
+            <Button variant="outline" size="sm" onClick={() => {
               setSearchQuery("");
               setSelectedCategory("all");
               setSelectedBeneficiary("all");
@@ -332,42 +418,26 @@ const ServicesCatalog = () => {
         )}
 
         {/* Info Section */}
-        <div className="mt-16 bg-muted/50 rounded-xl p-8">
-          <h2 className="text-2xl font-bold mb-4">Comment effectuer une démarche ?</h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="flex gap-4">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
-                1
+        <div className="mt-12 md:mt-16 bg-muted/50 rounded-xl p-6 md:p-8">
+          <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6">Comment effectuer une démarche ?</h2>
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+            {[
+              { step: "1", title: "Choisissez votre service", desc: "Parcourez le catalogue et identifiez le service dont vous avez besoin" },
+              { step: "2", title: "Préparez vos documents", desc: "Rassemblez tous les documents requis pour votre démarche" },
+              { step: "3", title: "Rendez-vous en mairie", desc: "Prenez rendez-vous ou présentez-vous à votre mairie de rattachement" },
+            ].map((item) => (
+              <div key={item.step} className="flex gap-3 md:gap-4">
+                <div className="flex-shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm md:text-base">
+                  {item.step}
+                </div>
+                <div>
+                  <h3 className="font-semibold mb-1 text-sm md:text-base">{item.title}</h3>
+                  <p className="text-xs md:text-sm text-muted-foreground">
+                    {item.desc}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-semibold mb-1">Choisissez votre service</h3>
-                <p className="text-sm text-muted-foreground">
-                  Parcourez le catalogue et identifiez le service dont vous avez besoin
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-4">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
-                2
-              </div>
-              <div>
-                <h3 className="font-semibold mb-1">Préparez vos documents</h3>
-                <p className="text-sm text-muted-foreground">
-                  Rassemblez tous les documents requis pour votre démarche
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-4">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
-                3
-              </div>
-              <div>
-                <h3 className="font-semibold mb-1">Rendez-vous en mairie</h3>
-                <p className="text-sm text-muted-foreground">
-                  Prenez rendez-vous ou présentez-vous à votre mairie de rattachement
-                </p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </div>
