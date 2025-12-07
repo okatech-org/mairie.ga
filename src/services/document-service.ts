@@ -27,6 +27,53 @@ const categoryToType = (category: string): DocumentType => {
     }
 };
 
+// Helper to map type OR filename to folder
+const getFolderForDoc = (type: DocumentType, name: string): string => {
+    // 1. Strict mapping based on valid types
+    switch (type) {
+        case 'ID_CARD':
+        case 'PASSPORT':
+        case 'PHOTO':
+        case 'RESIDENCE_PERMIT': // Titre de Séjour is an identity document
+            return 'IDENTITE';
+        case 'BIRTH_CERTIFICATE':
+            return 'ETAT_CIVIL';
+    }
+
+    // 2. Weak mapping based on filename if type is OTHER
+    const lower = name.toLowerCase();
+
+    // Identité (includes Titre de Séjour / Carte de Résident)
+    if (lower.includes('passeport') || lower.includes('passport') ||
+        lower.includes('cni') || lower.includes('carte identite') ||
+        lower.includes('photo') || lower.includes('face') ||
+        lower.includes('sejour') || lower.includes('carte_sejour') || lower.includes('residence permit')) {
+        return 'IDENTITE';
+    }
+
+    // État Civil
+    if (lower.includes('acte') && lower.includes('naissance') ||
+        lower.includes('mariage') || lower.includes('famille')) {
+        return 'ETAT_CIVIL';
+    }
+
+    // Résidence (Proof of address, not identity cards)
+    if (lower.includes('justif') || lower.includes('domicile') ||
+        lower.includes('facture') || lower.includes('edf') || lower.includes('eau')) {
+        return 'RESIDENCE';
+    }
+
+    return 'AUTRE';
+};
+
+// Helper to detect side from filename or metadata
+const detectSide = (name: string): 'front' | 'back' | undefined => {
+    const lower = name.toLowerCase();
+    if (lower.includes('recto') || lower.includes('front') || lower.includes('face')) return 'front';
+    if (lower.includes('verso') || lower.includes('back') || lower.includes('dos')) return 'back';
+    return undefined;
+};
+
 // Transform database row to Document type
 const transformToDocument = async (row: any): Promise<Document> => {
     let url = '#';
@@ -49,16 +96,36 @@ const transformToDocument = async (row: any): Promise<Document> => {
         }
     }
 
+    let type = categoryToType(row.category);
+    const name = row.name || row.original_name || 'Document';
+
+    // Auto-correct type based on filename if it's generic 'OTHER' or we want to be smarter
+    // This allows existing documents to be properly typed for grouping without DB datamigration
+    if (type === 'OTHER') {
+        const lowerName = name.toLowerCase();
+        if (lowerName.includes('passeport') || lowerName.includes('passport')) type = 'PASSPORT';
+        else if (lowerName.includes('cni') || lowerName.includes('carte identite') || lowerName.includes('id card')) type = 'ID_CARD';
+        else if (lowerName.includes('acte') && lowerName.includes('naissance')) type = 'BIRTH_CERTIFICATE';
+        else if (lowerName.includes('photo') || lowerName.includes('portrait')) type = 'PHOTO';
+        else if (lowerName.includes('sejour') || lowerName.includes('carte_sejour') || lowerName.includes('residence permit')) type = 'RESIDENCE_PERMIT';
+    }
+
+    // Use the smart folder detection
+    const folder = getFolderForDoc(type, name);
+
     return {
         id: row.id,
-        title: row.name || row.original_name || 'Document',
-        type: categoryToType(row.category),
+        title: name,
+        type: type,
         uploadDate: new Date(row.created_at).toISOString().split('T')[0],
         status: (row.is_verified ? 'VERIFIED' : 'PENDING') as DocumentStatus, // Assuming we want verification logic eventually
         url,
         size: row.file_size ? `${(row.file_size / (1024 * 1024)).toFixed(2)} MB` : undefined,
         thumbnailUrl: url, // Use same URL for thumbnail (works for images)
-        fileType: row.file_type
+        fileType: row.file_type,
+        folder: folder as any,
+        side: detectSide(name),
+        expirationDate: row.expiration_date,
     };
 };
 
@@ -92,9 +159,20 @@ export const documentService = {
             throw new Error('User must be authenticated to upload documents');
         }
 
+        // Intelligent Auto-Classification: If type is 'OTHER', try to guess from filename
+        let actualType = type;
+        if (type === 'OTHER') {
+            const lowerName = file.name.toLowerCase();
+            if (lowerName.includes('passeport') || lowerName.includes('passport')) actualType = 'PASSPORT';
+            else if (lowerName.includes('cni') || lowerName.includes('carte identite') || lowerName.includes('id card')) actualType = 'ID_CARD';
+            else if (lowerName.includes('acte') && lowerName.includes('naissance')) actualType = 'BIRTH_CERTIFICATE';
+            else if (lowerName.includes('photo') || lowerName.includes('portrait')) actualType = 'PHOTO';
+            else if (lowerName.includes('sejour') || lowerName.includes('residence')) actualType = 'RESIDENCE_PERMIT';
+        }
+
         // Create unique file path
         const fileExt = file.name.split('.').pop();
-        const fileName = `${user.id}/${type}_${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+        const fileName = `${user.id}/${actualType}_${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
 
         // Upload to storage
         const { error: uploadError } = await supabase.storage
@@ -115,15 +193,10 @@ export const documentService = {
             .insert({
                 user_id: user.id,
                 name: file.name.replace(/\.[^/.]+$/, ''), // Remove extension for display name
-                // original_name: file.name, // 'documents' table might not have original_name, check schema? Local didn't send it. Remote did. 'documents' table usually simpler.
-                // Checking local previous use: insert({ name, file_path, file_type, file_size, category }). No original_name.
-                // We'll skip original_name to be safe or check schema. Safe to skip if not in local interface.
                 file_path: fileName,
                 file_type: file.type,
                 file_size: file.size,
-                category: typeToCategory[type],
-                // source: 'upload', // Not in local 'documents' schema
-                // is_verified: false // Not in local 'documents' schema
+                category: typeToCategory[actualType],
             })
             .select()
             .single();
@@ -189,6 +262,29 @@ export const documentService = {
         return data?.signedUrl || null;
     },
 
+    getTemporaryUrl: async (filePath: string, duration: number): Promise<string | null> => {
+        const { data } = await supabase.storage
+            .from(BUCKET_NAME)
+            .createSignedUrl(filePath, duration);
+        return data?.signedUrl || null;
+    },
+
+    generateShareLink: async (id: string, duration: number): Promise<string | null> => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return null;
+
+        const { data: doc } = await supabase
+            .from('documents')
+            .select('file_path')
+            .eq('id', id)
+            .eq('user_id', user.id)
+            .single();
+
+        if (!doc?.file_path) return null;
+
+        return documentService.getTemporaryUrl(doc.file_path, duration);
+    },
+
     renameDocument: async (id: string, newName: string): Promise<void> => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
@@ -204,6 +300,22 @@ export const documentService = {
 
         if (error) {
             console.error('Rename error:', error);
+            throw error;
+        }
+    },
+
+    updateDocumentExpiration: async (id: string, date: string | null): Promise<void> => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+
+        const { error } = await supabase
+            .from('documents')
+            .update({ expiration_date: date })
+            .eq('id', id)
+            .eq('user_id', user.id);
+
+        if (error) {
+            console.error('Update expiration error:', error);
             throw error;
         }
     }

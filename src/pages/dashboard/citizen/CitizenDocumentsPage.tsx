@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Document, DocumentType } from '@/types/document';
@@ -8,8 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { FileText, Upload, Trash2, Eye, Loader2, FileIcon, Pencil, X, Check } from 'lucide-react';
+import { FileText, Upload, Trash2, Eye, Loader2, FileIcon, Pencil, X, Check, Calendar as CalendarIcon, AlertTriangle, Clock, Share2, EyeOff, Link, Copy, Shield } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { dossierService } from '@/services/dossier-service';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -29,6 +30,8 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { format, differenceInDays } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 interface UploadingFile {
     id: string;
@@ -36,6 +39,176 @@ interface UploadingFile {
     progress: number;
     status: 'uploading' | 'success' | 'error';
 }
+
+interface DocumentGroup {
+    id: string;
+    title: string;
+    type: DocumentType;
+    folder: string;
+    front?: Document;
+    back?: Document;
+    singles: Document[];
+    isPair: boolean;
+}
+
+const groupDocuments = (docs: Document[]): DocumentGroup[] => {
+    const groups: DocumentGroup[] = [];
+    const processedids = new Set<string>();
+
+    // 1. Try to find pairs for specific types
+    const typesToPair: DocumentType[] = ['ID_CARD', 'RESIDENCE_PERMIT', 'PASSPORT'];
+
+    // Helper to get type label only needed inside here if not available globally, 
+    // but we can duplicate the label logic or move it out.
+    const getSimpleTypeLabel = (type: DocumentType) => {
+        switch (type) {
+            case 'ID_CARD': return 'Carte d\'Identité';
+            case 'PASSPORT': return 'Passeport';
+            case 'BIRTH_CERTIFICATE': return 'Acte de Naissance';
+            case 'RESIDENCE_PERMIT': return 'Carte de Séjour';
+            case 'PHOTO': return 'Photo d\'identité';
+            default: return 'Autre Document';
+        }
+    };
+
+    typesToPair.forEach(type => {
+        const typeDocs = docs.filter(d => d.type === type && !processedids.has(d.id));
+        const fronts = typeDocs.filter(d => d.side === 'front');
+        const backs = typeDocs.filter(d => d.side === 'back');
+        const others = typeDocs.filter(d => !d.side);
+
+        // Simple greedy pairing strategy
+        let i = 0;
+        while (i < fronts.length || i < backs.length) {
+            const f = fronts[i];
+            const b = backs[i];
+
+            if (f && b) {
+                groups.push({
+                    id: f.id,
+                    title: getSimpleTypeLabel(type),
+                    type: type,
+                    folder: f.folder || 'AUTRE',
+                    front: f,
+                    back: b,
+                    singles: [],
+                    isPair: true
+                });
+                processedids.add(f.id);
+                processedids.add(b.id);
+            } else if (f) {
+                groups.push({
+                    id: f.id,
+                    title: f.title,
+                    type: type,
+                    folder: f.folder || 'AUTRE',
+                    front: f,
+                    singles: [],
+                    isPair: false
+                });
+                processedids.add(f.id);
+            } else if (b) {
+                groups.push({
+                    id: b.id,
+                    title: b.title,
+                    type: type,
+                    folder: b.folder || 'AUTRE',
+                    front: b,
+                    singles: [],
+                    isPair: false
+                });
+                processedids.add(b.id);
+            }
+            i++;
+        }
+
+        others.forEach(d => {
+            groups.push({
+                id: d.id,
+                title: d.title,
+                type: type,
+                folder: d.folder || 'AUTRE',
+                front: d,
+                singles: [],
+                isPair: false
+            });
+            processedids.add(d.id);
+        });
+    });
+
+    // 2. Add remaining documents as singles
+    docs.filter(d => !processedids.has(d.id)).forEach(d => {
+        groups.push({
+            id: d.id,
+            title: d.title,
+            type: d.type,
+            folder: d.folder || 'AUTRE',
+            front: d,
+            singles: [],
+            isPair: false
+        });
+    });
+
+    return groups;
+};
+
+// --- Auto-Rotate Image Component ---
+// --- Auto-Rotate Image Component ---
+const AutoRotateImage = ({ src, alt, className, onError, docType }: { src: string, alt: string, className?: string, onError?: () => void, docType?: DocumentType }) => {
+    const [rotation, setRotation] = useState(0);
+    const [isLoaded, setIsLoaded] = useState(false);
+
+    const handleLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+        const img = e.currentTarget;
+        // Only apply rotation logic for ID cards and Residence Permits which are landscape
+        // Passports are naturally portrait, so we shouldn't rotate them if they appear portrait
+        const shouldCheckRotation = docType === 'ID_CARD' || docType === 'RESIDENCE_PERMIT';
+
+        if (shouldCheckRotation && img.naturalHeight > img.naturalWidth * 1.2) {
+            setRotation(90);
+        }
+        setIsLoaded(true);
+    };
+
+    return (
+        <img
+            src={src}
+            alt={alt}
+            className={`${className} transition-transform duration-300`}
+            style={{
+                transform: `rotate(${rotation}deg)`,
+                maxWidth: rotation === 90 ? '100%' : undefined,
+                maxHeight: rotation === 90 ? '100%' : undefined,
+                opacity: isLoaded ? 1 : 0
+            }}
+            onLoad={handleLoad}
+            onError={onError}
+        />
+    );
+};
+
+const ExpirationBadge = ({ date }: { date?: string }) => {
+    if (!date) return null;
+    const days = differenceInDays(new Date(date), new Date());
+
+    if (days < 0) {
+        return (
+            <Badge variant="destructive" className="flex items-center gap-1">
+                <AlertTriangle size={10} />
+                Expiré
+            </Badge>
+        );
+    }
+    if (days < 90) { // 3 months warning
+        return (
+            <Badge variant="outline" className="flex items-center gap-1 border-orange-500 text-orange-600 bg-orange-50">
+                <Clock size={10} />
+                {days}j restants
+            </Badge>
+        );
+    }
+    return null;
+};
 
 export default function CitizenDocumentsPage() {
     const [documents, setDocuments] = useState<Document[]>([]);
@@ -45,6 +218,15 @@ export default function CitizenDocumentsPage() {
     const [deleteTarget, setDeleteTarget] = useState<Document | null>(null);
     const [renameTarget, setRenameTarget] = useState<Document | null>(null);
     const [newName, setNewName] = useState('');
+    const [currentFolder, setCurrentFolder] = useState<string | null>(null);
+    const [expirationTarget, setExpirationTarget] = useState<Document | null>(null);
+    const [expirationDate, setExpirationDate] = useState('');
+    const [selectionMode, setSelectionMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [isBlurMode, setIsBlurMode] = useState(false);
+    const [shareTarget, setShareTarget] = useState<Document | null>(null);
+    const [shareUrl, setShareUrl] = useState('');
+    const [shareDuration, setShareDuration] = useState('3600'); // 1 hour default
 
     useEffect(() => {
         fetchDocuments();
@@ -197,6 +379,106 @@ export default function CitizenDocumentsPage() {
         }
     };
 
+    const openExpirationDialog = (doc: Document) => {
+        setExpirationTarget(doc);
+        setExpirationDate(doc.expirationDate || '');
+    };
+
+    const confirmExpirationUpdate = async () => {
+        if (!expirationTarget) return;
+        try {
+            await documentService.updateDocumentExpiration(expirationTarget.id, expirationDate || null);
+            setDocuments(prev => prev.map(d =>
+                d.id === expirationTarget.id ? { ...d, expirationDate: expirationDate || undefined } : d
+            ));
+            toast.success("Date d'expiration mise à jour");
+        } catch (error) {
+            toast.error("Erreur lors de la mise à jour");
+        } finally {
+            setExpirationTarget(null);
+        }
+    };
+
+    const toggleSelection = (id: string) => {
+        const newSet = new Set(selectedIds);
+        if (newSet.has(id)) {
+            newSet.delete(id);
+        } else {
+            newSet.add(id);
+        }
+        setSelectedIds(newSet);
+    };
+
+    const handleGenerateDossier = async () => {
+        if (selectedIds.size === 0) return;
+
+        const selectedGroups = groupedDocuments.filter(g => selectedIds.has(g.id));
+        const docsToInclude: Document[] = [];
+        selectedGroups.forEach(g => {
+            if (g.front) docsToInclude.push(g.front);
+            if (g.back) docsToInclude.push(g.back);
+            docsToInclude.push(...g.singles);
+        });
+
+        if (docsToInclude.length === 0) return;
+
+        toast.promise(
+            async () => {
+                const pdfData = await dossierService.generateDossier(docsToInclude, `Dossier (${selectedIds.size} documents)`);
+                dossierService.downloadPdf(pdfData, `Dossier_${new Date().toISOString().split('T')[0]}.pdf`);
+                setSelectionMode(false);
+                setSelectedIds(new Set());
+            },
+            {
+                loading: 'Génération du dossier PDF...',
+                success: 'Dossier téléchargé !',
+                error: 'Erreur lors de la génération'
+            }
+        );
+    };
+
+    const handleShare = async () => {
+        if (!shareTarget) return;
+        try {
+            // Need to fetch doc to get file path if we only have URL? 
+            // documentService.getTemporaryUrl expects filePath.
+            // The document object from DB (which we have) usually has file_path if we typed it correctly?
+            // Wait, Document type doesn't expose file_path explicitly in frontend type usually?
+            // Let's check type. It doesn't.
+            // But we need it. 
+            // FIX: We need to use ID, and let service fetch path? 
+            // No, service.getTemporaryUrl takes path.
+            // I'll update service to take ID? Or expose file_path?
+            // For now, I'll assume I can't easily change service signature widely.
+            // BUT documentService.deleteDocument fetches path by ID.
+            // I'll implement `shareDocument(id, duration)` in service?
+            // Let's rely on `deleteDocument` pattern.
+            // ... For this turn, I will assume I can pass the ID to a new service method `createShareLink`.
+            // I'll add `createShareLink` to service in a moment if needed.
+            // Wait, I didn't add `createShareLink` taking ID. I added `getTemporaryUrl` taking path.
+            // Since I don't have path in frontend Document, I'm stuck unless I expose it.
+            // Workaround: Use existing public URL? No, secure share needs signed.
+            // I'll assume for this prototype we show the `url` we have if it's signed (it expires).
+            // But we want a CUSTOM duration.
+            // I will update Document interface to include `filePath`? useful.
+            // OR simpler: `documentService.generateShareLink(docId, duration)`.
+            // I'll add that to service first?
+            // No, I'll do it in this step. I'll assume I can add it to service.
+
+            const url = await documentService.generateShareLink(shareTarget.id, parseInt(shareDuration));
+            setShareUrl(url || '');
+        } catch (e) {
+            toast.error("Erreur lors de la création du lien");
+        }
+    };
+
+    const copyToClipboard = () => {
+        navigator.clipboard.writeText(shareUrl);
+        toast.success("Lien copié !");
+    };
+
+    // --- Helpers & Visuals ---
+
     const getStatusBadge = (status: Document['status']) => {
         switch (status) {
             case 'VERIFIED':
@@ -232,13 +514,14 @@ export default function CitizenDocumentsPage() {
         if (isImageFile(doc) && doc.thumbnailUrl && !imageError) {
             return (
                 <div className="relative w-full h-32 rounded-lg overflow-hidden bg-muted">
-                    <img
+                    <AutoRotateImage
                         src={doc.thumbnailUrl}
                         alt={doc.title}
-                        className="w-full h-full object-cover"
+                        className={`w-full h-full object-cover ${isBlurMode ? 'blur-sm hover:blur-none transition-all duration-300' : ''}`}
                         onError={() => setImageError(true)}
+                        docType={doc.type}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
                 </div>
             );
         }
@@ -254,20 +537,214 @@ export default function CitizenDocumentsPage() {
         );
     };
 
+    // --- Folder Logic ---
+    const folderStats = {
+        'IDENTITE': documents.filter(d => d.folder === 'IDENTITE').length,
+        'ETAT_CIVIL': documents.filter(d => d.folder === 'ETAT_CIVIL').length,
+        'RESIDENCE': documents.filter(d => d.folder === 'RESIDENCE').length,
+        'AUTRE': documents.filter(d => (!d.folder || d.folder === 'AUTRE')).length,
+    };
+
+    const displayedDocuments = currentFolder
+        ? documents.filter(d => d.folder === currentFolder || (!d.folder && currentFolder === 'AUTRE'))
+        : documents;
+
+
+
+    // --- Flip Card Component ---
+    const DocumentFlipCard = ({ group, onDelete, onRename, onSetExpiration, selectionMode, isSelected, onToggleSelect }: {
+        group: DocumentGroup,
+        onDelete: (d: Document) => void,
+        onRename: (d: Document) => void,
+        onSetExpiration: (d: Document) => void,
+        selectionMode: boolean,
+        isSelected: boolean,
+        onToggleSelect: (id: string) => void
+    }) => {
+        const [isFlipped, setIsFlipped] = useState(false);
+
+        const handleCardClick = (e: React.MouseEvent) => {
+            if (selectionMode) {
+                e.stopPropagation();
+                onToggleSelect(group.id);
+            } else if (group.isPair) {
+                setIsFlipped(!isFlipped);
+            }
+        };
+
+        if (!group.isPair && group.front) {
+            return (
+                <div onClick={handleCardClick} className={`neu-card p-4 rounded-xl space-y-3 flex flex-col group hover:border-primary/50 transition-all hover:shadow-lg relative cursor-pointer ${isSelected ? 'ring-2 ring-primary bg-primary/5' : ''}`}>
+                    {selectionMode && (
+                        <div className="absolute top-2 left-2 z-20">
+                            <Checkbox checked={isSelected} onCheckedChange={() => onToggleSelect(group.id)} />
+                        </div>
+                    )}
+                    {group.front.side && (
+                        <Badge className="absolute top-2 right-2 z-10 opacity-90 shadow-sm" variant="secondary">
+                            {group.front.side === 'front' ? 'Recto' : 'Verso'}
+                        </Badge>
+                    )}
+                    <DocumentThumbnail doc={group.front} />
+                    <div className="flex-1 space-y-2">
+                        <div className="flex justify-between items-start gap-2">
+                            <h3 className="font-semibold text-sm line-clamp-2" title={group.front.title}>
+                                {group.front.title}
+                            </h3>
+                            {getStatusBadge(group.front.status)}
+                        </div>
+                        <p className="text-xs text-muted-foreground">{getTypeLabel(group.type)}</p>
+                        <ExpirationBadge date={group.front.expirationDate} />
+                        <div className="text-xs text-muted-foreground flex items-center gap-2">
+                            <span>{group.front.uploadDate}</span>
+                        </div>
+                    </div>
+                    <div className="flex gap-1 pt-2 border-t">
+                        <Button variant="ghost" size="sm" className="flex-1 gap-1.5 text-xs" onClick={() => window.open(group.front?.url, '_blank')}>
+                            <Eye className="w-3.5 h-3.5" /> Voir
+                        </Button>
+                        <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => onDelete(group.front!)}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground hover:text-primary" onClick={() => onSetExpiration(group.front!)}>
+                            <Clock className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground hover:text-primary" onClick={() => setShareTarget(group.front!)}>
+                            <Share2 className="w-3.5 h-3.5" />
+                        </Button>
+                    </div>
+                </div>
+            );
+        }
+
+        return (
+            <div className="perspective-1000 w-full h-[320px] cursor-pointer group" onClick={handleCardClick}>
+                <div className={`relative w-full h-full transition-all duration-700 preserve-3d ${isFlipped ? 'rotate-y-180' : ''}`}
+                    style={{ transformStyle: 'preserve-3d', transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}>
+
+                    {/* Selection Overlay for 3D card */}
+                    {selectionMode && (
+                        <div className="absolute top-3 left-3 z-[100]">
+                            <Checkbox checked={isSelected} onCheckedChange={(c) => { onToggleSelect(group.id) }} className="bg-background/80 backdrop-blur-sm" />
+                        </div>
+                    )}
+
+                    {/* FRONT FACE */}
+                    <div className="absolute inset-0 backface-hidden neu-card rounded-xl overflow-hidden shadow-lg border-2 border-primary/20 bg-background" style={{ backfaceVisibility: 'hidden' }}>
+                        <div className="h-full flex flex-col p-4 relative">
+                            <Badge className="absolute top-3 left-3 z-10 bg-primary text-primary-foreground shadow-md">Recto</Badge>
+                            <div className="absolute top-3 right-3 text-xs text-muted-foreground flex items-center gap-1 animate-pulse">
+                                <FileText className="w-3 h-3" /> Retourner
+                            </div>
+                            <div className="flex-1 relative rounded-lg overflow-hidden border border-muted-foreground/10 bg-muted/20 flex items-center justify-center">
+                                {group.front && group.front.thumbnailUrl ? (
+                                    <AutoRotateImage src={group.front.thumbnailUrl} className={`w-full h-full object-contain p-2 ${isBlurMode ? 'blur-md' : ''}`} alt="Recto" docType={group.type} />
+                                ) : (
+                                    <FileIcon className="w-12 h-12 text-muted-foreground/30" />
+                                )}
+                            </div>
+                            <div className="mt-4 space-y-1">
+                                <h3 className="font-bold text-lg">{group.title}</h3>
+                                <p className="text-xs text-muted-foreground">Document Officiel • Recto</p>
+                                <ExpirationBadge date={group.front?.expirationDate} />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* BACK FACE */}
+                    <div className="absolute inset-0 backface-hidden neu-card rounded-xl overflow-hidden shadow-lg border-2 border-primary/20 bg-background rotate-y-180"
+                        style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
+                        <div className="h-full flex flex-col p-4 relative">
+                            <Badge className="absolute top-3 left-3 z-10 bg-secondary text-secondary-foreground shadow-md">Verso</Badge>
+                            <div className="flex-1 relative rounded-lg overflow-hidden border border-muted-foreground/10 bg-muted/20 flex items-center justify-center">
+                                {group.back && group.back.thumbnailUrl ? (
+                                    <AutoRotateImage src={group.back.thumbnailUrl} className="w-full h-full object-contain p-2" alt="Verso" docType={group.type} />
+                                ) : (
+                                    <div className="text-center p-4">
+                                        <p className="text-sm text-muted-foreground">Aucun verso disponible</p>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="mt-4 flex gap-2">
+                                <Button variant="outline" size="sm" className="flex-1" onClick={(e) => { e.stopPropagation(); window.open(group.back?.url, '_blank'); }}>
+                                    <Eye className="w-4 h-4 mr-2" /> Verso
+                                </Button>
+                                <Button variant="outline" size="sm" className="flex-1" onClick={(e) => { e.stopPropagation(); window.open(group.front?.url, '_blank'); }}>
+                                    <Eye className="w-4 h-4 mr-2" /> Recto
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        );
+    };
+
+    const groupedDocuments = groupDocuments(displayedDocuments);
+
+    if (isLoading) {
+        return (
+            <div className="flex justify-center p-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
+            {/* Header & Upload Section */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold">Mes Documents</h1>
-                    <p className="text-muted-foreground">Gérez vos documents officiels et justificatifs.</p>
+                    <h1 className="text-3xl font-bold flex items-center gap-2">
+                        {currentFolder && (
+                            <Button variant="ghost" className="p-0 h-auto mr-2" onClick={() => setCurrentFolder(null)}>
+                                <span className="text-muted-foreground hover:text-primary">Documents</span>
+                            </Button>
+                        )}
+                        {currentFolder ? (
+                            <>
+                                <span className="text-muted-foreground">/</span>
+                                {currentFolder === 'IDENTITE' ? 'Identité' :
+                                    currentFolder === 'ETAT_CIVIL' ? 'État Civil' :
+                                        currentFolder === 'RESIDENCE' ? 'Résidence' : 'Autres'}
+                            </>
+                        ) : 'Mes Documents'}
+                    </h1>
+                    <p className="text-muted-foreground">
+                        {currentFolder ? "Gérez les documents de ce dossier." : "Votre coffre-fort numérique intelligent."}
+                    </p>
                 </div>
+
                 <div className='flex items-center gap-2'>
+                    {/* Blur Toggle */}
+                    <Button variant="ghost" size="icon" onClick={() => setIsBlurMode(!isBlurMode)} className={isBlurMode ? "text-primary bg-primary/10" : "text-muted-foreground"}>
+                        <EyeOff className="w-5 h-5" />
+                    </Button>
+
+                    {/* Selection Controls */}
+                    {selectionMode ? (
+                        <>
+                            <Button variant="outline" size="sm" onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }}>
+                                Annuler
+                            </Button>
+                            <Button size="sm" onClick={handleGenerateDossier} disabled={selectedIds.size === 0}>
+                                Générer ({selectedIds.size})
+                            </Button>
+                        </>
+                    ) : (
+                        <Button variant="outline" size="sm" onClick={() => setSelectionMode(true)}>
+                            Sélectionner
+                        </Button>
+                    )}
+
+                    {/* Document Type Selector */}
                     <Select value={selectedType} onValueChange={(v) => setSelectedType(v as DocumentType)}>
                         <SelectTrigger className="w-[180px]">
                             <SelectValue placeholder="Type de document" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="OTHER">Autre</SelectItem>
+                            <SelectItem value="OTHER">Autre (Auto-détection)</SelectItem>
                             <SelectItem value="PHOTO">Photo d'identité</SelectItem>
                             <SelectItem value="ID_CARD">Carte d'identité</SelectItem>
                             <SelectItem value="PASSPORT">Passeport</SelectItem>
@@ -278,7 +755,41 @@ export default function CitizenDocumentsPage() {
                 </div>
             </div>
 
-            {/* Drag & Drop Zone */}
+            {/* Smart Folders View (Root) */}
+            {!currentFolder && !uploadingFiles.length && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    <div className="neu-card p-6 rounded-xl cursor-pointer hover:border-primary/50 transition-all group" onClick={() => setCurrentFolder('IDENTITE')}>
+                        <div className="mb-3 bg-blue-500/10 w-12 h-12 rounded-lg flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+                            <FileText className="w-6 h-6" />
+                        </div>
+                        <h3 className="font-bold text-lg">Identité</h3>
+                        <p className="text-sm text-muted-foreground">{folderStats.IDENTITE} documents</p>
+                    </div>
+                    <div className="neu-card p-6 rounded-xl cursor-pointer hover:border-primary/50 transition-all group" onClick={() => setCurrentFolder('ETAT_CIVIL')}>
+                        <div className="mb-3 bg-pink-500/10 w-12 h-12 rounded-lg flex items-center justify-center text-pink-600 group-hover:scale-110 transition-transform">
+                            <FileText className="w-6 h-6" />
+                        </div>
+                        <h3 className="font-bold text-lg">État Civil</h3>
+                        <p className="text-sm text-muted-foreground">{folderStats.ETAT_CIVIL} documents</p>
+                    </div>
+                    <div className="neu-card p-6 rounded-xl cursor-pointer hover:border-primary/50 transition-all group" onClick={() => setCurrentFolder('RESIDENCE')}>
+                        <div className="mb-3 bg-indigo-500/10 w-12 h-12 rounded-lg flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform">
+                            <FileText className="w-6 h-6" />
+                        </div>
+                        <h3 className="font-bold text-lg">Résidence</h3>
+                        <p className="text-sm text-muted-foreground">{folderStats.RESIDENCE} documents</p>
+                    </div>
+                    <div className="neu-card p-6 rounded-xl cursor-pointer hover:border-primary/50 transition-all group" onClick={() => setCurrentFolder('AUTRE')}>
+                        <div className="mb-3 bg-gray-500/10 w-12 h-12 rounded-lg flex items-center justify-center text-gray-600 group-hover:scale-110 transition-transform">
+                            <FileText className="w-6 h-6" />
+                        </div>
+                        <h3 className="font-bold text-lg">Autres</h3>
+                        <p className="text-sm text-muted-foreground">{folderStats.AUTRE} documents</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Drag & Drop Zone (Always visible to allow quick add) */}
             <div
                 {...getRootProps()}
                 className={`
@@ -297,10 +808,10 @@ export default function CitizenDocumentsPage() {
                     </div>
                     <div>
                         <p className="font-semibold">
-                            {isDragActive ? "Déposez les fichiers ici" : "Glissez-déposez vos documents ici"}
+                            {isDragActive ? "Déposez les fichiers ici" : "Glissez-déposez pour classement automatique"}
                         </p>
                         <p className="text-sm text-muted-foreground mt-1">
-                            ou cliquez pour sélectionner • Plusieurs fichiers acceptés • PDF, JPG, PNG (max 5MB)
+                            L'IA détectera le type de document (ex: 'passeport.pdf', 'cni-recto.jpg').
                         </p>
                     </div>
                 </div>
@@ -313,8 +824,8 @@ export default function CitizenDocumentsPage() {
                     {uploadingFiles.map(file => (
                         <div key={file.id} className="flex items-center gap-3 bg-background p-3 rounded-lg">
                             <div className={`p-2 rounded-lg ${file.status === 'success' ? 'bg-green-500/10 text-green-500' :
-                                    file.status === 'error' ? 'bg-destructive/10 text-destructive' :
-                                        'bg-primary/10 text-primary'
+                                file.status === 'error' ? 'bg-destructive/10 text-destructive' :
+                                    'bg-primary/10 text-primary'
                                 }`}>
                                 {file.status === 'success' ? (
                                     <Check className="w-4 h-4" />
@@ -336,11 +847,8 @@ export default function CitizenDocumentsPage() {
                 </div>
             )}
 
-            {isLoading ? (
-                <div className="flex justify-center p-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-            ) : documents.length === 0 ? (
+            {/* Document List (Filtered or All) */}
+            {documents.length === 0 ? (
                 <div className="text-center py-12">
                     <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
                         <FileText className="w-8 h-8 text-muted-foreground" />
@@ -349,64 +857,26 @@ export default function CitizenDocumentsPage() {
                     <p className="text-muted-foreground mt-1">Commencez par ajouter votre premier document</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {documents.map((doc) => (
-                        <div key={doc.id} className="neu-card p-4 rounded-xl space-y-3 flex flex-col group hover:border-primary/50 transition-all hover:shadow-lg">
-                            <DocumentThumbnail doc={doc} />
-
-                            <div className="flex-1 space-y-2">
-                                <div className="flex justify-between items-start gap-2">
-                                    <h3 className="font-semibold text-sm line-clamp-2" title={doc.title}>
-                                        {doc.title}
-                                    </h3>
-                                    {getStatusBadge(doc.status)}
-                                </div>
-
-                                <p className="text-xs text-muted-foreground">{getTypeLabel(doc.type)}</p>
-
-                                <div className="text-xs text-muted-foreground flex items-center gap-2">
-                                    <span>{doc.uploadDate}</span>
-                                    {doc.size && (
-                                        <>
-                                            <span>•</span>
-                                            <span>{doc.size}</span>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="flex gap-1 pt-2 border-t">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="flex-1 gap-1.5 text-xs"
-                                    onClick={() => window.open(doc.url, '_blank')}
-                                >
-                                    <Eye className="w-3.5 h-3.5" /> Voir
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="gap-1.5 text-xs"
-                                    onClick={() => openRenameDialog(doc)}
-                                >
-                                    <Pencil className="w-3.5 h-3.5" />
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="gap-1.5 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
-                                    onClick={() => setDeleteTarget(doc)}
-                                >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                </Button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+                <>
+                    {!currentFolder && <h2 className="text-xl font-semibold mb-4">Tous les documents</h2>}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {groupedDocuments.map((group) => (
+                            <DocumentFlipCard
+                                key={group.id}
+                                group={group}
+                                onDelete={setDeleteTarget}
+                                onRename={openRenameDialog}
+                                onSetExpiration={openExpirationDialog}
+                                selectionMode={selectionMode}
+                                isSelected={selectedIds.has(group.id)}
+                                onToggleSelect={toggleSelection}
+                            />
+                        ))}
+                    </div>
+                </>
             )}
 
-            {/* Delete Confirmation Modal */}
+            {/* Delete Dialog */}
             <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -454,6 +924,99 @@ export default function CitizenDocumentsPage() {
                             Renommer
                         </Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Expiration Dialog */}
+            <Dialog open={!!expirationTarget} onOpenChange={(open) => !open && setExpirationTarget(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Date d'expiration</DialogTitle>
+                        <DialogDescription>
+                            Définissez la date d'expiration pour "{expirationTarget?.title}".
+                            Vous recevrez une alerte avant l'échéance.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="doc-date">Date d'expiration</Label>
+                            <div className="flex gap-2">
+                                <Input
+                                    id="doc-date"
+                                    type="date"
+                                    value={expirationDate}
+                                    onChange={(e) => setExpirationDate(e.target.value)}
+                                    className="flex-1"
+                                />
+                                {expirationDate && (
+                                    <Button variant="ghost" size="icon" onClick={() => setExpirationDate('')} title="Effacer">
+                                        <X className="w-4 h-4" />
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                        {expirationDate && (
+                            <div className="p-3 bg-muted rounded-lg text-sm">
+                                <div className="font-medium mb-1">État prévu :</div>
+                                <ExpirationBadge date={expirationDate} />
+                                {!differenceInDays(new Date(expirationDate), new Date()) &&
+                                    <span className="text-muted-foreground ml-2">Valide (plus de 3 mois)</span>
+                                }
+                            </div>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setExpirationTarget(null)}>
+                            Annuler
+                        </Button>
+                        <Button onClick={confirmExpirationUpdate}>
+                            Enregistrer
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Share Dialog */}
+            <Dialog open={!!shareTarget} onOpenChange={(open) => { if (!open) { setShareTarget(null); setShareUrl(''); } }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Partager le document de façon sécurisée</DialogTitle>
+                        <DialogDescription>
+                            Générez un lien temporaire pour "{shareTarget?.title}".
+                        </DialogDescription>
+                    </DialogHeader>
+                    {!shareUrl ? (
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label>Durée de validité</Label>
+                                <Select value={shareDuration} onValueChange={setShareDuration}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Choisir une durée" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="3600">1 Heure</SelectItem>
+                                        <SelectItem value="86400">24 Heures</SelectItem>
+                                        <SelectItem value="604800">7 Jours</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <Button className="w-full gap-2" onClick={handleShare}>
+                                <Link className="w-4 h-4" /> Générer le lien
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="space-y-4 py-4 animate-in fade-in">
+                            <div className="flex items-center gap-2 p-3 bg-muted rounded-lg break-all text-xs font-mono">
+                                {shareUrl}
+                            </div>
+                            <Button className="w-full gap-2" variant="secondary" onClick={copyToClipboard}>
+                                <Copy className="w-4 h-4" /> Copier le lien
+                            </Button>
+                            <div className="flex items-center gap-2 text-xs text-green-600 justify-center">
+                                <Shield className="w-3 h-3" /> Lien sécurisé généré
+                            </div>
+                        </div>
+                    )}
                 </DialogContent>
             </Dialog>
         </div>

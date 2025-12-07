@@ -12,4 +12,8 @@ export interface Document {
     size?: string;
     thumbnailUrl?: string;
     fileType?: string;
+    // Smart Management fields
+    side?: 'front' | 'back';
+    folder?: 'IDENTITE' | 'ETAT_CIVIL' | 'RESIDENCE' | 'AUTRE';
+    expirationDate?: string;
 }
