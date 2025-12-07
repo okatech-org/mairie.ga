@@ -1,28 +1,66 @@
-import { useEffect, useState } from 'react';
-import { Document } from '@/types/document';
+import { useEffect, useState, useRef } from 'react';
+import { Document, DocumentType } from '@/types/document';
 import { documentService } from '@/services/document-service';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Upload, Download, Trash2, Eye } from 'lucide-react';
+import { FileText, Upload, Trash2, Eye, Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
 export default function CitizenDocumentsPage() {
     const [documents, setDocuments] = useState<Document[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isUploading, setIsUploading] = useState(false);
+    const [selectedType, setSelectedType] = useState<DocumentType>('OTHER');
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        const fetchDocuments = async () => {
-            try {
-                const data = await documentService.getMyDocuments();
-                setDocuments(data);
-            } catch (error) {
-                toast.error("Impossible de charger les documents");
-            } finally {
-                setIsLoading(false);
-            }
-        };
         fetchDocuments();
     }, []);
+
+    const fetchDocuments = async () => {
+        try {
+            const data = await documentService.getMyDocuments();
+            setDocuments(data);
+        } catch (error) {
+            toast.error("Impossible de charger les documents");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error("Le fichier est trop volumineux (max 5MB)");
+            return;
+        }
+
+        setIsUploading(true);
+        try {
+            await documentService.uploadDocument(file, selectedType);
+            toast.success("Document ajouté avec succès");
+            fetchDocuments();
+        } catch (error) {
+            console.error("Upload failed", error);
+            toast.error("Erreur lors de l'envoi du document");
+        } finally {
+            setIsUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        try {
+            await documentService.deleteDocument(id);
+            toast.success("Document supprimé");
+            setDocuments(prev => prev.filter(d => d.id !== id));
+        } catch (error) {
+            toast.error("Erreur lors de la suppression");
+        }
+    };
 
     const getStatusBadge = (status: Document['status']) => {
         switch (status) {
@@ -43,6 +81,7 @@ export default function CitizenDocumentsPage() {
             case 'PASSPORT': return 'Passeport';
             case 'BIRTH_CERTIFICATE': return 'Acte de Naissance';
             case 'RESIDENCE_PERMIT': return 'Carte de Séjour';
+            case 'PHOTO': return 'Photo d\'identité';
             default: return 'Autre Document';
         }
     };
@@ -54,14 +93,39 @@ export default function CitizenDocumentsPage() {
                     <h1 className="text-3xl font-bold">Mes Documents</h1>
                     <p className="text-muted-foreground">Gérez vos documents officiels et justificatifs.</p>
                 </div>
-                <Button className="gap-2">
-                    <Upload className="w-4 h-4" />
-                    Ajouter un document
-                </Button>
+                <div className='flex items-center gap-2'>
+                    <Select value={selectedType} onValueChange={(v) => setSelectedType(v as DocumentType)}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Type de document" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="OTHER">Autre</SelectItem>
+                            <SelectItem value="PHOTO">Photo d'identité</SelectItem>
+                            <SelectItem value="ID_CARD">Carte d'identité</SelectItem>
+                            <SelectItem value="PASSPORT">Passeport</SelectItem>
+                            <SelectItem value="BIRTH_CERTIFICATE">Acte de Naissance</SelectItem>
+                            <SelectItem value="RESIDENCE_PERMIT">Carte de Séjour</SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        className="hidden"
+                        onChange={handleFileUpload}
+                        accept=".pdf,.jpg,.jpeg,.png"
+                    />
+                    <Button className="gap-2" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                        {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                        Ajouter
+                    </Button>
+                </div>
             </div>
 
             {isLoading ? (
-                <div>Chargement...</div>
+                <div className="flex justify-center p-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {documents.map((doc) => (
@@ -86,25 +150,33 @@ export default function CitizenDocumentsPage() {
                             </div>
 
                             <div className="flex gap-2 pt-4 border-t">
-                                <Button variant="ghost" size="sm" className="flex-1 gap-2">
+                                <Button variant="ghost" size="sm" className="flex-1 gap-2" onClick={() => window.open(doc.url, '_blank')}>
                                     <Eye className="w-4 h-4" /> Voir
                                 </Button>
-                                <Button variant="ghost" size="sm" className="flex-1 gap-2">
-                                    <Download className="w-4 h-4" />
+                                <Button variant="ghost" size="sm" className="flex-1 gap-2 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(doc.id)}>
+                                    <Trash2 className="w-4 h-4" />
                                 </Button>
                             </div>
                         </div>
                     ))}
 
-                    {/* Upload Placeholder Card */}
-                    <div className="neu-inset border-2 border-dashed border-muted-foreground/20 rounded-xl p-6 flex flex-col items-center justify-center text-center space-y-4 min-h-[250px] cursor-pointer hover:bg-muted/50 transition-colors">
-                        <div className="p-4 bg-muted rounded-full">
-                            <Upload className="w-8 h-8 text-muted-foreground" />
-                        </div>
+                    <div
+                        className="neu-inset border-2 border-dashed border-muted-foreground/20 rounded-xl p-6 flex flex-col items-center justify-center text-center space-y-4 min-h-[250px] cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => fileInputRef.current?.click()}
+                    >
+                        {isUploading ? (
+                            <div className="p-4 bg-muted rounded-full animate-pulse">
+                                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                            </div>
+                        ) : (
+                            <div className="p-4 bg-muted rounded-full">
+                                <Upload className="w-8 h-8 text-muted-foreground" />
+                            </div>
+                        )}
                         <div>
-                            <h3 className="font-bold text-lg">Ajouter un document</h3>
+                            <h3 className="font-bold text-lg">{isUploading ? "Envoi en cours..." : "Ajouter un document"}</h3>
                             <p className="text-sm text-muted-foreground max-w-[200px] mx-auto">
-                                Glissez-déposez ou cliquez pour importer un nouveau fichier
+                                {!isUploading && "Glissez-déposez ou cliquez pour importer un nouveau fichier"}
                             </p>
                         </div>
                     </div>

@@ -1,4 +1,4 @@
-export type DocumentType = 'ID_CARD' | 'PASSPORT' | 'BIRTH_CERTIFICATE' | 'RESIDENCE_PERMIT' | 'OTHER';
+export type DocumentType = 'ID_CARD' | 'PASSPORT' | 'BIRTH_CERTIFICATE' | 'RESIDENCE_PERMIT' | 'PHOTO' | 'OTHER';
 
 export type DocumentStatus = 'VERIFIED' | 'PENDING' | 'REJECTED';
 
