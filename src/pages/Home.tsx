@@ -26,12 +26,14 @@ import {
   MessageSquare,
   Calendar,
   Navigation,
-  Headphones
+  Headphones,
+  Play
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { IAstedDemoButton } from "@/components/iasted/IAstedDemoButton";
 import { IAstedGuideInline } from "@/components/iasted/IAstedGuideInline";
 import { GabonMairiesSection } from "@/components/home/GabonMairiesSection";
+import PresentationMode from "@/components/iasted/PresentationMode";
 import heroImage from "@/assets/mairie-accueil.jpg";
 import serviceImage from "@/assets/service-municipal.jpg";
 import familleImage from "@/assets/famille-acte-naissance.jpg";
@@ -42,6 +44,7 @@ const GabonMairiesMap = lazy(() => import("@/components/home/GabonMairiesMap"));
 
 export default function Home() {
   const [scrollY, setScrollY] = useState(0);
+  const [showPresentation, setShowPresentation] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -195,6 +198,14 @@ export default function Home() {
                 </p>
                 
                 <div className="flex flex-col sm:flex-row flex-wrap gap-3">
+                  <Button 
+                    size="lg" 
+                    onClick={() => setShowPresentation(true)}
+                    className="w-full sm:w-auto min-w-[180px] gap-2 h-12 text-base bg-gradient-to-r from-violet-600 to-primary hover:from-violet-700 hover:to-primary/90 text-white shadow-lg animate-pulse hover:animate-none"
+                  >
+                    <Play className="h-5 w-5" />
+                    Visite Guidée (2 min)
+                  </Button>
                   <Link to="/login">
                     <Button size="lg" className="w-full sm:w-auto min-w-[180px] gap-2 h-12 text-base bg-primary hover:bg-primary/90 text-white dark:text-primary-foreground">
                       <Users className="h-5 w-5" />
@@ -211,12 +222,6 @@ export default function Home() {
                     <Button size="lg" variant="outline" className="w-full sm:w-auto min-w-[180px] gap-2 h-12 text-base bg-white/10 dark:bg-white/5 border-white/30 dark:border-white/20 text-white hover:bg-white/20 dark:hover:bg-white/10 backdrop-blur-sm dark:backdrop-blur-none">
                       <FileText className="h-5 w-5" />
                       Nos Services
-                    </Button>
-                  </Link>
-                  <Link to="/iasted-guide">
-                    <Button size="lg" variant="outline" className="w-full sm:w-auto min-w-[180px] gap-2 h-12 text-base bg-violet-500/20 border-violet-400/40 text-white hover:bg-violet-500/30 backdrop-blur-sm animate-pulse hover:animate-none">
-                      <Mic className="h-5 w-5" />
-                      Découvrir iAsted
                     </Button>
                   </Link>
                 </div>
@@ -595,6 +600,14 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Presentation Mode */}
+      {showPresentation && (
+        <PresentationMode 
+          onClose={() => setShowPresentation(false)} 
+          autoStart={true}
+        />
+      )}
     </div>
   );
 }
