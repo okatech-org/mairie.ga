@@ -151,11 +151,25 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                 console.log('🎧 WebRTC Track received:', e.track.kind, e.streams[0].id);
                 if (e.track.kind === 'audio') {
                     console.log('🔊 Setting up audio stream...');
+                    
+                    // Debug: Log track state
+                    const track = e.track;
+                    console.log('🎵 Track state:', track.readyState, 'enabled:', track.enabled, 'muted:', track.muted);
+                    
+                    // Make sure track is enabled
+                    track.enabled = true;
+                    
                     audioEl.srcObject = e.streams[0];
                     
                     // Ensure volume is up
                     audioEl.volume = 1.0;
                     audioEl.muted = false;
+                    
+                    // Debug: Monitor when audio actually plays
+                    audioEl.onplaying = () => console.log('🔊 Audio element is now PLAYING');
+                    audioEl.onpause = () => console.log('⏸️ Audio element PAUSED');
+                    audioEl.onerror = (err) => console.error('❌ Audio element error:', err);
+                    audioEl.onvolumechange = () => console.log('🔊 Volume changed to:', audioEl.volume, 'muted:', audioEl.muted);
                     
                     // Detect if running in iframe (sandbox environment)
                     const isInIframe = window !== window.parent;
@@ -164,15 +178,20 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                     const attemptPlay = async () => {
                         try {
                             // Strategy 1: Direct play
+                            console.log('🔊 Attempting direct play...');
                             await audioEl.play();
                             console.log('✅ Audio playback started successfully');
+                            console.log('📊 Audio state: volume=', audioEl.volume, 'muted=', audioEl.muted, 'paused=', audioEl.paused);
                         } catch (err: any) {
                             console.error('❌ Audio play error:', err.message);
                             
                             // Strategy 2: Try with Web Audio API (better for WebRTC streams)
                             try {
+                                console.log('🔊 Trying Web Audio API fallback...');
                                 const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                                console.log('🔊 AudioContext state:', audioCtx.state);
                                 await audioCtx.resume();
+                                console.log('🔊 AudioContext resumed, state:', audioCtx.state);
                                 const source = audioCtx.createMediaStreamSource(e.streams[0]);
                                 source.connect(audioCtx.destination);
                                 console.log('✅ Audio playback via Web Audio API');
