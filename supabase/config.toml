@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.send-official-correspondence]
 verify_jwt = true
+
+[functions.document-ocr]
+verify_jwt = true
