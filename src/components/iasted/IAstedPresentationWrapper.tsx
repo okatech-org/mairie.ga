@@ -29,6 +29,7 @@ export default function IAstedPresentationWrapper({
   voiceProcessing = false
 }: IAstedPresentationWrapperProps) {
   const [buttonPosition, setButtonPosition] = useState({ x: 90, y: 85 });
+  const [targetPosition, setTargetPosition] = useState<{ x: number; y: number } | null>(null);
   const [isPresentationActive, setIsPresentationActive] = useState(false);
   const [trail, setTrail] = useState<TrailPoint[]>([]);
   const trailIdRef = useRef(0);
@@ -36,12 +37,16 @@ export default function IAstedPresentationWrapper({
 
   useEffect(() => {
     if (showPresentation) {
+      console.log('🎬 Presentation started - activating');
       setIsPresentationActive(true);
     }
   }, [showPresentation]);
 
   const handlePositionChange = (x: number, y: number) => {
-    console.log('📍 Position change received:', { x, y });
+    console.log('📍 Position change received:', { x, y, current: buttonPosition });
+    
+    // Show target indicator
+    setTargetPosition({ x, y });
     
     // Only add trail points when position actually changes significantly
     const dx = Math.abs(x - lastPositionRef.current.x);
@@ -69,6 +74,11 @@ export default function IAstedPresentationWrapper({
     
     lastPositionRef.current = { x, y };
     setButtonPosition({ x, y });
+    
+    // Hide target after animation
+    setTimeout(() => {
+      setTargetPosition(null);
+    }, 800);
   };
 
   // Clean up old trail points
@@ -82,8 +92,10 @@ export default function IAstedPresentationWrapper({
   }, [trail]);
 
   const handleClosePresentation = () => {
+    console.log('🛑 Closing presentation');
     setIsPresentationActive(false);
     setButtonPosition({ x: 90, y: 85 });
+    setTargetPosition(null);
     setTrail([]);
     onClosePresentation();
   };
@@ -97,6 +109,47 @@ export default function IAstedPresentationWrapper({
 
   return (
     <>
+      {/* Target position indicator */}
+      <AnimatePresence>
+        {isPresentationActive && showPresentation && targetPosition && (
+          <motion.div
+            key="target-indicator"
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0 }}
+            className="fixed pointer-events-none z-[9997]"
+            style={{
+              left: `${targetPosition.x}%`,
+              top: `${targetPosition.y}%`,
+              transform: 'translate(-50%, -50%)'
+            }}
+          >
+            {/* Pulsing target ring */}
+            <motion.div
+              animate={{ 
+                scale: [1, 1.5, 1],
+                opacity: [0.8, 0.3, 0.8]
+              }}
+              transition={{ 
+                duration: 0.6, 
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+              className="w-16 h-16 rounded-full border-2 border-dashed border-primary"
+              style={{
+                boxShadow: '0 0 20px rgba(139, 92, 246, 0.5)'
+              }}
+            />
+            {/* Center dot */}
+            <motion.div
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-primary"
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ duration: 0.3, repeat: Infinity }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Trail effect */}
       <AnimatePresence>
         {isPresentationActive && showPresentation && trail.map((point, index) => (
