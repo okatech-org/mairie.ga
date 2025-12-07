@@ -120,11 +120,38 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             // Audio Element for output (stored in ref for interruption control)
             const audioEl = document.createElement('audio');
             audioEl.autoplay = true;
+            audioEl.setAttribute('playsinline', 'true');
+            audioEl.muted = false;
+            // Append to DOM to ensure browser allows playback
+            audioEl.style.display = 'none';
+            document.body.appendChild(audioEl);
             audioElement.current = audioEl;
+            
             pc.ontrack = (e) => {
                 console.log('🎧 WebRTC Track received:', e.track.kind, e.streams[0].id);
-                audioEl.srcObject = e.streams[0];
-                audioEl.play().catch(err => console.error('❌ Audio play error:', err));
+                if (e.track.kind === 'audio') {
+                    console.log('🔊 Setting up audio stream...');
+                    audioEl.srcObject = e.streams[0];
+                    
+                    // Ensure volume is up
+                    audioEl.volume = 1.0;
+                    audioEl.muted = false;
+                    
+                    // Force play with user gesture context
+                    const playPromise = audioEl.play();
+                    if (playPromise !== undefined) {
+                        playPromise
+                            .then(() => {
+                                console.log('✅ Audio playback started successfully');
+                            })
+                            .catch(err => {
+                                console.error('❌ Audio play error:', err);
+                                // Try unmuting and playing again
+                                audioEl.muted = false;
+                                audioEl.play().catch(e => console.error('❌ Retry play failed:', e));
+                            });
+                    }
+                }
             };
 
             // Data Channel
@@ -773,10 +800,13 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
     };
 
     const disconnect = () => {
-        // Stop any ongoing audio
+        // Stop any ongoing audio and remove from DOM
         if (audioElement.current) {
             audioElement.current.pause();
             audioElement.current.srcObject = null;
+            if (audioElement.current.parentNode) {
+                audioElement.current.parentNode.removeChild(audioElement.current);
+            }
             audioElement.current = null;
         }
         if (peerConnection.current) {
