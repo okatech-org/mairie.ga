@@ -10,4 +10,6 @@ export interface Document {
     status: DocumentStatus;
     url: string;
     size?: string;
+    thumbnailUrl?: string;
+    fileType?: string;
 }

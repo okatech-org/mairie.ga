@@ -3,7 +3,7 @@ import { Document, DocumentType } from '@/types/document';
 import { documentService } from '@/services/document-service';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Upload, Trash2, Eye, Loader2 } from 'lucide-react';
+import { FileText, Upload, Trash2, Eye, Loader2, Image, FileIcon } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
@@ -23,6 +23,7 @@ export default function CitizenDocumentsPage() {
             const data = await documentService.getMyDocuments();
             setDocuments(data);
         } catch (error) {
+            console.error('Fetch error:', error);
             toast.error("Impossible de charger les documents");
         } finally {
             setIsLoading(false);
@@ -40,12 +41,12 @@ export default function CitizenDocumentsPage() {
 
         setIsUploading(true);
         try {
-            await documentService.uploadDocument(file, selectedType);
+            const newDoc = await documentService.uploadDocument(file, selectedType);
+            setDocuments(prev => [newDoc, ...prev]);
             toast.success("Document ajouté avec succès");
-            fetchDocuments();
-        } catch (error) {
+        } catch (error: any) {
             console.error("Upload failed", error);
-            toast.error("Erreur lors de l'envoi du document");
+            toast.error(error.message || "Erreur lors de l'envoi du document");
         } finally {
             setIsUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
@@ -86,9 +87,43 @@ export default function CitizenDocumentsPage() {
         }
     };
 
+    const isImageFile = (doc: Document) => {
+        return doc.fileType?.startsWith('image/') || 
+               doc.url?.match(/\.(jpg|jpeg|png|gif|webp)(\?|$)/i);
+    };
+
+    const DocumentThumbnail = ({ doc }: { doc: Document }) => {
+        const [imageError, setImageError] = useState(false);
+        
+        if (isImageFile(doc) && doc.thumbnailUrl && !imageError) {
+            return (
+                <div className="relative w-full h-32 rounded-lg overflow-hidden bg-muted">
+                    <img 
+                        src={doc.thumbnailUrl} 
+                        alt={doc.title}
+                        className="w-full h-full object-cover"
+                        onError={() => setImageError(true)}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                </div>
+            );
+        }
+        
+        // PDF or other document types
+        return (
+            <div className="w-full h-32 rounded-lg bg-muted/50 flex items-center justify-center">
+                {doc.fileType?.includes('pdf') ? (
+                    <FileText className="w-12 h-12 text-red-500/70" />
+                ) : (
+                    <FileIcon className="w-12 h-12 text-muted-foreground/50" />
+                )}
+            </div>
+        );
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold">Mes Documents</h1>
                     <p className="text-muted-foreground">Gérez vos documents officiels et justificatifs.</p>
@@ -113,7 +148,7 @@ export default function CitizenDocumentsPage() {
                         ref={fileInputRef}
                         className="hidden"
                         onChange={handleFileUpload}
-                        accept=".pdf,.jpg,.jpeg,.png"
+                        accept=".pdf,.jpg,.jpeg,.png,.webp"
                     />
                     <Button className="gap-2" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
                         {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
@@ -126,46 +161,72 @@ export default function CitizenDocumentsPage() {
                 <div className="flex justify-center p-12">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
+            ) : documents.length === 0 ? (
+                <div className="text-center py-12">
+                    <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                        <FileText className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-medium">Aucun document</h3>
+                    <p className="text-muted-foreground mt-1">Commencez par ajouter votre premier document</p>
+                </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {documents.map((doc) => (
-                        <div key={doc.id} className="neu-card p-6 rounded-xl space-y-4 flex flex-col justify-between group hover:border-primary/50 transition-colors">
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-start">
-                                    <div className="p-3 bg-primary/10 rounded-lg text-primary">
-                                        <FileText className="w-6 h-6" />
-                                    </div>
+                        <div key={doc.id} className="neu-card p-4 rounded-xl space-y-3 flex flex-col group hover:border-primary/50 transition-all hover:shadow-lg">
+                            {/* Thumbnail Preview */}
+                            <DocumentThumbnail doc={doc} />
+                            
+                            {/* Document Info */}
+                            <div className="flex-1 space-y-2">
+                                <div className="flex justify-between items-start gap-2">
+                                    <h3 className="font-semibold text-sm line-clamp-2" title={doc.title}>
+                                        {doc.title}
+                                    </h3>
                                     {getStatusBadge(doc.status)}
                                 </div>
 
-                                <div>
-                                    <h3 className="font-bold text-lg line-clamp-1" title={doc.title}>{doc.title}</h3>
-                                    <p className="text-sm text-muted-foreground">{getTypeLabel(doc.type)}</p>
-                                </div>
+                                <p className="text-xs text-muted-foreground">{getTypeLabel(doc.type)}</p>
 
-                                <div className="text-xs text-muted-foreground space-y-1">
-                                    <p>Ajouté le : {doc.uploadDate}</p>
-                                    <p>Taille : {doc.size || 'N/A'}</p>
+                                <div className="text-xs text-muted-foreground flex items-center gap-2">
+                                    <span>{doc.uploadDate}</span>
+                                    {doc.size && (
+                                        <>
+                                            <span>•</span>
+                                            <span>{doc.size}</span>
+                                        </>
+                                    )}
                                 </div>
                             </div>
 
-                            <div className="flex gap-2 pt-4 border-t">
-                                <Button variant="ghost" size="sm" className="flex-1 gap-2" onClick={() => window.open(doc.url, '_blank')}>
-                                    <Eye className="w-4 h-4" /> Voir
+                            {/* Actions */}
+                            <div className="flex gap-2 pt-2 border-t">
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="flex-1 gap-2 text-xs" 
+                                    onClick={() => window.open(doc.url, '_blank')}
+                                >
+                                    <Eye className="w-3.5 h-3.5" /> Voir
                                 </Button>
-                                <Button variant="ghost" size="sm" className="flex-1 gap-2 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(doc.id)}>
-                                    <Trash2 className="w-4 h-4" />
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="gap-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10" 
+                                    onClick={() => handleDelete(doc.id)}
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" />
                                 </Button>
                             </div>
                         </div>
                     ))}
 
+                    {/* Upload Placeholder Card */}
                     <div
-                        className="neu-inset border-2 border-dashed border-muted-foreground/20 rounded-xl p-6 flex flex-col items-center justify-center text-center space-y-4 min-h-[250px] cursor-pointer hover:bg-muted/50 transition-colors"
+                        className="neu-inset border-2 border-dashed border-muted-foreground/20 rounded-xl p-6 flex flex-col items-center justify-center text-center space-y-4 min-h-[280px] cursor-pointer hover:bg-muted/50 hover:border-primary/30 transition-all"
                         onClick={() => fileInputRef.current?.click()}
                     >
                         {isUploading ? (
-                            <div className="p-4 bg-muted rounded-full animate-pulse">
+                            <div className="p-4 bg-primary/10 rounded-full animate-pulse">
                                 <Loader2 className="w-8 h-8 text-primary animate-spin" />
                             </div>
                         ) : (
@@ -174,9 +235,9 @@ export default function CitizenDocumentsPage() {
                             </div>
                         )}
                         <div>
-                            <h3 className="font-bold text-lg">{isUploading ? "Envoi en cours..." : "Ajouter un document"}</h3>
-                            <p className="text-sm text-muted-foreground max-w-[200px] mx-auto">
-                                {!isUploading && "Glissez-déposez ou cliquez pour importer un nouveau fichier"}
+                            <h3 className="font-semibold">{isUploading ? "Envoi en cours..." : "Ajouter un document"}</h3>
+                            <p className="text-sm text-muted-foreground max-w-[180px] mx-auto mt-1">
+                                {!isUploading && "PDF, JPG, PNG (max 5MB)"}
                             </p>
                         </div>
                     </div>
