@@ -7,7 +7,7 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.get-realtime-token]
-verify_jwt = false
+verify_jwt = true
 
 [functions.auth-pin-login]
 verify_jwt = false
