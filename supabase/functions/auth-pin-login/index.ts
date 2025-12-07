@@ -7,6 +7,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Rate limiting configuration
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MINUTES = 15;
+
 interface PinLoginRequest {
   email: string;
   pinCode: string;
@@ -48,16 +52,61 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
+    const normalizedEmail = email.toLowerCase().trim();
+    
+    // Get client IP for logging
+    const clientIP = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
+                     req.headers.get("x-real-ip") || 
+                     "unknown";
+
+    // RATE LIMITING: Check failed attempts in the last LOCKOUT_MINUTES minutes
+    const lockoutTime = new Date(Date.now() - LOCKOUT_MINUTES * 60 * 1000).toISOString();
+    const { count: failedAttempts, error: countError } = await supabaseAdmin
+      .from("login_attempts")
+      .select("*", { count: "exact", head: true })
+      .eq("email", normalizedEmail)
+      .eq("success", false)
+      .gte("created_at", lockoutTime);
+
+    if (countError) {
+      console.error("Error checking rate limit:", countError);
+      // Continue anyway - don't block login if rate limit check fails
+    } else if (failedAttempts && failedAttempts >= MAX_ATTEMPTS) {
+      console.log(`Rate limit exceeded for ${normalizedEmail}: ${failedAttempts} failed attempts`);
+      
+      // Log this blocked attempt
+      await supabaseAdmin.from("login_attempts").insert({
+        email: normalizedEmail,
+        ip_address: clientIP,
+        success: false,
+      });
+
+      return new Response(
+        JSON.stringify({ 
+          error: `Trop de tentatives échouées. Veuillez réessayer dans ${LOCKOUT_MINUTES} minutes.` 
+        }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Get profile with PIN
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
       .select("user_id, pin_code, pin_enabled, first_name, last_name, email")
-      .eq("email", email.toLowerCase().trim())
+      .eq("email", normalizedEmail)
       .eq("pin_enabled", true)
       .maybeSingle();
 
     if (profileError) {
       console.error("Profile query error:", profileError);
+      
+      // Log failed attempt
+      await supabaseAdmin.from("login_attempts").insert({
+        email: normalizedEmail,
+        ip_address: clientIP,
+        success: false,
+      });
+
       return new Response(
         JSON.stringify({ error: "Erreur lors de la vérification" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -65,7 +114,15 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     if (!profile) {
-      console.log(`No profile found for email: ${email}`);
+      console.log(`No profile found for email: ${normalizedEmail}`);
+      
+      // Log failed attempt
+      await supabaseAdmin.from("login_attempts").insert({
+        email: normalizedEmail,
+        ip_address: clientIP,
+        success: false,
+      });
+
       return new Response(
         JSON.stringify({ error: "Email non trouvé ou code PIN non activé" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -73,6 +130,13 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     if (!profile.pin_code) {
+      // Log failed attempt
+      await supabaseAdmin.from("login_attempts").insert({
+        email: normalizedEmail,
+        ip_address: clientIP,
+        success: false,
+      });
+
       return new Response(
         JSON.stringify({ error: "Aucun code PIN configuré" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -100,7 +164,15 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     if (!isValidPin) {
-      console.log(`Invalid PIN for email: ${email}`);
+      console.log(`Invalid PIN for email: ${normalizedEmail}`);
+      
+      // Log failed attempt
+      await supabaseAdmin.from("login_attempts").insert({
+        email: normalizedEmail,
+        ip_address: clientIP,
+        success: false,
+      });
+
       return new Response(
         JSON.stringify({ error: "Code PIN incorrect" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -108,6 +180,13 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     console.log(`PIN verified for user: ${profile.user_id}`);
+
+    // Log successful attempt
+    await supabaseAdmin.from("login_attempts").insert({
+      email: normalizedEmail,
+      ip_address: clientIP,
+      success: true,
+    });
 
     // Generate a magic link token for the user
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
