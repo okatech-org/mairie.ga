@@ -199,14 +199,6 @@ export default function Home() {
                 </p>
                 
                 <div className="flex flex-col sm:flex-row flex-wrap gap-3">
-                  <Button 
-                    size="lg" 
-                    onClick={startPresentation}
-                    className="w-full sm:w-auto min-w-[180px] gap-2 h-12 text-base bg-gradient-to-r from-violet-600 to-primary hover:from-violet-700 hover:to-primary/90 text-white shadow-lg animate-pulse hover:animate-none"
-                  >
-                    <Play className="h-5 w-5" />
-                    Visite Guidée (2 min)
-                  </Button>
                   <Link to="/login">
                     <Button size="lg" className="w-full sm:w-auto min-w-[180px] gap-2 h-12 text-base bg-primary hover:bg-primary/90 text-white dark:text-primary-foreground">
                       <Users className="h-5 w-5" />
