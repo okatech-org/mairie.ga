@@ -694,10 +694,9 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
                 navigate(resolvedPath);
                 toast.success(`Navigation vers ${resolvedPath}`);
 
-                // If chameleon mode is requested (target_role), we could store it or handle it
+            // Note: chameleon_role feature removed for security - role impersonation must be validated server-side
                 if (args.target_role) {
-                    console.log(`🦎 [IAstedInterface] Mode Caméléon: ${args.target_role}`);
-                    localStorage.setItem('chameleon_role', args.target_role);
+                    console.log(`🦎 [IAstedInterface] Mode Caméléon demandé: ${args.target_role} (ignoré pour sécurité - validation côté serveur requise)`);
                 }
 
                 return { success: true, message: `Navigation vers ${resolvedPath} effectuée` };
