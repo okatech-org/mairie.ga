@@ -114,7 +114,9 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             audioEl.autoplay = true;
             audioElement.current = audioEl;
             pc.ontrack = (e) => {
+                console.log('🎧 WebRTC Track received:', e.track.kind, e.streams[0].id);
                 audioEl.srcObject = e.streams[0];
+                audioEl.play().catch(err => console.error('❌ Audio play error:', err));
             };
 
             // Data Channel
@@ -125,19 +127,19 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                 console.log('Data Channel Open');
                 setVoiceState('listening');
                 updateSession(voice, systemPrompt); // Send initial config
-                
+
                 // Trigger iAsted to speak IMMEDIATELY with a personalized greeting
                 // Reduced delay for faster response
                 setTimeout(() => {
                     if (dc.readyState === 'open') {
                         console.log('🎙️ Triggering auto-greeting...');
-                        
+
                         // Determine time of day for personalized greeting
                         const hour = new Date().getHours();
-                        const timeOfDay = hour >= 5 && hour < 12 ? 'matin' 
-                            : hour >= 12 && hour < 18 ? 'après-midi' 
-                            : hour >= 18 && hour < 22 ? 'soir' : 'nuit';
-                        
+                        const timeOfDay = hour >= 5 && hour < 12 ? 'matin'
+                            : hour >= 12 && hour < 18 ? 'après-midi'
+                                : hour >= 18 && hour < 22 ? 'soir' : 'nuit';
+
                         // Send a hidden user message to trigger the greeting
                         const greetingTrigger = {
                             type: 'conversation.item.create',
@@ -151,7 +153,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                             }
                         };
                         dc.send(JSON.stringify(greetingTrigger));
-                        
+
                         // Request AI response immediately
                         dc.send(JSON.stringify({ type: 'response.create' }));
                     }
@@ -237,7 +239,35 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                 input_audio_transcription: {
                     model: 'whisper-1',
                 },
+                // Turn detection config for noise filtering and barge-in sensitivity
+                turn_detection: {
+                    type: 'server_vad',
+                    threshold: 0.6,              // Higher = less sensitive to background noise
+                    prefix_padding_ms: 300,      // Wait before considering as speech
+                    silence_duration_ms: 700     // Silence duration to end turn
+                },
                 tools: [
+                    // ============= INTERRUPTION TOOL =============
+                    {
+                        type: 'function',
+                        name: 'interrupt_speech',
+                        description: 'Interrompre immédiatement la parole et écouter. Utiliser quand l\'utilisateur dit "stop", "arrête", "attends", "tais-toi", "une seconde", "pause", etc.',
+                        parameters: { type: 'object', properties: {} }
+                    },
+                    {
+                        type: 'function',
+                        name: 'evaluate_speech_target',
+                        description: 'Évaluer si la parole détectée est adressée à l\'assistant ou est une conversation parallèle/bruit. Utiliser quand tu doutes que l\'on s\'adresse à toi.',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                is_addressed_to_me: { type: 'boolean', description: 'Vrai si la parole semble adressée à iAsted' },
+                                confidence: { type: 'number', description: 'Niveau de confiance 0-1' },
+                                reason: { type: 'string', description: 'Explication courte' }
+                            },
+                            required: ['is_addressed_to_me']
+                        }
+                    },
                     {
                         type: 'function',
                         name: 'change_voice',
@@ -591,7 +621,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
     // Cancel current AI response (interruption)
     const cancelResponse = useCallback(() => {
         console.log('🛑 Cancelling current response (interruption)');
-        
+
         // 1. Immediately mute the audio element
         if (audioElement.current) {
             audioElement.current.pause();
@@ -599,18 +629,18 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             // Re-enable for next response
             setTimeout(() => {
                 if (audioElement.current) {
-                    audioElement.current.play().catch(() => {});
+                    audioElement.current.play().catch(() => { });
                 }
             }, 100);
         }
-        
+
         // 2. Send cancel to server if we have an active response
         if (dataChannel.current?.readyState === 'open') {
             // Cancel ongoing response generation
             dataChannel.current.send(JSON.stringify({ type: 'response.cancel' }));
             console.log('📤 Sent response.cancel to server');
         }
-        
+
         // 3. Update state to listening
         setVoiceState('listening');
         currentResponseId.current = null;
@@ -668,6 +698,27 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
         const args = JSON.parse(argsString);
 
         console.log(`🔧 Tool Call: ${name}`, args);
+
+        // ============= INTERRUPTION HANDLING =============
+        if (name === 'interrupt_speech') {
+            console.log('🛑 interrupt_speech tool called - interrupting immediately');
+            cancelResponse();
+            return;
+        }
+
+        if (name === 'evaluate_speech_target') {
+            const { is_addressed_to_me, confidence, reason } = args;
+            console.log(`🎯 Speech target evaluation: addressed=${is_addressed_to_me}, confidence=${confidence}, reason=${reason}`);
+
+            if (!is_addressed_to_me) {
+                // Speech was not addressed to iAsted - stay silent
+                console.log('👂 Speech not addressed to iAsted - ignoring');
+                // Don't respond, just listen
+                return;
+            }
+            // If addressed to iAsted, continue with normal response flow
+            return;
+        }
 
         if (name === 'stop_conversation') {
             disconnect();
