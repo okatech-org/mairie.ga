@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDropzone } from "react-dropzone";
 import { motion, AnimatePresence } from "framer-motion";
@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, Upload, Loader2, FileText, User, Users, MapPin, Briefcase, Eye, Key, Copy, Check, Sparkles, Brain, X, Image } from "lucide-react";
+import { CheckCircle2, Upload, Loader2, FileText, User, Users, MapPin, Briefcase, Eye, Key, Copy, Check, Sparkles, Brain, X, Image, Pencil, Save } from "lucide-react";
 import { formAssistantStore, useFormAssistant } from "@/stores/formAssistantStore";
 import { IAstedLabel, IAstedInput, IAstedSelectIndicator, getIAstedSelectClasses } from "@/components/ui/iasted-form-fields";
 import { registerUser, generatePinCode } from "@/services/authService";
@@ -27,6 +27,95 @@ interface UploadedDocument {
     progress: number;
     analysis?: DocumentAnalysis;
     error?: string;
+}
+
+// Composant d'édition inline pour les champs OCR
+interface EditableOCRFieldProps {
+    field: string;
+    label: string;
+    value: string;
+    isDate?: boolean;
+    onSave: (newValue: string) => void;
+}
+
+function EditableOCRField({ field, label, value, isDate, onSave }: EditableOCRFieldProps) {
+    const [isEditing, setIsEditing] = useState(false);
+    const [editValue, setEditValue] = useState(value);
+    const inputRef = React.useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (isEditing && inputRef.current) {
+            inputRef.current.focus();
+            inputRef.current.select();
+        }
+    }, [isEditing]);
+
+    const handleSave = () => {
+        if (editValue.trim() !== value) {
+            onSave(editValue.trim());
+        }
+        setIsEditing(false);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            handleSave();
+        } else if (e.key === 'Escape') {
+            setEditValue(value);
+            setIsEditing(false);
+        }
+    };
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-background/80 border rounded-lg p-2 text-xs group relative"
+        >
+            <div className="flex items-center justify-between gap-1">
+                <p className="text-muted-foreground font-medium">{label}</p>
+                {!isEditing && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => setIsEditing(true)}
+                    >
+                        <Pencil className="w-3 h-3 text-muted-foreground" />
+                    </Button>
+                )}
+            </div>
+            
+            {isEditing ? (
+                <div className="flex items-center gap-1 mt-1">
+                    <Input
+                        ref={inputRef}
+                        type={isDate ? 'date' : 'text'}
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        onBlur={handleSave}
+                        className="h-6 text-xs px-2 py-1"
+                    />
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 text-green-600 hover:text-green-700"
+                        onClick={handleSave}
+                    >
+                        <Save className="w-3 h-3" />
+                    </Button>
+                </div>
+            ) : (
+                <p 
+                    className="text-foreground font-medium cursor-pointer hover:text-primary transition-colors"
+                    onClick={() => setIsEditing(true)}
+                >
+                    {isDate && value ? new Date(value).toLocaleDateString('fr-FR') : value}
+                </p>
+            )}
+        </motion.div>
+    );
 }
 
 export function GabonaisRegistrationForm() {
@@ -586,12 +675,11 @@ export function GabonaisRegistrationForm() {
                                             </AlertTitle>
                                             <AlertDescription className="mt-2 space-y-3">
                                                 <p className="text-sm text-muted-foreground">
-                                                    Les informations suivantes ont été extraites de vos documents. 
-                                                    Vérifiez leur exactitude avant de continuer.
+                                                    Cliquez sur un champ pour le modifier directement.
                                                 </p>
                                                 
-                                                {/* Résumé des champs extraits */}
-                                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-3">
+                                                {/* Résumé des champs extraits avec édition inline */}
+                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mt-3">
                                                     {Array.from(filledByIasted).map(field => {
                                                         const value = formData[field as keyof typeof formData];
                                                         if (!value) return null;
@@ -608,19 +696,17 @@ export function GabonaisRegistrationForm() {
                                                         };
                                                         
                                                         return (
-                                                            <motion.div
+                                                            <EditableOCRField
                                                                 key={field}
-                                                                initial={{ opacity: 0, scale: 0.9 }}
-                                                                animate={{ opacity: 1, scale: 1 }}
-                                                                className="bg-background/80 border rounded-lg p-2 text-xs"
-                                                            >
-                                                                <p className="text-muted-foreground font-medium">
-                                                                    {fieldLabels[field] || field}
-                                                                </p>
-                                                                <p className="text-foreground truncate font-medium">
-                                                                    {value}
-                                                                </p>
-                                                            </motion.div>
+                                                                field={field}
+                                                                label={fieldLabels[field] || field}
+                                                                value={value}
+                                                                isDate={field === 'dateOfBirth'}
+                                                                onSave={(newValue) => {
+                                                                    setFormData(prev => ({ ...prev, [field]: newValue }));
+                                                                    toast.success(`${fieldLabels[field] || field} mis à jour`);
+                                                                }}
+                                                            />
                                                         );
                                                     })}
                                                 </div>
@@ -629,7 +715,7 @@ export function GabonaisRegistrationForm() {
                                                 <div className="flex items-center gap-3 pt-2 border-t border-border/50 mt-3">
                                                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                                         <CheckCircle2 className="w-3 h-3 text-green-600" />
-                                                        <span>Vous pourrez modifier ces informations dans les étapes suivantes</span>
+                                                        <span>Cliquez sur Suivant quand les informations sont correctes</span>
                                                     </div>
                                                 </div>
                                             </AlertDescription>
