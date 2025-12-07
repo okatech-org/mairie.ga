@@ -80,7 +80,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             // 1. Get Ephemeral Token from edge function (direct HTTP call to avoid mocked client)
             console.log('🔑 Requesting ephemeral token...');
             const FUNCTION_URL =
-                'https://ppduheroaoklcusdrlzt.supabase.co/functions/v1/get-realtime-token';
+                'https://csmegxwehniyfvbbjqbz.functions.supabase.co/functions/v1/get-realtime-token';
 
             // Get current session for authorization (optional - allows anonymous access)
             const { data: { session } } = await supabase.auth.getSession();
