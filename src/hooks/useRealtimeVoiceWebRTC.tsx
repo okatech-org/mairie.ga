@@ -121,14 +121,32 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                 console.log('Data Channel Open');
                 setVoiceState('listening');
                 updateSession(voice, systemPrompt); // Send initial config
-
-                // Trigger iAsted to speak first (auto-greeting)
+                
+                // Trigger iAsted to speak immediately with a greeting
                 setTimeout(() => {
                     if (dc.readyState === 'open') {
                         console.log('🎙️ Triggering auto-greeting...');
-                        dc.send(JSON.stringify({ type: 'response.create' }));
+                        
+                        // Send a hidden user message to trigger the greeting
+                        const greetingTrigger = {
+                            type: 'conversation.item.create',
+                            item: {
+                                type: 'message',
+                                role: 'user',
+                                content: [{
+                                    type: 'input_text',
+                                    text: '[ACTIVATION] L\'utilisateur vient de cliquer sur le bouton iAsted. Salue-le immédiatement selon son profil et le moment de la journée, puis indique que tu es disponible et à son écoute.'
+                                }]
+                            }
+                        };
+                        dc.send(JSON.stringify(greetingTrigger));
+                        
+                        // Request AI response
+                        setTimeout(() => {
+                            dc.send(JSON.stringify({ type: 'response.create' }));
+                        }, 100);
                     }
-                }, 500);
+                }, 600);
             };
 
             dc.onmessage = (e) => {
