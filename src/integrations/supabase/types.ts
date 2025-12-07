@@ -146,6 +146,63 @@ export type Database = {
         }
         Relationships: []
       }
+      document_vault: {
+        Row: {
+          category: string
+          created_at: string
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          id: string
+          is_verified: boolean | null
+          last_used_at: string | null
+          metadata: Json | null
+          name: string
+          original_name: string | null
+          source: string | null
+          thumbnail_path: string | null
+          updated_at: string
+          user_id: string
+          verification_date: string | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          is_verified?: boolean | null
+          last_used_at?: string | null
+          metadata?: Json | null
+          name: string
+          original_name?: string | null
+          source?: string | null
+          thumbnail_path?: string | null
+          updated_at?: string
+          user_id: string
+          verification_date?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          is_verified?: boolean | null
+          last_used_at?: string | null
+          metadata?: Json | null
+          name?: string
+          original_name?: string | null
+          source?: string | null
+          thumbnail_path?: string | null
+          updated_at?: string
+          user_id?: string
+          verification_date?: string | null
+        }
+        Relationships: []
+      }
       documents: {
         Row: {
           category: string | null
