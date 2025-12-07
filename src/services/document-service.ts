@@ -10,6 +10,7 @@ const typeToCategory: Record<DocumentType, string> = {
     'PASSPORT': 'PASSEPORT',
     'BIRTH_CERTIFICATE': 'ACTE_NAISSANCE',
     'RESIDENCE_PERMIT': 'CARTE_SEJOUR',
+    'RESIDENCE_PROOF': 'JUSTIFICATIF_DOMICILE',
     'PHOTO': 'PHOTO_IDENTITE',
     'OTHER': 'user_upload'
 };
@@ -21,6 +22,7 @@ const categoryToType = (category: string): DocumentType => {
         case 'PASSEPORT': return 'PASSPORT';
         case 'ACTE_NAISSANCE': return 'BIRTH_CERTIFICATE';
         case 'CARTE_SEJOUR': return 'RESIDENCE_PERMIT';
+        case 'JUSTIFICATIF_DOMICILE': return 'RESIDENCE_PROOF';
         case 'PHOTO_IDENTITE': return 'PHOTO';
         case 'identity': return 'ID_CARD'; // Backwards compatibility if needed
         default: return 'OTHER';
@@ -38,6 +40,8 @@ const getFolderForDoc = (type: DocumentType, name: string): string => {
             return 'IDENTITE';
         case 'BIRTH_CERTIFICATE':
             return 'ETAT_CIVIL';
+        case 'RESIDENCE_PROOF':
+            return 'RESIDENCE';
     }
 
     // 2. Weak mapping based on filename if type is OTHER
@@ -153,7 +157,7 @@ export const documentService = {
         return documents;
     },
 
-    uploadDocument: async (file: File, type: DocumentType): Promise<Document> => {
+    uploadDocument: async (file: File, type: DocumentType, expirationDate?: string): Promise<Document> => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
             throw new Error('User must be authenticated to upload documents');
@@ -197,7 +201,8 @@ export const documentService = {
                 file_type: file.type,
                 file_size: file.size,
                 category: typeToCategory[actualType],
-            })
+                expiration_date: expirationDate || null,
+            } as any)
             .select()
             .single();
 

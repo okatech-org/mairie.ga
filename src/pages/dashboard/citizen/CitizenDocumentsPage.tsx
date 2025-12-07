@@ -11,6 +11,7 @@ import { FileText, Upload, Trash2, Eye, Loader2, FileIcon, Pencil, X, Check, Cal
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { dossierService } from '@/services/dossier-service';
+import { supabase } from '@/integrations/supabase/client';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -182,15 +183,47 @@ const AutoRotateImage = ({ src, alt, className, onError, docType }: { src: strin
                 opacity: isLoaded ? 1 : 0
             }}
             onLoad={handleLoad}
-            onError={onError}
         />
     );
 };
 
-const ExpirationBadge = ({ date }: { date?: string }) => {
+const ExpirationBadge = ({ date, docType }: { date?: string, docType?: DocumentType }) => {
+    // Documents that NEVER expire
+    const neverExpires = docType && ['BIRTH_CERTIFICATE', 'OTHER'].includes(docType);
+
+    // Documents that REQUIRE an expiration date
+    const requiresExpiration = docType && ['ID_CARD', 'PASSPORT', 'RESIDENCE_PERMIT', 'RESIDENCE_PROOF'].includes(docType);
+
+    // Documents without expiration concept (Photo is just an image, no date needed)
+    if (docType === 'PHOTO') {
+        return null; // Photos don't expire
+    }
+
+    // Birth certificates and similar never expire
+    if (neverExpires) {
+        return (
+            <Badge variant="outline" className="flex items-center gap-1 border-green-500 text-green-600 bg-green-50">
+                <Check size={10} />
+                Illimité
+            </Badge>
+        );
+    }
+
+    // No date set but should have one
+    if (!date && requiresExpiration) {
+        return (
+            <Badge variant="outline" className="flex items-center gap-1 border-muted-foreground/50 text-muted-foreground">
+                <Clock size={10} />
+                Date non définie
+            </Badge>
+        );
+    }
+
     if (!date) return null;
+
     const days = differenceInDays(new Date(date), new Date());
 
+    // Expired
     if (days < 0) {
         return (
             <Badge variant="destructive" className="flex items-center gap-1">
@@ -199,15 +232,35 @@ const ExpirationBadge = ({ date }: { date?: string }) => {
             </Badge>
         );
     }
-    if (days < 90) { // 3 months warning
+
+    // Less than 30 days - URGENT (orange)
+    if (days < 30) {
         return (
             <Badge variant="outline" className="flex items-center gap-1 border-orange-500 text-orange-600 bg-orange-50">
-                <Clock size={10} />
+                <AlertTriangle size={10} />
                 {days}j restants
             </Badge>
         );
     }
-    return null;
+
+    // Less than 90 days (3 months) - WARNING (yellow/amber)
+    if (days < 90) {
+        const months = Math.ceil(days / 30);
+        return (
+            <Badge variant="outline" className="flex items-center gap-1 border-yellow-500 text-yellow-700 bg-yellow-50">
+                <Clock size={10} />
+                {months} mois restant{months > 1 ? 's' : ''}
+            </Badge>
+        );
+    }
+
+    // Valid for more than 90 days (blue)
+    return (
+        <Badge variant="outline" className="flex items-center gap-1 border-blue-500 text-blue-600 bg-blue-50">
+            <Check size={10} />
+            Valide ({format(new Date(date), 'dd/MM/yyyy')})
+        </Badge>
+    );
 };
 
 export default function CitizenDocumentsPage() {
@@ -227,6 +280,13 @@ export default function CitizenDocumentsPage() {
     const [shareTarget, setShareTarget] = useState<Document | null>(null);
     const [shareUrl, setShareUrl] = useState('');
     const [shareDuration, setShareDuration] = useState('3600'); // 1 hour default
+
+    // Pre-Upload State
+    const [pendingUploadFile, setPendingUploadFile] = useState<File | null>(null);
+    const [uploadDate, setUploadDate] = useState('');
+    const [uploadType, setUploadType] = useState<DocumentType>('OTHER');
+    const [ocrLoading, setOcrLoading] = useState(false);
+    const [ocrConfidence, setOcrConfidence] = useState<number | null>(null);
 
     useEffect(() => {
         fetchDocuments();
@@ -326,9 +386,151 @@ export default function CitizenDocumentsPage() {
         }
     };
 
-    const onDrop = useCallback((acceptedFiles: File[]) => {
+    // --- Upload Handlers ---
+
+    const handleUploadConfirm = async () => {
+        if (!pendingUploadFile) return;
+
+        const fileToUpload = pendingUploadFile;
+        setPendingUploadFile(null); // Close dialog
+
+        // Process single file
+        const uploadId = Math.random().toString(36).substr(2, 9);
+        setUploadingFiles(prev => [...prev, {
+            id: uploadId,
+            name: fileToUpload.name,
+            progress: 0,
+            status: 'uploading'
+        }]);
+
+        try {
+            const updateFileProgress = (id: string, progress: number, status: 'uploading' | 'success' | 'error') => {
+                setUploadingFiles(prev => prev.map(f =>
+                    f.id === id ? { ...f, progress, status } : f
+                ));
+            };
+
+            // Simulate progress
+            updateFileProgress(uploadId, 30, 'uploading');
+
+            // Actual upload with date
+            const newDoc = await documentService.uploadDocument(fileToUpload, uploadType, uploadDate || undefined);
+
+            updateFileProgress(uploadId, 100, 'success');
+
+            // Cleanup list after success
+            setTimeout(() => {
+                setUploadingFiles(prev => prev.filter(f => f.id !== uploadId));
+            }, 1500);
+
+            setDocuments(prev => [newDoc, ...prev]);
+            toast.success("Document ajouté avec succès");
+        } catch (error) {
+            setUploadingFiles(prev => prev.map(f =>
+                f.id === uploadId ? { ...f, progress: 100, status: 'error' } : f
+            ));
+            setTimeout(() => {
+                setUploadingFiles(prev => prev.filter(f => f.id !== uploadId));
+            }, 3000);
+            toast.error("Échec de l'envoi");
+        } finally {
+            setUploadDate('');
+            setUploadType('OTHER');
+        }
+    };
+
+    const onDrop = useCallback(async (acceptedFiles: File[]) => {
         if (acceptedFiles.length > 0) {
-            handleUpload(acceptedFiles);
+            const file = acceptedFiles[0];
+            setPendingUploadFile(file);
+            setOcrLoading(true);
+            setOcrConfidence(null);
+
+            // Try to auto-detect type from filename first
+            const lowerName = file.name.toLowerCase();
+            let detectedType: DocumentType = selectedType;
+
+            if (selectedType === 'OTHER') {
+                if (lowerName.includes('passeport') || lowerName.includes('passport')) detectedType = 'PASSPORT';
+                else if (lowerName.includes('cni') || lowerName.includes('carte identite')) detectedType = 'ID_CARD';
+                else if (lowerName.includes('acte') && lowerName.includes('naissance')) detectedType = 'BIRTH_CERTIFICATE';
+                else if (lowerName.includes('sejour') || lowerName.includes('residence permit')) detectedType = 'RESIDENCE_PERMIT';
+                else if (lowerName.includes('facture') || lowerName.includes('edf') || lowerName.includes('eau') ||
+                    lowerName.includes('justif') || lowerName.includes('domicile') || lowerName.includes('electricite') ||
+                    lowerName.includes('quittance') || lowerName.includes('loyer')) {
+                    detectedType = 'RESIDENCE_PROOF';
+                }
+            }
+
+            setUploadType(detectedType);
+
+            // Default expiration logic
+            if (detectedType === 'BIRTH_CERTIFICATE') {
+                setUploadDate('');
+            } else if (detectedType === 'RESIDENCE_PROOF') {
+                const futureDate = new Date();
+                futureDate.setDate(futureDate.getDate() + 90);
+                setUploadDate(futureDate.toISOString().split('T')[0]);
+            } else {
+                setUploadDate('');
+            }
+
+            // Try OCR to extract expiration date from image
+            if (file.type.startsWith('image/')) {
+                try {
+                    const reader = new FileReader();
+                    reader.onload = async () => {
+                        try {
+                            const base64 = (reader.result as string).split(',')[1];
+
+                            const { data, error } = await supabase.functions.invoke('document-ocr', {
+                                body: {
+                                    imageBase64: base64,
+                                    mimeType: file.type,
+                                    documentType: detectedType === 'PASSPORT' ? 'passport' :
+                                        detectedType === 'ID_CARD' ? 'cni' :
+                                            detectedType === 'BIRTH_CERTIFICATE' ? 'birth_certificate' :
+                                                detectedType === 'RESIDENCE_PROOF' ? 'residence_proof' : 'other'
+                                }
+                            });
+
+                            if (!error && data) {
+                                console.log('[OCR] Result:', data);
+                                setOcrConfidence(data.confidence || 0);
+
+                                // Auto-detect document type from OCR
+                                if (data.documentType && selectedType === 'OTHER') {
+                                    const typeMap: Record<string, DocumentType> = {
+                                        'passport': 'PASSPORT',
+                                        'cni': 'ID_CARD',
+                                        'birth_certificate': 'BIRTH_CERTIFICATE',
+                                        'residence_proof': 'RESIDENCE_PROOF',
+                                    };
+                                    if (typeMap[data.documentType]) {
+                                        setUploadType(typeMap[data.documentType]);
+                                    }
+                                }
+
+                                // Extract expiration date
+                                if (data.extractedData?.expiryDate) {
+                                    setUploadDate(data.extractedData.expiryDate);
+                                    toast.success(`Date d'expiration détectée: ${data.extractedData.expiryDate}`);
+                                }
+                            }
+                        } catch (ocrError) {
+                            console.error('[OCR] Error:', ocrError);
+                        } finally {
+                            setOcrLoading(false);
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                } catch (e) {
+                    console.error('[OCR] Failed to read file:', e);
+                    setOcrLoading(false);
+                }
+            } else {
+                setOcrLoading(false);
+            }
         }
     }, [selectedType]);
 
@@ -594,7 +796,7 @@ export default function CitizenDocumentsPage() {
                             {getStatusBadge(group.front.status)}
                         </div>
                         <p className="text-xs text-muted-foreground">{getTypeLabel(group.type)}</p>
-                        <ExpirationBadge date={group.front.expirationDate} />
+                        <ExpirationBadge date={group.front.expirationDate} docType={group.type} />
                         <div className="text-xs text-muted-foreground flex items-center gap-2">
                             <span>{group.front.uploadDate}</span>
                         </div>
@@ -646,7 +848,7 @@ export default function CitizenDocumentsPage() {
                             <div className="mt-4 space-y-1">
                                 <h3 className="font-bold text-lg">{group.title}</h3>
                                 <p className="text-xs text-muted-foreground">Document Officiel • Recto</p>
-                                <ExpirationBadge date={group.front?.expirationDate} />
+                                <ExpirationBadge date={group.front?.expirationDate} docType={group.type} />
                             </div>
                         </div>
                     </div>
@@ -958,7 +1160,7 @@ export default function CitizenDocumentsPage() {
                         {expirationDate && (
                             <div className="p-3 bg-muted rounded-lg text-sm">
                                 <div className="font-medium mb-1">État prévu :</div>
-                                <ExpirationBadge date={expirationDate} />
+                                <ExpirationBadge date={expirationDate} docType={uploadType} />
                                 {!differenceInDays(new Date(expirationDate), new Date()) &&
                                     <span className="text-muted-foreground ml-2">Valide (plus de 3 mois)</span>
                                 }
@@ -1017,6 +1219,113 @@ export default function CitizenDocumentsPage() {
                             </div>
                         </div>
                     )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Pre-Upload Review Dialog */}
+            <Dialog open={!!pendingUploadFile} onOpenChange={(open) => !open && setPendingUploadFile(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Nouveau Document</DialogTitle>
+                        <DialogDescription>
+                            Vérifiez les informations avant l'enregistrement.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="grid gap-4 py-4">
+                        <div className="flex items-center gap-4 p-4 border rounded-lg bg-muted/20">
+                            <div className="p-2 bg-primary/10 rounded-lg">
+                                <FileText className="w-8 h-8 text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="font-semibold truncate">{pendingUploadFile?.name}</p>
+                                <p className="text-sm text-muted-foreground">
+                                    {pendingUploadFile && (pendingUploadFile.size / 1024 / 1024).toFixed(2)} MB
+                                </p>
+                            </div>
+                            {ocrLoading && (
+                                <div className="flex items-center gap-2 text-sm text-primary">
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Analyse IA...
+                                </div>
+                            )}
+                            {!ocrLoading && ocrConfidence !== null && (
+                                <Badge variant="outline" className={ocrConfidence > 0.7 ? "border-green-500 text-green-600" : "border-yellow-500 text-yellow-600"}>
+                                    IA: {Math.round(ocrConfidence * 100)}%
+                                </Badge>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Type de document</Label>
+                            <Select value={uploadType} onValueChange={(v) => {
+                                const newType = v as DocumentType;
+                                setUploadType(newType);
+                                // Auto-set expiration based on type
+                                if (newType === 'BIRTH_CERTIFICATE') {
+                                    setUploadDate(''); // No expiration
+                                } else if (newType === 'RESIDENCE_PROOF') {
+                                    // Auto-calculate J+90
+                                    const futureDate = new Date();
+                                    futureDate.setDate(futureDate.getDate() + 90);
+                                    setUploadDate(futureDate.toISOString().split('T')[0]);
+                                }
+                            }}>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="OTHER">Autre</SelectItem>
+                                    <SelectItem value="PHOTO">Photo d'identité</SelectItem>
+                                    <SelectItem value="ID_CARD">Carte d'identité</SelectItem>
+                                    <SelectItem value="PASSPORT">Passeport</SelectItem>
+                                    <SelectItem value="BIRTH_CERTIFICATE">Acte de Naissance</SelectItem>
+                                    <SelectItem value="RESIDENCE_PERMIT">Carte de Séjour</SelectItem>
+                                    <SelectItem value="RESIDENCE_PROOF">Justificatif de Domicile</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Date d'expiration</Label>
+                            {uploadType === 'BIRTH_CERTIFICATE' ? (
+                                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700">
+                                    <Check className="w-4 h-4" />
+                                    <span className="text-sm font-medium">Validité illimitée</span>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            type="date"
+                                            value={uploadDate}
+                                            onChange={(e) => setUploadDate(e.target.value)}
+                                        />
+                                        {uploadDate && (
+                                            <Button variant="ghost" size="icon" onClick={() => setUploadDate('')}>
+                                                <X className="w-4 h-4" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                    <p className="text-[0.8rem] text-muted-foreground">
+                                        {uploadType === 'RESIDENCE_PROOF'
+                                            ? "Date calculée automatiquement (J+90 jours)."
+                                            : "Inscrivez la date figurant sur le document."}
+                                    </p>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setPendingUploadFile(null)}>
+                            Annuler
+                        </Button>
+                        <Button onClick={handleUploadConfirm}>
+                            <Upload className="w-4 h-4 mr-2" />
+                            Enregistrer
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>
