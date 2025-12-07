@@ -116,6 +116,22 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             // 2. Setup WebRTC
             const pc = new RTCPeerConnection();
             peerConnection.current = pc;
+            
+            // Add connection state monitoring
+            pc.onconnectionstatechange = () => {
+                console.log('🔗 Connection state:', pc.connectionState);
+            };
+            pc.oniceconnectionstatechange = () => {
+                console.log('🧊 ICE state:', pc.iceConnectionState);
+            };
+            pc.onicegatheringstatechange = () => {
+                console.log('🧊 ICE gathering state:', pc.iceGatheringState);
+            };
+            
+            // CRITICAL: Add transceiver to explicitly receive audio from OpenAI
+            // This ensures we're configured to receive the remote audio track
+            pc.addTransceiver('audio', { direction: 'sendrecv' });
+            console.log('🎧 Audio transceiver added for receiving');
 
             // Audio Element for output (stored in ref for interruption control)
             // Remove any existing audio element first
