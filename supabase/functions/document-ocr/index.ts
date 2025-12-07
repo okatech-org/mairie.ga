@@ -81,9 +81,10 @@ serve(async (req) => {
   }
 
   try {
-    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
-    if (!GEMINI_API_KEY) {
-      console.error('GEMINI_API_KEY not configured');
+    // Use Lovable AI Gateway - no API key needed from user
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      console.error('[document-ocr] LOVABLE_API_KEY not configured');
       throw new Error('Service OCR non configuré');
     }
 
@@ -93,45 +94,55 @@ serve(async (req) => {
       throw new Error('Image manquante');
     }
 
-    console.log(`[document-ocr] Analyzing document, type hint: ${documentType || 'auto'}`);
+    console.log(`[document-ocr] Analyzing document via Lovable AI, type hint: ${documentType || 'auto'}`);
 
-    // Call Gemini Vision API
-    const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
-    
-    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+    // Call Lovable AI Gateway with Gemini model for vision
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        contents: [
+        model: 'google/gemini-2.5-flash',
+        messages: [
           {
-            parts: [
-              { text: getExtractionPrompt(documentType) },
+            role: 'user',
+            content: [
+              { 
+                type: 'text', 
+                text: getExtractionPrompt(documentType) 
+              },
               {
-                inline_data: {
-                  mime_type: mimeType || 'image/jpeg',
-                  data: imageBase64
+                type: 'image_url',
+                image_url: {
+                  url: `data:${mimeType || 'image/jpeg'};base64,${imageBase64}`
                 }
               }
             ]
           }
         ],
-        generationConfig: {
-          temperature: 0.1,
-          maxOutputTokens: 2000
-        }
+        max_tokens: 2000,
+        temperature: 0.1
       })
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[document-ocr] Gemini API error:', response.status, errorText);
-      throw new Error(`Erreur API Gemini: ${response.status}`);
+      console.error('[document-ocr] Lovable AI error:', response.status, errorText);
+      
+      if (response.status === 429) {
+        throw new Error('Limite de requêtes atteinte. Réessayez dans quelques instants.');
+      }
+      if (response.status === 402) {
+        throw new Error('Crédits AI épuisés. Veuillez recharger votre compte.');
+      }
+      
+      throw new Error(`Erreur API: ${response.status}`);
     }
 
     const result = await response.json();
-    const content = result.candidates?.[0]?.content?.parts?.[0]?.text;
+    const content = result.choices?.[0]?.message?.content;
 
     if (!content) {
       throw new Error('Réponse vide de l\'API');
@@ -143,7 +154,19 @@ serve(async (req) => {
       jsonString = jsonString.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
     }
 
-    const analysis = JSON.parse(jsonString);
+    let analysis;
+    try {
+      analysis = JSON.parse(jsonString);
+    } catch (parseError) {
+      console.error('[document-ocr] JSON parse error, raw content:', content);
+      // Try to extract JSON from the content
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        analysis = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error('Format de réponse invalide');
+      }
+    }
 
     // Clean and format extracted data
     if (analysis.extractedData) {
