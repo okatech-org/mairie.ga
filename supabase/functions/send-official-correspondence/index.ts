@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3"
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -26,6 +27,51 @@ serve(async (req) => {
     }
 
     try {
+        // SECURITY: Verify user is authenticated and has permission
+        const authHeader = req.headers.get('Authorization')
+        if (!authHeader) {
+            return new Response(JSON.stringify({ success: false, error: 'Non autorisé - authentification requise' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            })
+        }
+
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
+        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+
+        // Create client with user's token to verify authentication
+        const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+            global: { headers: { Authorization: authHeader } }
+        })
+
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+        if (authError || !user) {
+            console.error('Auth error:', authError)
+            return new Response(JSON.stringify({ success: false, error: 'Non autorisé - session invalide' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            })
+        }
+
+        // Use service role to check user roles
+        const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+        const { data: roles, error: rolesError } = await supabaseAdmin
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', user.id)
+            .in('role', ['admin', 'agent', 'super_admin'])
+
+        if (rolesError || !roles?.length) {
+            console.error('Permission check failed:', rolesError)
+            return new Response(JSON.stringify({ success: false, error: 'Permissions insuffisantes pour envoyer des emails' }), {
+                status: 403,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            })
+        }
+
+        console.log(`✅ User ${user.id} authorized with role: ${roles[0].role}`)
+
         const { to, subject, body, attachments, replyTo, cc } = await req.json() as EmailRequest
 
         // Validate required fields

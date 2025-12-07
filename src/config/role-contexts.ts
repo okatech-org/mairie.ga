@@ -167,12 +167,10 @@ export const ROLE_CONTEXTS: Record<AppRole, RoleContext | null> = {
             'manage_roles',
             'view_audit_logs',
             'system_configuration',
-            'impersonate_user',
-            'override_permissions',
-            'global_navigate',   // [NEW] Universal navigation
-            'security_override'  // [NEW] Hacking capability
+            'view_audit_logs',
+            'global_navigate'
         ],
-        contextDescription: "Vous êtes le Super Admin Agent (God Mode). Vous avez l'omniprésence. Vous pouvez naviguer vers n'importe quelle route. Lorsque vous visitez un espace spécifique (ex: Espace Président), vous ADOPTEZ le contexte de ce rôle mais conservez votre savoir admin. Vous pouvez expliquer les fonctionnalités, déboguer et outrepasser la sécurité."
+        contextDescription: "Vous êtes l'Administrateur Système. Vous pouvez naviguer vers n'importe quelle route et consulter tous les espaces. L'accès admin est validé côté serveur via les rôles utilisateur."
     },
     // Roles without iAsted access
     minister: null,
