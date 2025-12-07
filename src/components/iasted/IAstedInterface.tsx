@@ -1169,9 +1169,18 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
     });
 
     const handleButtonClick = async () => {
+        // If AI is currently speaking, interrupt it (STOP action)
+        if (openaiRTC.voiceState === 'speaking') {
+            console.log('🛑 [IAstedInterface] Interrupting AI speech (button click)');
+            openaiRTC.cancelResponse();
+            return;
+        }
+        
+        // If connected but not speaking, disconnect
         if (openaiRTC.isConnected) {
             openaiRTC.disconnect();
         } else {
+            // Not connected, start connection
             await openaiRTC.connect(selectedVoice, formattedSystemPrompt);
         }
     };
