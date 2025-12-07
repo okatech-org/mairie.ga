@@ -1,13 +1,57 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDemo } from '@/contexts/DemoContext';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import IAstedInterface from './IAstedInterface';
 
 /**
  * Wrapper qui injecte le rôle de l'utilisateur actuel dans IAstedInterface
- * Adapte les rôles du système consulaire aux rôles attendus par iAsted
+ * Priorise l'utilisateur Supabase connecté, puis le mode démo
  */
 export default function IAstedInterfaceWrapper() {
-  const { currentUser } = useDemo();
+  const { currentUser: demoUser } = useDemo();
+  const { user: authUser, loading: authLoading } = useAuth();
+  const [userRole, setUserRole] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    const detectUserRole = async () => {
+      // Priorité 1: Utilisateur Supabase authentifié
+      if (authUser) {
+        console.log('🔐 [IAstedWrapper] Utilisateur connecté:', authUser.email);
+        
+        // Récupérer le rôle depuis user_roles
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', authUser.id)
+          .single();
+
+        if (roleData?.role) {
+          console.log('🔐 [IAstedWrapper] Rôle détecté:', roleData.role);
+          setUserRole(roleData.role);
+          return;
+        }
+
+        // Pas de rôle spécifique = citoyen par défaut
+        setUserRole('citizen');
+        return;
+      }
+
+      // Priorité 2: Mode démo
+      if (demoUser?.role) {
+        console.log('🎭 [IAstedWrapper] Mode démo:', demoUser.role);
+        setUserRole(demoUser.role);
+        return;
+      }
+
+      // Pas d'utilisateur = inconnu
+      setUserRole('unknown');
+    };
+
+    if (!authLoading) {
+      detectUserRole();
+    }
+  }, [authUser, authLoading, demoUser]);
 
   // Mapper les rôles du système municipal vers les rôles iAsted
   const mapUserRole = (role?: string): string => {
@@ -65,7 +109,7 @@ export default function IAstedInterfaceWrapper() {
     }
   };
 
-  const mappedRole = mapUserRole(currentUser?.role);
+  const mappedRole = mapUserRole(userRole);
 
   return <IAstedInterface userRole={mappedRole} />;
 }
