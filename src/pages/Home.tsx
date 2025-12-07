@@ -34,6 +34,7 @@ import { IAstedDemoButton } from "@/components/iasted/IAstedDemoButton";
 import { IAstedGuideInline } from "@/components/iasted/IAstedGuideInline";
 import { GabonMairiesSection } from "@/components/home/GabonMairiesSection";
 import PresentationMode from "@/components/iasted/PresentationMode";
+import WelcomePrompt from "@/components/iasted/WelcomePrompt";
 import heroImage from "@/assets/mairie-accueil.jpg";
 import serviceImage from "@/assets/service-municipal.jpg";
 import familleImage from "@/assets/famille-acte-naissance.jpg";
@@ -608,6 +609,9 @@ export default function Home() {
           autoStart={true}
         />
       )}
+
+      {/* Welcome prompt for new visitors */}
+      <WelcomePrompt onStartPresentation={() => setShowPresentation(true)} />
     </div>
   );
 }
