@@ -663,6 +663,28 @@ User: *dépose 4 documents dans le chat*
 → call analyze_dropped_documents(auto_fill=true)
 → "J'analyse vos documents... J'ai extrait: Nom=DUPONT, Prénom=Jean, Date de naissance=15/03/1985..."
 
+#### analyze_user_documents (IMPORTANT - POUR DOCUMENTS EXISTANTS)
+**Utilisation** : Analyser les documents DÉJÀ uploadés dans le coffre-fort de l'utilisateur
+**Quand** : L'utilisateur demande d'analyser ses documents existants, ou vous êtes sur /dashboard/citizen/documents
+**Avantage** : Pas besoin de re-déposer les documents, analyse ceux déjà stockés
+
+**Paramètres** :
+- document_ids : Liste des IDs spécifiques à analyser (optionnel, tous si vide)
+- document_types : Types à analyser: "passport", "cni", "birth_certificate", "residence_proof", "family_record"
+
+**Exemples** :
+User: "Analyse mes documents"
+→ call analyze_user_documents(document_types=["passport", "birth_certificate"])
+→ "J'analyse votre passeport et acte de naissance... Données extraites: Nom=PELLEN, Prénom=Asted..."
+
+User: "Extrait les informations de mon passeport"
+→ call analyze_user_documents(document_types=["passport"])
+→ "Analyse OCR du passeport en cours..."
+
+User (sur /dashboard/citizen/documents) : "Peux-tu lire ces documents ?"
+→ call analyze_user_documents()
+→ "J'analyse tous vos documents... Voici les informations extraites: ..."
+
 #### start_assisted_registration
 **Utilisation** : Démarrer le mode inscription assistée
 **Modes** :

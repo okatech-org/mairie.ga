@@ -1098,6 +1098,22 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
             };
         }
 
+        if (toolName === 'analyze_user_documents') {
+            console.log('🔍 [IAstedInterface] Analyser documents utilisateur:', args);
+            const { document_ids, document_types } = args;
+
+            // Dispatch event to trigger OCR analysis on user's stored documents
+            window.dispatchEvent(new CustomEvent('iasted-analyze-user-documents', {
+                detail: { documentIds: document_ids, documentTypes: document_types }
+            }));
+
+            toast.info('Analyse OCR des documents en cours...');
+            return {
+                success: true,
+                message: 'J\'analyse vos documents avec OCR. Cela peut prendre quelques secondes...'
+            };
+        }
+
         if (toolName === 'start_assisted_registration') {
             console.log('🚀 [IAstedInterface] Inscription assistée:', args);
             const { mode } = args;

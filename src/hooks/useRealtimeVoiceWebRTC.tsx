@@ -520,6 +520,26 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                     },
                     {
                         type: 'function',
+                        name: 'analyze_user_documents',
+                        description: 'Analyser les documents existants de l\'utilisateur stockés dans son coffre-fort (passeport, CNI, acte de naissance, etc.) avec OCR pour extraire les informations',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                document_ids: { 
+                                    type: 'array', 
+                                    items: { type: 'string' },
+                                    description: 'IDs des documents à analyser. Si vide, analyse tous les documents de l\'utilisateur.' 
+                                },
+                                document_types: {
+                                    type: 'array',
+                                    items: { type: 'string' },
+                                    description: 'Types de documents à analyser: passport, cni, birth_certificate, residence_proof, family_record'
+                                }
+                            }
+                        }
+                    },
+                    {
+                        type: 'function',
                         name: 'start_assisted_registration',
                         description: 'Démarrer l\'inscription assistée avec analyse des documents. Deux modes: autonome (sans formulaire) ou aperçu formulaire',
                         parameters: {
