@@ -22,6 +22,7 @@ export interface UseRealtimeVoiceWebRTC {
     clearSession: () => void;
     toggleConversation: (voice?: 'echo' | 'ash' | 'shimmer') => void;
     setSpeechRate: (rate: number) => void;
+    cancelResponse: () => void; // Interrupt current speech
 }
 
 export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) => void): UseRealtimeVoiceWebRTC => {
@@ -37,6 +38,8 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
     const audioContext = useRef<AudioContext | null>(null);
     const analyser = useRef<AnalyserNode | null>(null);
     const animationFrame = useRef<number | null>(null);
+    const audioElement = useRef<HTMLAudioElement | null>(null);
+    const currentResponseId = useRef<string | null>(null);
     const { toast } = useToast();
     const location = useLocation();
     const navigate = useNavigate();
@@ -106,9 +109,10 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             const pc = new RTCPeerConnection();
             peerConnection.current = pc;
 
-            // Audio Element for output
+            // Audio Element for output (stored in ref for interruption control)
             const audioEl = document.createElement('audio');
             audioEl.autoplay = true;
+            audioElement.current = audioEl;
             pc.ontrack = (e) => {
                 audioEl.srcObject = e.streams[0];
             };
@@ -584,16 +588,60 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
         dataChannel.current.send(JSON.stringify(event));
     };
 
+    // Cancel current AI response (interruption)
+    const cancelResponse = useCallback(() => {
+        console.log('🛑 Cancelling current response (interruption)');
+        
+        // 1. Immediately mute the audio element
+        if (audioElement.current) {
+            audioElement.current.pause();
+            audioElement.current.currentTime = 0;
+            // Re-enable for next response
+            setTimeout(() => {
+                if (audioElement.current) {
+                    audioElement.current.play().catch(() => {});
+                }
+            }, 100);
+        }
+        
+        // 2. Send cancel to server if we have an active response
+        if (dataChannel.current?.readyState === 'open') {
+            // Cancel ongoing response generation
+            dataChannel.current.send(JSON.stringify({ type: 'response.cancel' }));
+            console.log('📤 Sent response.cancel to server');
+        }
+        
+        // 3. Update state to listening
+        setVoiceState('listening');
+        currentResponseId.current = null;
+    }, []);
+
     const handleServerEvent = (event: any) => {
         switch (event.type) {
+            case 'response.created':
+                // Track the current response ID for potential cancellation
+                if (event.response?.id) {
+                    currentResponseId.current = event.response.id;
+                }
+                break;
             case 'response.audio.delta':
                 setVoiceState('speaking');
                 break;
             case 'input_audio_buffer.speech_started':
-                setVoiceState('listening'); // Actually user speaking
+                // User started speaking - INTERRUPT immediately (barge-in)
+                console.log('🎤 User speech detected - interrupting AI');
+                if (voiceState === 'speaking') {
+                    cancelResponse();
+                }
+                setVoiceState('listening');
+                break;
+            case 'input_audio_buffer.speech_stopped':
+                // User stopped speaking
+                console.log('🎤 User speech stopped');
                 break;
             case 'response.done':
-                setVoiceState('listening'); // Back to listening after response
+                setVoiceState('listening');
+                currentResponseId.current = null;
                 if (event.response?.output) {
                     event.response.output.forEach((item: any) => {
                         if (item.type === 'function_call') {
@@ -606,6 +654,9 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                 if (event.item?.role === 'assistant' && event.item?.content?.[0]?.text) {
                     setMessages(prev => [...prev, { role: 'assistant', content: event.item.content[0].text }]);
                 }
+                break;
+            case 'error':
+                console.error('❌ OpenAI Realtime error:', event.error);
                 break;
             default:
                 break;
@@ -654,6 +705,12 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
     };
 
     const disconnect = () => {
+        // Stop any ongoing audio
+        if (audioElement.current) {
+            audioElement.current.pause();
+            audioElement.current.srcObject = null;
+            audioElement.current = null;
+        }
         if (peerConnection.current) {
             peerConnection.current.close();
             peerConnection.current = null;
@@ -662,6 +719,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             dataChannel.current.close();
             dataChannel.current = null;
         }
+        currentResponseId.current = null;
         setVoiceState('idle');
     };
 
@@ -708,6 +766,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
         changeVoice,
         clearSession,
         toggleConversation,
-        setSpeechRate
+        setSpeechRate,
+        cancelResponse
     };
 };
