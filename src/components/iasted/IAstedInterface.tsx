@@ -12,6 +12,7 @@ import { formAssistantStore } from '@/stores/formAssistantStore';
 
 interface IAstedInterfaceProps {
     userRole?: string;
+    userFirstName?: string;
     defaultOpen?: boolean;
     isOpen?: boolean; // Allow external control
     onClose?: () => void; // Allow external control
@@ -23,7 +24,7 @@ interface IAstedInterfaceProps {
  * Includes the floating button and the chat modal.
  * Manages its own connection and visibility state.
  */
-export default function IAstedInterface({ userRole = 'user', defaultOpen = false, isOpen: controlledIsOpen, onClose: controlledOnClose, onToolCall }: IAstedInterfaceProps) {
+export default function IAstedInterface({ userRole = 'user', userFirstName, defaultOpen = false, isOpen: controlledIsOpen, onClose: controlledOnClose, onToolCall }: IAstedInterfaceProps) {
     const [internalIsOpen, setInternalIsOpen] = useState(defaultOpen);
 
     // Use controlled state if provided, otherwise use internal state
@@ -62,49 +63,52 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
 
     // Map user role to appropriate title (contexte municipal)
     const userTitle = useMemo(() => {
+        // Si on a le prénom, on l'utilise pour personnaliser
+        const firstName = userFirstName;
+        
         switch (userRole) {
             // Personnel municipal
             case 'MAIRE':
             case 'maire':
-                return 'Monsieur le Maire';
+                return firstName ? `Monsieur le Maire ${firstName}` : 'Monsieur le Maire';
             case 'MAIRE_ADJOINT':
             case 'maire_adjoint':
-                return 'Monsieur le Maire Adjoint';
+                return firstName ? `Monsieur l'Adjoint ${firstName}` : 'Monsieur le Maire Adjoint';
             case 'SECRETAIRE_GENERAL':
             case 'secretaire_general':
-                return 'Monsieur le Secrétaire Général';
+                return firstName ? `Monsieur ${firstName}` : 'Monsieur le Secrétaire Général';
             case 'CHEF_SERVICE':
             case 'chef_service':
-                return 'Monsieur le Chef de Service';
+                return firstName ? `Monsieur ${firstName}` : 'Monsieur le Chef de Service';
             case 'AGENT':
             case 'agent':
-                return 'Cher collègue'; // Agent municipal
+                return firstName ? `Cher ${firstName}` : 'Cher collègue';
             case 'super_admin':
             case 'SUPER_ADMIN':
-                return 'Monsieur l\'Administrateur';
+                return firstName ? `Monsieur ${firstName}` : 'Monsieur l\'Administrateur';
             case 'admin':
             case 'ADMIN':
-                return 'Monsieur le Directeur';
+                return firstName ? `Monsieur ${firstName}` : 'Monsieur le Directeur';
             // Usagers - Citoyens
             case 'citizen':
             case 'CITIZEN':
             case 'resident':
-                return 'Cher administré';
+                return firstName ? `Cher ${firstName}` : 'Cher administré';
             case 'citizen_other':
             case 'autre_commune':
-                return 'Cher visiteur';
+                return firstName ? `Cher ${firstName}` : 'Cher visiteur';
             case 'foreigner':
             case 'etranger':
-                return 'Cher résident';
+                return firstName ? `Cher ${firstName}` : 'Cher résident';
             case 'company':
             case 'entreprise':
             case 'association':
-                return 'Cher partenaire';
+                return firstName ? `Cher ${firstName}` : 'Cher partenaire';
             // Non identifié (page d'accueil)
             default:
                 return 'Bonjour';
         }
-    }, [userRole]);
+    }, [userRole, userFirstName]);
 
     // Détermine si on est sur une page de formulaire d'inscription
     const isOnRegistrationPage = location.pathname.startsWith('/register');
