@@ -103,15 +103,20 @@ export function MailComposer({ isOpen, onClose, replyTo }: MailComposerProps) {
         setIsSending(true);
 
         try {
-            const attachment = attachments.length > 0 ? attachments[0] : null;
+            // Build attachments array for the edge function
+            const attachmentsData = attachments
+                .filter(att => att.url)
+                .map(att => ({
+                    url: att.url!,
+                    name: att.file.name,
+                }));
             
             const { data, error } = await supabase.functions.invoke('send-official-correspondence', {
                 body: {
                     to: recipient,
                     subject: subject,
                     body: content,
-                    attachmentUrl: attachment?.url,
-                    attachmentName: attachment?.file.name,
+                    attachments: attachmentsData,
                 }
             });
 
@@ -215,25 +220,30 @@ export function MailComposer({ isOpen, onClose, replyTo }: MailComposerProps) {
                 </div>
 
                 <DialogFooter className="p-4 border-t bg-muted/10 flex justify-between items-center sm:justify-between">
-                    <div>
+                    <div className="flex items-center gap-2">
                         <input
                             ref={fileInputRef}
                             type="file"
                             accept="application/pdf"
                             onChange={handleFileSelect}
                             className="hidden"
-                            disabled={isSending || attachments.length >= 1}
+                            disabled={isSending || attachments.length >= 5}
                         />
                         <Button 
                             variant="ghost" 
                             size="sm" 
                             className="gap-2 text-muted-foreground"
-                            disabled={isSending || attachments.length >= 1}
+                            disabled={isSending || attachments.length >= 5}
                             onClick={() => fileInputRef.current?.click()}
                         >
                             <Paperclip className="w-4 h-4" /> 
-                            {attachments.length >= 1 ? 'Pièce jointe ajoutée' : 'Joindre un PDF'}
+                            Joindre un PDF
                         </Button>
+                        {attachments.length > 0 && (
+                            <span className="text-xs text-muted-foreground">
+                                {attachments.length}/5 fichier{attachments.length > 1 ? 's' : ''}
+                            </span>
+                        )}
                     </div>
                     <div className="flex gap-2">
                         <Button variant="ghost" onClick={handleClose} disabled={isSending}>
