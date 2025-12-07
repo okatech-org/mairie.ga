@@ -5,12 +5,16 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+interface AttachmentData {
+    url: string;
+    name: string;
+}
+
 interface EmailRequest {
     to: string;
     subject: string;
     body: string;
-    attachmentUrl?: string;
-    attachmentName?: string;
+    attachments?: AttachmentData[];
     replyTo?: string;
     cc?: string[];
 }
@@ -22,7 +26,7 @@ serve(async (req) => {
     }
 
     try {
-        const { to, subject, body, attachmentUrl, attachmentName, replyTo, cc } = await req.json() as EmailRequest
+        const { to, subject, body, attachments, replyTo, cc } = await req.json() as EmailRequest
 
         // Validate required fields
         if (!to || !subject) {
@@ -70,27 +74,40 @@ serve(async (req) => {
             emailPayload.cc = cc
         }
 
-        // Handle attachment if provided
-        if (attachmentUrl && attachmentName) {
-            try {
-                const attachmentResponse = await fetch(attachmentUrl)
-                if (attachmentResponse.ok) {
-                    const attachmentBuffer = await attachmentResponse.arrayBuffer()
-                    const base64Content = btoa(String.fromCharCode(...new Uint8Array(attachmentBuffer)))
+        // Handle multiple attachments
+        if (attachments && attachments.length > 0) {
+            const emailAttachments: { filename: string; content: string }[] = []
+            
+            for (const attachment of attachments) {
+                try {
+                    console.log(`📎 Downloading attachment: ${attachment.name}`)
+                    const attachmentResponse = await fetch(attachment.url)
+                    
+                    if (attachmentResponse.ok) {
+                        const attachmentBuffer = await attachmentResponse.arrayBuffer()
+                        const base64Content = btoa(String.fromCharCode(...new Uint8Array(attachmentBuffer)))
 
-                    emailPayload.attachments = [{
-                        filename: attachmentName,
-                        content: base64Content,
-                    }]
+                        emailAttachments.push({
+                            filename: attachment.name,
+                            content: base64Content,
+                        })
+                        console.log(`✅ Attachment ready: ${attachment.name}`)
+                    } else {
+                        console.warn(`⚠️ Could not download attachment: ${attachment.name}`)
+                    }
+                } catch (attachError) {
+                    console.warn(`⚠️ Error processing attachment ${attachment.name}:`, attachError)
+                    // Continue with other attachments
                 }
-            } catch (attachError) {
-                console.warn('Could not attach file:', attachError)
-                // Continue without attachment
+            }
+
+            if (emailAttachments.length > 0) {
+                emailPayload.attachments = emailAttachments
             }
         }
 
         // Send email via Resend
-        console.log(`📧 Sending email to ${to}: ${subject}`)
+        console.log(`📧 Sending email to ${to}: ${subject} (${emailPayload.attachments?.length || 0} attachments)`)
 
         const response = await fetch('https://api.resend.com/emails', {
             method: 'POST',
@@ -114,6 +131,7 @@ serve(async (req) => {
             success: true,
             messageId: result.id,
             sentAt: new Date().toISOString(),
+            attachmentsCount: emailPayload.attachments?.length || 0,
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
