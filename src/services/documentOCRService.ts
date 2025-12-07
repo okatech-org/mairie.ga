@@ -1,7 +1,10 @@
 /**
  * Document OCR Service
- * Uses OpenAI Vision API to extract structured data from identity documents
+ * Uses Edge Function with Gemini Vision API to extract structured data from identity documents
+ * SECURE: API keys are stored server-side, not exposed to client
  */
+
+import { supabase } from '@/integrations/supabase/client';
 
 // Document types we can analyze
 export type DocumentType =
@@ -63,40 +66,17 @@ const FIELD_PRIORITY: Record<string, DocumentType[]> = {
     expiryDate: ['passport', 'cni'],
 };
 
-// OCR Provider types
-export type OCRProvider = 'openai' | 'gemini';
-
-// API endpoints
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
-
-// Current provider (can be configured)
-let currentProvider: OCRProvider = 'gemini'; // Default to Gemini as requested
-
 /**
- * Set the OCR provider
+ * Convert File to base64 (without data URL prefix)
  */
-export function setOCRProvider(provider: OCRProvider): void {
-    currentProvider = provider;
-    console.log(`[DocumentOCR] Provider set to: ${provider}`);
-}
-
-/**
- * Get the current OCR provider
- */
-export function getOCRProvider(): OCRProvider {
-    return currentProvider;
-}
-
-/**
- * Convert File to base64 data URL
- */
-async function fileToBase64(file: File): Promise<string> {
+async function fileToBase64Raw(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => {
             const result = reader.result as string;
-            resolve(result);
+            // Remove data URL prefix (e.g., "data:image/jpeg;base64,")
+            const base64 = result.split(',')[1];
+            resolve(base64);
         };
         reader.onerror = reject;
         reader.readAsDataURL(file);
@@ -104,239 +84,46 @@ async function fileToBase64(file: File): Promise<string> {
 }
 
 /**
- * Get extraction prompt based on document type
- */
-function getExtractionPrompt(documentType?: DocumentType): string {
-    const basePrompt = `Tu es un expert OCR spécialisé dans l'extraction de données de documents administratifs africains/gabonais.
-
-Analyse cette image de document et extrais TOUTES les informations visibles de manière structurée.
-
-IMPORTANT:
-- Les noms de famille sont généralement en MAJUSCULES
-- Les prénoms ont la première lettre en majuscule
-- Pour l'écriture manuscrite, fais de ton mieux pour déchiffrer
-- Si un champ est illisible ou incertain, marque-le dans uncertainFields
-- Date de naissance au format YYYY-MM-DD
-- Indique ton niveau de confiance global (0.0 à 1.0)
-
-Réponds UNIQUEMENT en JSON valide avec cette structure exacte:
-{
-    "documentType": "cni|passport|birth_certificate|residence_proof|family_record|other",
-    "confidence": 0.0-1.0,
-    "extractedData": {
-        "lastName": "NOM en majuscules ou null",
-        "firstName": "Prénom ou null",
-        "dateOfBirth": "YYYY-MM-DD ou null",
-        "placeOfBirth": "Ville/Pays ou null",
-        "nationality": "Nationalité ou null",
-        "address": "Adresse complète ou null",
-        "city": "Ville ou null",
-        "postalCode": "Code postal ou null",
-        "fatherName": "Nom du père ou null",
-        "fatherFirstName": "Prénom du père ou null",
-        "motherName": "Nom de la mère ou null",
-        "motherFirstName": "Prénom de la mère ou null",
-        "documentNumber": "Numéro du document ou null",
-        "expiryDate": "YYYY-MM-DD ou null",
-        "issueDate": "YYYY-MM-DD ou null",
-        "maritalStatus": "SINGLE|MARRIED|DIVORCED|WIDOWED ou null",
-        "profession": "Profession ou null"
-    },
-    "uncertainFields": ["liste des champs avec incertitude"],
-    "rawText": "Texte brut extrait si disponible"
-}`;
-
-    if (documentType) {
-        const typeHints: Record<DocumentType, string> = {
-            cni: "\nCe document est une Carte Nationale d'Identité. Cherche: nom, prénom, date/lieu naissance, adresse, numéro CNI, date d'expiration.",
-            passport: "\nCe document est un Passeport. Cherche: nom, prénom, date/lieu naissance, nationalité, numéro passeport, date d'expiration.",
-            birth_certificate: "\nCe document est un Acte de Naissance. Cherche: nom, prénom, date/lieu naissance, noms des parents. Note: peut être manuscrit.",
-            residence_proof: "\nCe document est un Justificatif de Domicile (facture, quittance). Cherche: nom, adresse complète, ville, code postal.",
-            family_record: "\nCe document est un Livret de Famille. Cherche: noms des époux, enfants, dates de naissance, noms des parents.",
-            other: "\nType de document inconnu. Extrais toutes les informations d'identité visibles."
-        };
-        return basePrompt + typeHints[documentType];
-    }
-
-    return basePrompt;
-}
-
-/**
- * Analyze a single document using the configured OCR provider
+ * Analyze a single document using the secure Edge Function
  */
 export async function analyzeDocument(
     file: File,
-    documentType?: DocumentType,
-    options?: {
-        provider?: OCRProvider;
-        openaiKey?: string;
-        geminiKey?: string;
-    }
-): Promise<DocumentAnalysis> {
-    const provider = options?.provider || currentProvider;
-
-    if (provider === 'gemini') {
-        return analyzeWithGemini(file, documentType, options?.geminiKey);
-    } else {
-        return analyzeWithOpenAI(file, documentType, options?.openaiKey);
-    }
-}
-
-/**
- * Analyze document using OpenAI Vision API
- */
-async function analyzeWithOpenAI(
-    file: File,
-    documentType?: DocumentType,
-    apiKey?: string
+    documentType?: DocumentType
 ): Promise<DocumentAnalysis> {
     try {
-        const key = apiKey || import.meta.env.VITE_OPENAI_API_KEY;
-        if (!key) {
-            throw new Error('Clé API OpenAI non configurée (VITE_OPENAI_API_KEY)');
-        }
-
-        const base64Image = await fileToBase64(file);
-
-        const response = await fetch(OPENAI_API_URL, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${key}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'gpt-4o',
-                messages: [
-                    {
-                        role: 'user',
-                        content: [
-                            { type: 'text', text: getExtractionPrompt(documentType) },
-                            { type: 'image_url', image_url: { url: base64Image, detail: 'high' } }
-                        ]
-                    }
-                ],
-                max_tokens: 2000,
-                temperature: 0.1
-            })
-        });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(`OpenAI API error: ${error.error?.message || response.statusText}`);
-        }
-
-        const result = await response.json();
-        const content = result.choices[0]?.message?.content;
-
-        return parseAndCleanAnalysis(content, documentType);
-
-    } catch (error: any) {
-        console.error('[DocumentOCR:OpenAI] Analysis error:', error);
-        return createErrorAnalysis(documentType, error.message);
-    }
-}
-
-/**
- * Analyze document using Google Gemini Vision API
- */
-async function analyzeWithGemini(
-    file: File,
-    documentType?: DocumentType,
-    apiKey?: string
-): Promise<DocumentAnalysis> {
-    try {
-        const key = apiKey || import.meta.env.VITE_GEMINI_API_KEY;
-        if (!key) {
-            throw new Error('Clé API Gemini non configurée (VITE_GEMINI_API_KEY)');
-        }
-
-        // Convert file to base64 (without data URL prefix for Gemini)
-        const base64Full = await fileToBase64(file);
-        const base64Data = base64Full.split(',')[1]; // Remove "data:image/...;base64," prefix
+        console.log(`[DocumentOCR] Analyzing document: ${file.name}, type hint: ${documentType || 'auto'}`);
+        
+        // Convert file to base64
+        const imageBase64 = await fileToBase64Raw(file);
         const mimeType = file.type || 'image/jpeg';
 
-        const response = await fetch(`${GEMINI_API_URL}?key=${key}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                contents: [
-                    {
-                        parts: [
-                            { text: getExtractionPrompt(documentType) },
-                            {
-                                inline_data: {
-                                    mime_type: mimeType,
-                                    data: base64Data
-                                }
-                            }
-                        ]
-                    }
-                ],
-                generationConfig: {
-                    temperature: 0.1,
-                    maxOutputTokens: 2000
-                }
-            })
+        // Call the secure Edge Function
+        const { data, error } = await supabase.functions.invoke('document-ocr', {
+            body: {
+                imageBase64,
+                mimeType,
+                documentType
+            }
         });
 
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(`Gemini API error: ${error.error?.message || response.statusText}`);
+        if (error) {
+            console.error('[DocumentOCR] Edge function error:', error);
+            throw new Error(error.message || 'Erreur du service OCR');
         }
 
-        const result = await response.json();
-        const content = result.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (data.error) {
+            console.error('[DocumentOCR] Analysis error:', data.error);
+            return createErrorAnalysis(documentType, data.error);
+        }
 
-        return parseAndCleanAnalysis(content, documentType);
+        console.log(`[DocumentOCR] Analysis complete, confidence: ${data.confidence}`);
+        return data as DocumentAnalysis;
 
-    } catch (error: any) {
-        console.error('[DocumentOCR:Gemini] Analysis error:', error);
-        return createErrorAnalysis(documentType, error.message);
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+        console.error('[DocumentOCR] Analysis error:', errorMessage);
+        return createErrorAnalysis(documentType, errorMessage);
     }
-}
-
-/**
- * Parse API response and clean extracted data
- */
-function parseAndCleanAnalysis(content: string | undefined, documentType?: DocumentType): DocumentAnalysis {
-    if (!content) {
-        throw new Error('Réponse vide de l\'API');
-    }
-
-    // Handle potential markdown code blocks
-    let jsonString = content.trim();
-    if (jsonString.startsWith('```')) {
-        jsonString = jsonString.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
-    }
-
-    const analysis: DocumentAnalysis = JSON.parse(jsonString);
-
-    // Validate and clean data
-    if (analysis.extractedData) {
-        // Format names correctly
-        if (analysis.extractedData.lastName) {
-            analysis.extractedData.lastName = analysis.extractedData.lastName.toUpperCase().trim();
-        }
-        if (analysis.extractedData.firstName) {
-            analysis.extractedData.firstName = formatTitleCase(analysis.extractedData.firstName);
-        }
-        if (analysis.extractedData.fatherName) {
-            analysis.extractedData.fatherName = analysis.extractedData.fatherName.toUpperCase().trim();
-        }
-        if (analysis.extractedData.motherName) {
-            analysis.extractedData.motherName = analysis.extractedData.motherName.toUpperCase().trim();
-        }
-        if (analysis.extractedData.fatherFirstName) {
-            analysis.extractedData.fatherFirstName = formatTitleCase(analysis.extractedData.fatherFirstName);
-        }
-        if (analysis.extractedData.motherFirstName) {
-            analysis.extractedData.motherFirstName = formatTitleCase(analysis.extractedData.motherFirstName);
-        }
-    }
-
-    return analysis;
 }
 
 /**
@@ -353,27 +140,10 @@ function createErrorAnalysis(documentType?: DocumentType, errorMessage?: string)
 }
 
 /**
- * Format string to Title Case
- */
-function formatTitleCase(str: string): string {
-    return str
-        .toLowerCase()
-        .split(/[\s-]+/)
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(str.includes('-') ? '-' : ' ')
-        .trim();
-}
-
-/**
  * Analyze multiple documents and consolidate data
  */
 export async function analyzeMultipleDocuments(
-    files: { file: File; suggestedType?: DocumentType }[],
-    options?: {
-        provider?: OCRProvider;
-        openaiKey?: string;
-        geminiKey?: string;
-    }
+    files: { file: File; suggestedType?: DocumentType }[]
 ): Promise<{
     analyses: DocumentAnalysis[];
     consolidatedData: ExtractedData;
@@ -382,7 +152,7 @@ export async function analyzeMultipleDocuments(
 }> {
     // Analyze all documents in parallel
     const analyses = await Promise.all(
-        files.map(({ file, suggestedType }) => analyzeDocument(file, suggestedType, options))
+        files.map(({ file, suggestedType }) => analyzeDocument(file, suggestedType))
     );
 
     // Consolidate data with priority rules
@@ -429,7 +199,7 @@ export async function analyzeMultipleDocuments(
             for (const docType of priority) {
                 const match = values.find(v => v.source === docType);
                 if (match) {
-                    (consolidatedData as any)[field] = match.value;
+                    (consolidatedData as Record<string, string>)[field] = match.value;
                     resolved = true;
                     break;
                 }
@@ -438,7 +208,7 @@ export async function analyzeMultipleDocuments(
             // If no priority match, use highest confidence
             if (!resolved) {
                 const sorted = values.sort((a, b) => b.confidence - a.confidence);
-                (consolidatedData as any)[field] = sorted[0].value;
+                (consolidatedData as Record<string, string>)[field] = sorted[0].value;
             }
 
             // Record the conflict for potential user review
@@ -448,7 +218,7 @@ export async function analyzeMultipleDocuments(
             });
         } else {
             // No conflict - use the value
-            (consolidatedData as any)[field] = values[0].value;
+            (consolidatedData as Record<string, string>)[field] = values[0].value;
         }
     }
 
@@ -520,7 +290,7 @@ export function getMissingRegistrationFields(data: ExtractedData): string[] {
         'city'
     ];
 
-    return requiredFields.filter(field => !(data as any)[field]);
+    return requiredFields.filter(field => !(data as Record<string, unknown>)[field]);
 }
 
 /**
