@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { dossierService } from '@/services/dossier-service';
 import { supabase } from '@/integrations/supabase/client';
+import { useDocumentOCRAnalysis } from '@/hooks/useDocumentOCRAnalysis';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -287,6 +288,9 @@ export default function CitizenDocumentsPage() {
     const [uploadType, setUploadType] = useState<DocumentType>('OTHER');
     const [ocrLoading, setOcrLoading] = useState(false);
     const [ocrConfidence, setOcrConfidence] = useState<number | null>(null);
+
+    // OCR Analysis hook - listens for iAsted events
+    const { isAnalyzing: isOCRAnalyzing, results: ocrResults, consolidatedData } = useDocumentOCRAnalysis();
 
     useEffect(() => {
         fetchDocuments();
