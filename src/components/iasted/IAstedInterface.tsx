@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { IAstedChatModal } from '@/components/iasted/IAstedChatModal';
-import IAstedButtonFull from "@/components/iasted/IAstedButtonFull";
+import IAstedPresentationWrapper from "@/components/iasted/IAstedPresentationWrapper";
 import { useRealtimeVoiceWebRTC } from '@/hooks/useRealtimeVoiceWebRTC';
 import { IASTED_SYSTEM_PROMPT } from '@/config/iasted-config';
 import { toast } from 'sonner';
@@ -9,7 +9,6 @@ import { useTheme } from 'next-themes';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { resolveRoute } from '@/utils/route-mapping';
 import { formAssistantStore } from '@/stores/formAssistantStore';
-import PresentationMode from './PresentationMode';
 
 interface IAstedInterfaceProps {
     userRole?: string;
@@ -18,6 +17,8 @@ interface IAstedInterfaceProps {
     isOpen?: boolean; // Allow external control
     onClose?: () => void; // Allow external control
     onToolCall?: (toolName: string, args: any) => void;
+    externalPresentationMode?: boolean; // External control of presentation mode
+    onExternalPresentationClose?: () => void; // Callback when presentation closes
 }
 
 /**
@@ -25,7 +26,16 @@ interface IAstedInterfaceProps {
  * Includes the floating button and the chat modal.
  * Manages its own connection and visibility state.
  */
-export default function IAstedInterface({ userRole = 'user', userFirstName, defaultOpen = false, isOpen: controlledIsOpen, onClose: controlledOnClose, onToolCall }: IAstedInterfaceProps) {
+export default function IAstedInterface({ 
+    userRole = 'user', 
+    userFirstName, 
+    defaultOpen = false, 
+    isOpen: controlledIsOpen, 
+    onClose: controlledOnClose, 
+    onToolCall,
+    externalPresentationMode = false,
+    onExternalPresentationClose
+}: IAstedInterfaceProps) {
     const [internalIsOpen, setInternalIsOpen] = useState(defaultOpen);
 
     // Use controlled state if provided, otherwise use internal state
@@ -41,6 +51,19 @@ export default function IAstedInterface({ userRole = 'user', userFirstName, defa
     const { setTheme, theme } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
+
+    // Sync external presentation mode with internal state
+    useEffect(() => {
+        if (externalPresentationMode) {
+            setIsPresentationMode(true);
+        }
+    }, [externalPresentationMode]);
+
+    // Handle presentation close
+    const handlePresentationClose = () => {
+        setIsPresentationMode(false);
+        onExternalPresentationClose?.();
+    };
 
     // Initialize voice from localStorage and reset question counter on new session
     useEffect(() => {
@@ -1218,13 +1241,14 @@ export default function IAstedInterface({ userRole = 'user', userFirstName, defa
 
     return (
         <>
-            <IAstedButtonFull
+            <IAstedPresentationWrapper
+                showPresentation={isPresentationMode}
+                onClosePresentation={handlePresentationClose}
+                onOpenInterface={handleButtonClick}
+                isInterfaceOpen={isOpen}
                 voiceListening={openaiRTC.voiceState === 'listening'}
                 voiceSpeaking={openaiRTC.voiceState === 'speaking'}
                 voiceProcessing={openaiRTC.voiceState === 'connecting' || openaiRTC.voiceState === 'thinking'}
-                audioLevel={openaiRTC.audioLevel}
-                onClick={handleButtonClick}
-                onDoubleClick={() => setIsOpen(true)}
             />
 
             <IAstedChatModal
@@ -1236,13 +1260,6 @@ export default function IAstedInterface({ userRole = 'user', userFirstName, defa
                 pendingDocument={pendingDocument}
                 onClearPendingDocument={() => setPendingDocument(null)}
             />
-
-            {isPresentationMode && (
-                <PresentationMode 
-                    onClose={() => setIsPresentationMode(false)}
-                    autoStart={true}
-                />
-            )}
         </>
     );
 }
