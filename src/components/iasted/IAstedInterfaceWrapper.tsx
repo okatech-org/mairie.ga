@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDemo } from '@/contexts/DemoContext';
 import { useAuth } from '@/hooks/useAuth';
+import { usePresentationSafe } from '@/contexts/PresentationContext';
 import { supabase } from '@/integrations/supabase/client';
 import IAstedInterface from './IAstedInterface';
 
@@ -11,6 +12,7 @@ import IAstedInterface from './IAstedInterface';
 export default function IAstedInterfaceWrapper() {
   const { currentUser: demoUser } = useDemo();
   const { user: authUser, loading: authLoading } = useAuth();
+  const { showPresentation, stopPresentation } = usePresentationSafe();
   const [userRole, setUserRole] = useState<string | undefined>(undefined);
   const [userFirstName, setUserFirstName] = useState<string | undefined>(undefined);
 
@@ -124,5 +126,12 @@ export default function IAstedInterfaceWrapper() {
 
   const mappedRole = mapUserRole(userRole);
 
-  return <IAstedInterface userRole={mappedRole} userFirstName={userFirstName} />;
+  return (
+    <IAstedInterface 
+      userRole={mappedRole} 
+      userFirstName={userFirstName}
+      externalPresentationMode={showPresentation}
+      onExternalPresentationClose={stopPresentation}
+    />
+  );
 }

@@ -33,8 +33,8 @@ import { Link } from "react-router-dom";
 import { IAstedDemoButton } from "@/components/iasted/IAstedDemoButton";
 import { IAstedGuideInline } from "@/components/iasted/IAstedGuideInline";
 import { GabonMairiesSection } from "@/components/home/GabonMairiesSection";
-import PresentationMode from "@/components/iasted/PresentationMode";
 import WelcomePrompt from "@/components/iasted/WelcomePrompt";
+import { usePresentationSafe } from "@/contexts/PresentationContext";
 import heroImage from "@/assets/mairie-accueil.jpg";
 import serviceImage from "@/assets/service-municipal.jpg";
 import familleImage from "@/assets/famille-acte-naissance.jpg";
@@ -45,7 +45,7 @@ const GabonMairiesMap = lazy(() => import("@/components/home/GabonMairiesMap"));
 
 export default function Home() {
   const [scrollY, setScrollY] = useState(0);
-  const [showPresentation, setShowPresentation] = useState(false);
+  const { startPresentation } = usePresentationSafe();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -201,7 +201,7 @@ export default function Home() {
                 <div className="flex flex-col sm:flex-row flex-wrap gap-3">
                   <Button 
                     size="lg" 
-                    onClick={() => setShowPresentation(true)}
+                    onClick={startPresentation}
                     className="w-full sm:w-auto min-w-[180px] gap-2 h-12 text-base bg-gradient-to-r from-violet-600 to-primary hover:from-violet-700 hover:to-primary/90 text-white shadow-lg animate-pulse hover:animate-none"
                   >
                     <Play className="h-5 w-5" />
@@ -602,16 +602,10 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Presentation Mode */}
-      {showPresentation && (
-        <PresentationMode 
-          onClose={() => setShowPresentation(false)} 
-          autoStart={true}
-        />
-      )}
+      {/* Presentation Mode is now handled by IAstedInterface globally */}
 
       {/* Welcome prompt for new visitors */}
-      <WelcomePrompt onStartPresentation={() => setShowPresentation(true)} />
+      <WelcomePrompt onStartPresentation={startPresentation} />
     </div>
   );
 }
