@@ -3,10 +3,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Paperclip, Send, Loader2, X, FileText, Eye, Download, Upload } from 'lucide-react';
-import { useState, useRef, useCallback } from 'react';
+import { Paperclip, Send, Loader2, X, FileText, Eye, Download, Upload, Save } from 'lucide-react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+const DRAFT_KEY = 'mail-composer-draft';
+const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
 
 interface MailComposerProps {
     isOpen: boolean;
@@ -24,6 +27,13 @@ interface Attachment {
     localPreviewUrl?: string;
 }
 
+interface Draft {
+    subject: string;
+    recipient: string;
+    content: string;
+    savedAt: string;
+}
+
 export function MailComposer({ isOpen, onClose, replyTo }: MailComposerProps) {
     const [subject, setSubject] = useState(replyTo ? `Re: ${replyTo.subject}` : '');
     const [recipient, setRecipient] = useState(replyTo ? replyTo.recipient : '');
@@ -32,7 +42,85 @@ export function MailComposer({ isOpen, onClose, replyTo }: MailComposerProps) {
     const [attachments, setAttachments] = useState<Attachment[]>([]);
     const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
     const [isDragOver, setIsDragOver] = useState(false);
+    const [emailError, setEmailError] = useState('');
+    const [hasDraft, setHasDraft] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Load draft on mount
+    useEffect(() => {
+        if (isOpen && !replyTo) {
+            const savedDraft = localStorage.getItem(DRAFT_KEY);
+            if (savedDraft) {
+                try {
+                    const draft: Draft = JSON.parse(savedDraft);
+                    setHasDraft(true);
+                    // Only restore if fields are empty
+                    if (!subject && !recipient && !content) {
+                        setSubject(draft.subject || '');
+                        setRecipient(draft.recipient || '');
+                        setContent(draft.content || '');
+                        toast.info('Brouillon restauré');
+                    }
+                } catch (e) {
+                    console.error('Error parsing draft:', e);
+                }
+            }
+        }
+    }, [isOpen, replyTo]);
+
+    // Auto-save draft
+    useEffect(() => {
+        if (!isOpen || replyTo) return;
+
+        // Clear previous timeout
+        if (autoSaveTimeoutRef.current) {
+            clearTimeout(autoSaveTimeoutRef.current);
+        }
+
+        // Don't save if everything is empty
+        if (!subject && !recipient && !content) {
+            return;
+        }
+
+        // Debounce save
+        autoSaveTimeoutRef.current = setTimeout(() => {
+            const draft: Draft = {
+                subject,
+                recipient,
+                content,
+                savedAt: new Date().toISOString(),
+            };
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+            setHasDraft(true);
+        }, 1000);
+
+        return () => {
+            if (autoSaveTimeoutRef.current) {
+                clearTimeout(autoSaveTimeoutRef.current);
+            }
+        };
+    }, [subject, recipient, content, isOpen, replyTo]);
+
+    // Email validation
+    const validateEmail = (email: string): boolean => {
+        if (!email) return false;
+        return EMAIL_REGEX.test(email.trim());
+    };
+
+    const handleRecipientChange = (value: string) => {
+        setRecipient(value);
+        if (value && !validateEmail(value)) {
+            setEmailError('Format d\'email invalide');
+        } else {
+            setEmailError('');
+        }
+    };
+
+    const clearDraft = () => {
+        localStorage.removeItem(DRAFT_KEY);
+        setHasDraft(false);
+    };
 
     const processFile = useCallback(async (file: File) => {
         // Only accept PDF files
@@ -165,6 +253,13 @@ export function MailComposer({ isOpen, onClose, replyTo }: MailComposerProps) {
             return;
         }
 
+        // Validate email format
+        if (!validateEmail(recipient)) {
+            setEmailError('Format d\'email invalide');
+            toast.error('L\'adresse email du destinataire est invalide');
+            return;
+        }
+
         // Check if any attachment is still uploading
         if (attachments.some(att => att.uploading)) {
             toast.error('Veuillez attendre la fin du téléchargement des pièces jointes');
@@ -199,10 +294,13 @@ export function MailComposer({ isOpen, onClose, replyTo }: MailComposerProps) {
                 attachments.forEach(att => {
                     if (att.localPreviewUrl) URL.revokeObjectURL(att.localPreviewUrl);
                 });
+                // Clear draft on successful send
+                clearDraft();
                 setSubject('');
                 setRecipient('');
                 setContent('');
                 setAttachments([]);
+                setEmailError('');
                 onClose();
             } else {
                 throw new Error(data?.error || 'Erreur lors de l\'envoi');
@@ -266,11 +364,16 @@ export function MailComposer({ isOpen, onClose, replyTo }: MailComposerProps) {
                                 id="to"
                                 type="email"
                                 value={recipient}
-                                onChange={(e) => setRecipient(e.target.value)}
-                                className="border-0 border-b rounded-none px-0 focus-visible:ring-0 shadow-none"
+                                onChange={(e) => handleRecipientChange(e.target.value)}
+                                className={`border-0 border-b rounded-none px-0 focus-visible:ring-0 shadow-none ${
+                                    emailError ? 'border-destructive text-destructive' : ''
+                                }`}
                                 placeholder="destinataire@exemple.com"
                                 disabled={isSending}
                             />
+                            {emailError && (
+                                <span className="text-xs text-destructive">{emailError}</span>
+                            )}
                         </div>
 
                         <div className="grid gap-2">
@@ -376,12 +479,18 @@ export function MailComposer({ isOpen, onClose, replyTo }: MailComposerProps) {
                                     {attachments.length}/5 fichier{attachments.length > 1 ? 's' : ''}
                                 </span>
                             )}
+                            {hasDraft && (
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Save className="w-3 h-3" />
+                                    Brouillon sauvegardé
+                                </span>
+                            )}
                         </div>
                         <div className="flex gap-2">
                             <Button variant="ghost" onClick={handleClose} disabled={isSending}>
                                 Annuler
                             </Button>
-                            <Button onClick={handleSend} disabled={isSending} className="gap-2">
+                            <Button onClick={handleSend} disabled={isSending || !!emailError} className="gap-2">
                                 {isSending ? (
                                     <>
                                         <Loader2 className="w-4 h-4 animate-spin" />
