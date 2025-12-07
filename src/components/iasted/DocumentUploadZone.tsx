@@ -330,10 +330,10 @@ export const DocumentUploadZone: React.FC<DocumentUploadZoneProps> = ({
                                         {/* Résumé de l'analyse */}
                                         {uploadedFile.status === 'completed' && uploadedFile.analysis && (
                                             <div className="mt-2 p-2 bg-muted rounded text-xs space-y-1">
-                                                <p><strong>Urgence:</strong> {uploadedFile.analysis.urgency_score}/10</p>
-                                                <p><strong>Sentiment:</strong> {uploadedFile.analysis.sentiment}</p>
-                                                {uploadedFile.analysis.key_points && uploadedFile.analysis.key_points.length > 0 && (
-                                                    <p><strong>Points clés:</strong> {uploadedFile.analysis.key_points.length} identifiés</p>
+                                                <p><strong>Type:</strong> {uploadedFile.analysis.documentType}</p>
+                                                <p><strong>Confiance:</strong> {Math.round(uploadedFile.analysis.confidence * 100)}%</p>
+                                                {uploadedFile.analysis.uncertainFields && uploadedFile.analysis.uncertainFields.length > 0 && (
+                                                    <p><strong>Champs incertains:</strong> {uploadedFile.analysis.uncertainFields.length}</p>
                                                 )}
                                             </div>
                                         )}

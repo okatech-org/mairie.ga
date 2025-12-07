@@ -1,6 +1,7 @@
 /**
  * Document Vault Service
  * Manages secure storage and retrieval of user documents
+ * NOTE: Uses the existing 'documents' table until 'document_vault' table is created
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -75,10 +76,11 @@ export const CATEGORY_ICONS: Record<DocumentCategory, string> = {
     other: "File"
 };
 
-const STORAGE_BUCKET = 'document-vault';
+const STORAGE_BUCKET = 'documents-presidentiels';
 
 /**
  * Upload a document to the vault
+ * Uses the existing 'documents' table
  */
 export async function uploadToVault(
     file: File,
@@ -113,22 +115,18 @@ export async function uploadToVault(
             throw new Error(`Erreur d'upload: ${uploadError.message}`);
         }
 
-        // Create database record
+        // Create database record using existing 'documents' table
         const documentData = {
             user_id: user.id,
             name: options?.name || file.name.replace(/\.[^/.]+$/, ''),
-            original_name: file.name,
-            category,
             file_path: filePath,
             file_type: file.type,
             file_size: file.size,
-            source: options?.source || 'upload',
-            metadata: options?.metadata || {},
-            is_verified: false
+            category: category
         };
 
         const { data, error: insertError } = await supabase
-            .from('document_vault')
+            .from('documents')
             .insert(documentData)
             .select()
             .single();
@@ -144,8 +142,29 @@ export async function uploadToVault(
             .from(STORAGE_BUCKET)
             .getPublicUrl(filePath);
 
+        // Map the 'documents' table record to VaultDocument interface
+        const vaultDoc: VaultDocument = {
+            id: data.id,
+            user_id: data.user_id,
+            name: data.name,
+            original_name: file.name,
+            category: (data.category || 'other') as DocumentCategory,
+            file_path: data.file_path,
+            file_type: data.file_type,
+            file_size: data.file_size,
+            thumbnail_path: null,
+            metadata: options?.metadata || {},
+            is_verified: false,
+            verification_date: null,
+            source: options?.source || 'upload',
+            last_used_at: null,
+            created_at: data.created_at,
+            updated_at: data.updated_at,
+            public_url: urlData.publicUrl
+        };
+
         return {
-            data: { ...data, public_url: urlData.publicUrl } as VaultDocument,
+            data: vaultDoc,
             error: null
         };
 
@@ -167,9 +186,9 @@ export async function getVaultDocuments(
 ): Promise<{ data: VaultDocument[]; error: Error | null }> {
     try {
         let query = supabase
-            .from('document_vault')
+            .from('documents')
             .select('*')
-            .order(options?.orderBy || 'created_at', { ascending: false });
+            .order(options?.orderBy === 'last_used_at' ? 'updated_at' : (options?.orderBy || 'created_at'), { ascending: false });
 
         if (options?.category) {
             query = query.eq('category', options.category);
@@ -185,16 +204,32 @@ export async function getVaultDocuments(
             throw new Error(error.message);
         }
 
-        // Add public URLs
+        // Map to VaultDocument with public URLs
         const documentsWithUrls = (data || []).map(doc => {
             const { data: urlData } = supabase.storage
                 .from(STORAGE_BUCKET)
                 .getPublicUrl(doc.file_path);
 
-            return {
-                ...doc,
+            const vaultDoc: VaultDocument = {
+                id: doc.id,
+                user_id: doc.user_id,
+                name: doc.name,
+                original_name: doc.name,
+                category: (doc.category || 'other') as DocumentCategory,
+                file_path: doc.file_path,
+                file_type: doc.file_type,
+                file_size: doc.file_size,
+                thumbnail_path: null,
+                metadata: {},
+                is_verified: false,
+                verification_date: null,
+                source: 'upload',
+                last_used_at: doc.updated_at,
+                created_at: doc.created_at,
+                updated_at: doc.updated_at,
                 public_url: urlData.publicUrl
-            } as VaultDocument;
+            };
+            return vaultDoc;
         });
 
         return { data: documentsWithUrls, error: null };
@@ -211,7 +246,7 @@ export async function getVaultDocuments(
 export async function getVaultDocument(id: string): Promise<{ data: VaultDocument | null; error: Error | null }> {
     try {
         const { data, error } = await supabase
-            .from('document_vault')
+            .from('documents')
             .select('*')
             .eq('id', id)
             .single();
@@ -225,8 +260,28 @@ export async function getVaultDocument(id: string): Promise<{ data: VaultDocumen
             .from(STORAGE_BUCKET)
             .getPublicUrl(data.file_path);
 
+        const vaultDoc: VaultDocument = {
+            id: data.id,
+            user_id: data.user_id,
+            name: data.name,
+            original_name: data.name,
+            category: (data.category || 'other') as DocumentCategory,
+            file_path: data.file_path,
+            file_type: data.file_type,
+            file_size: data.file_size,
+            thumbnail_path: null,
+            metadata: {},
+            is_verified: false,
+            verification_date: null,
+            source: 'upload',
+            last_used_at: data.updated_at,
+            created_at: data.created_at,
+            updated_at: data.updated_at,
+            public_url: urlData.publicUrl
+        };
+
         return {
-            data: { ...data, public_url: urlData.publicUrl } as VaultDocument,
+            data: vaultDoc,
             error: null
         };
 
@@ -243,7 +298,7 @@ export async function deleteVaultDocument(id: string): Promise<{ success: boolea
     try {
         // Get document to find file path
         const { data: doc, error: fetchError } = await supabase
-            .from('document_vault')
+            .from('documents')
             .select('file_path')
             .eq('id', id)
             .single();
@@ -263,7 +318,7 @@ export async function deleteVaultDocument(id: string): Promise<{ success: boolea
 
         // Delete database record
         const { error: deleteError } = await supabase
-            .from('document_vault')
+            .from('documents')
             .delete()
             .eq('id', id);
 
@@ -284,8 +339,8 @@ export async function deleteVaultDocument(id: string): Promise<{ success: boolea
  */
 export async function markDocumentUsed(id: string): Promise<void> {
     await supabase
-        .from('document_vault')
-        .update({ last_used_at: new Date().toISOString() })
+        .from('documents')
+        .update({ updated_at: new Date().toISOString() })
         .eq('id', id);
 }
 
@@ -294,7 +349,7 @@ export async function markDocumentUsed(id: string): Promise<void> {
  */
 export async function getRecentDocuments(limit: number = 5): Promise<{ data: VaultDocument[]; error: Error | null }> {
     return getVaultDocuments({
-        orderBy: 'last_used_at',
+        orderBy: 'created_at',
         limit
     });
 }
@@ -304,12 +359,15 @@ export async function getRecentDocuments(limit: number = 5): Promise<{ data: Vau
  */
 export async function updateVaultDocument(
     id: string,
-    updates: Partial<Pick<VaultDocument, 'name' | 'category' | 'metadata'>>
+    updates: Partial<Pick<VaultDocument, 'name' | 'category'>>
 ): Promise<{ data: VaultDocument | null; error: Error | null }> {
     try {
         const { data, error } = await supabase
-            .from('document_vault')
-            .update(updates)
+            .from('documents')
+            .update({
+                name: updates.name,
+                category: updates.category
+            })
             .eq('id', id)
             .select()
             .single();
@@ -318,7 +376,31 @@ export async function updateVaultDocument(
             throw new Error(error.message);
         }
 
-        return { data: data as VaultDocument, error: null };
+        const { data: urlData } = supabase.storage
+            .from(STORAGE_BUCKET)
+            .getPublicUrl(data.file_path);
+
+        const vaultDoc: VaultDocument = {
+            id: data.id,
+            user_id: data.user_id,
+            name: data.name,
+            original_name: data.name,
+            category: (data.category || 'other') as DocumentCategory,
+            file_path: data.file_path,
+            file_type: data.file_type,
+            file_size: data.file_size,
+            thumbnail_path: null,
+            metadata: {},
+            is_verified: false,
+            verification_date: null,
+            source: 'upload',
+            last_used_at: data.updated_at,
+            created_at: data.created_at,
+            updated_at: data.updated_at,
+            public_url: urlData.publicUrl
+        };
+
+        return { data: vaultDoc, error: null };
 
     } catch (error) {
         console.error('[DocumentVault] Update error:', error);
@@ -361,7 +443,7 @@ export async function downloadVaultDocument(id: string): Promise<{ data: Blob | 
  */
 export async function hasCategoryDocuments(category: DocumentCategory): Promise<boolean> {
     const { data } = await supabase
-        .from('document_vault')
+        .from('documents')
         .select('id')
         .eq('category', category)
         .limit(1);
@@ -386,12 +468,13 @@ export async function getDocumentCounts(): Promise<Record<DocumentCategory, numb
     };
 
     const { data } = await supabase
-        .from('document_vault')
+        .from('documents')
         .select('category');
 
     (data || []).forEach(doc => {
-        if (doc.category in counts) {
-            counts[doc.category as DocumentCategory]++;
+        const cat = doc.category as DocumentCategory;
+        if (cat && cat in counts) {
+            counts[cat]++;
         }
     });
 
