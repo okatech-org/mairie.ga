@@ -351,10 +351,16 @@ export type Database = {
           created_at: string
           date_of_birth: string | null
           email: string
+          emergency_contact_first_name: string | null
+          emergency_contact_last_name: string | null
+          emergency_contact_phone: string | null
+          employer: string | null
+          father_name: string | null
           first_name: string
           id: string
           last_name: string
           lieu_naissance: string | null
+          mother_name: string | null
           nationality: string | null
           numero_cni: string | null
           phone: string | null
@@ -373,10 +379,16 @@ export type Database = {
           created_at?: string
           date_of_birth?: string | null
           email: string
+          emergency_contact_first_name?: string | null
+          emergency_contact_last_name?: string | null
+          emergency_contact_phone?: string | null
+          employer?: string | null
+          father_name?: string | null
           first_name: string
           id?: string
           last_name: string
           lieu_naissance?: string | null
+          mother_name?: string | null
           nationality?: string | null
           numero_cni?: string | null
           phone?: string | null
@@ -395,10 +407,16 @@ export type Database = {
           created_at?: string
           date_of_birth?: string | null
           email?: string
+          emergency_contact_first_name?: string | null
+          emergency_contact_last_name?: string | null
+          emergency_contact_phone?: string | null
+          employer?: string | null
+          father_name?: string | null
           first_name?: string
           id?: string
           last_name?: string
           lieu_naissance?: string | null
+          mother_name?: string | null
           nationality?: string | null
           numero_cni?: string | null
           phone?: string | null

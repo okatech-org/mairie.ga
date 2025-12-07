@@ -98,7 +98,6 @@ export async function registerUser(data: RegistrationData) {
   }
 
   // 3. Update the profile with additional data and PIN code
-  // Only use columns that exist in the profiles table
   const { error: profileError } = await supabase
     .from('profiles')
     .update({
@@ -111,19 +110,17 @@ export async function registerUser(data: RegistrationData) {
       address: profileData.address ? { 
         full: profileData.address, 
         city: profileData.city, 
-        postalCode: profileData.postalCode,
-        // Store extended fields in address JSON since columns don't exist
-        fatherName: profileData.fatherName,
-        motherName: profileData.motherName,
-        emergencyContact: profileData.emergencyContactFirstName ? {
-          firstName: profileData.emergencyContactFirstName,
-          lastName: profileData.emergencyContactLastName,
-          phone: profileData.emergencyContactPhone
-        } : undefined,
-        employer: profileData.employer
+        postalCode: profileData.postalCode
       } : null,
       pin_code: pinCode,
       pin_enabled: true,
+      // Extended fields - now using dedicated columns
+      father_name: profileData.fatherName || null,
+      mother_name: profileData.motherName || null,
+      emergency_contact_first_name: profileData.emergencyContactFirstName || null,
+      emergency_contact_last_name: profileData.emergencyContactLastName || null,
+      emergency_contact_phone: profileData.emergencyContactPhone || null,
+      employer: profileData.employer || null,
     })
     .eq('user_id', authData.user.id);
 
