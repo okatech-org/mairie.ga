@@ -122,10 +122,29 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                 setVoiceState('listening');
                 updateSession(voice, systemPrompt); // Send initial config
                 
-                // Trigger iAsted to speak immediately with a greeting
+                // Trigger iAsted to speak immediately with a personalized greeting
                 setTimeout(() => {
                     if (dc.readyState === 'open') {
                         console.log('🎙️ Triggering auto-greeting...');
+                        
+                        // Determine time of day for personalized greeting
+                        const hour = new Date().getHours();
+                        let timeOfDay: string;
+                        let greetingStyle: string;
+                        
+                        if (hour >= 5 && hour < 12) {
+                            timeOfDay = 'matin';
+                            greetingStyle = 'Bonjour, bonne matinée, ou une variation chaleureuse du matin';
+                        } else if (hour >= 12 && hour < 18) {
+                            timeOfDay = 'après-midi';
+                            greetingStyle = 'Bon après-midi, bonjour, ou une variation adaptée à l\'après-midi';
+                        } else if (hour >= 18 && hour < 22) {
+                            timeOfDay = 'soir';
+                            greetingStyle = 'Bonsoir, bonne soirée, ou une variation chaleureuse du soir';
+                        } else {
+                            timeOfDay = 'nuit';
+                            greetingStyle = 'Bonsoir, bonne nuit, ou une salutation douce adaptée aux heures tardives';
+                        }
                         
                         // Send a hidden user message to trigger the greeting
                         const greetingTrigger = {
@@ -135,7 +154,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                                 role: 'user',
                                 content: [{
                                     type: 'input_text',
-                                    text: '[ACTIVATION] L\'utilisateur vient de cliquer sur le bouton iAsted. Salue-le immédiatement selon son profil et le moment de la journée, puis indique que tu es disponible et à son écoute.'
+                                    text: `[ACTIVATION - ${timeOfDay.toUpperCase()}] Il est actuellement ${hour}h. L'utilisateur vient d'activer iAsted. Salue-le avec une formule adaptée au ${timeOfDay} (${greetingStyle}). Sois naturel, chaleureux et varie tes salutations. Indique ensuite que tu es disponible pour l'aider.`
                                 }]
                             }
                         };
