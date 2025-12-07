@@ -1,8 +1,7 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { IAstedChatModal } from '@/components/iasted/IAstedChatModal';
 import IAstedButtonFull from "@/components/iasted/IAstedButtonFull";
 import { useRealtimeVoiceWebRTC } from '@/hooks/useRealtimeVoiceWebRTC';
-import { useWakeWordDetection } from '@/hooks/useWakeWordDetection';
 import { IASTED_SYSTEM_PROMPT } from '@/config/iasted-config';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,8 +35,6 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
     const [selectedVoice, setSelectedVoice] = useState<'echo' | 'ash' | 'shimmer'>('ash');
     const [pendingDocument, setPendingDocument] = useState<any>(null);
     const [questionsRemaining, setQuestionsRemaining] = useState(3);
-    const [pushToTalkMode, setPushToTalkMode] = useState(false);
-    const [wakeWordEnabled, setWakeWordEnabled] = useState(false);
     const { setTheme, theme } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
@@ -1171,115 +1168,13 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
         }
     });
 
-    // Wake word detection - activates when user says "iAsted"
-    const handleWakeWordDetected = useCallback(async () => {
-        console.log('🎯 Wake word "iAsted" detected!');
-        if (!openaiRTC.isConnected) {
-            toast.info('iAsted activé par commande vocale');
-            await openaiRTC.connect(selectedVoice, formattedSystemPrompt);
-        }
-    }, [openaiRTC, selectedVoice, formattedSystemPrompt]);
-
-    const wakeWord = useWakeWordDetection(
-        { 
-            wakeWords: ['iasted', 'i asted', 'hey asted', 'hé asted', 'assistant'],
-            enabled: wakeWordEnabled && !openaiRTC.isConnected,
-            sensitivity: 0.6
-        },
-        handleWakeWordDetected
-    );
-
-    // Load settings from localStorage
-    useEffect(() => {
-        const savedPushToTalk = localStorage.getItem('iasted-push-to-talk') === 'true';
-        const savedWakeWord = localStorage.getItem('iasted-wake-word') === 'true';
-        setPushToTalkMode(savedPushToTalk);
-        setWakeWordEnabled(savedWakeWord);
-        
-        // Start wake word detection if enabled
-        if (savedWakeWord && wakeWord.isSupported) {
-            wakeWord.start();
-        }
-    }, []);
-
-    // Toggle wake word detection based on setting
-    useEffect(() => {
-        if (wakeWordEnabled && wakeWord.isSupported && !openaiRTC.isConnected) {
-            wakeWord.start();
-        } else {
-            wakeWord.stop();
-        }
-    }, [wakeWordEnabled, openaiRTC.isConnected]);
-
     const handleButtonClick = async () => {
-        // If AI is currently speaking, interrupt it (STOP action)
-        if (openaiRTC.voiceState === 'speaking') {
-            console.log('🛑 [IAstedInterface] Interrupting AI speech (button click)');
-            openaiRTC.cancelResponse();
-            return;
-        }
-        
-        // If connected but not speaking, disconnect
         if (openaiRTC.isConnected) {
             openaiRTC.disconnect();
         } else {
-            // Not connected, start connection
             await openaiRTC.connect(selectedVoice, formattedSystemPrompt);
         }
     };
-
-    // Push-to-talk handlers
-    const handlePushToTalkStart = useCallback(async () => {
-        if (!pushToTalkMode) return;
-        console.log('🎤 Push-to-talk: START');
-        if (!openaiRTC.isConnected) {
-            await openaiRTC.connect(selectedVoice, formattedSystemPrompt);
-        }
-    }, [pushToTalkMode, openaiRTC, selectedVoice, formattedSystemPrompt]);
-
-    const handlePushToTalkEnd = useCallback(() => {
-        if (!pushToTalkMode) return;
-        console.log('🎤 Push-to-talk: END');
-        // In push-to-talk, we could optionally disconnect after release
-        // For now, we keep the connection but the user stops speaking
-    }, [pushToTalkMode]);
-
-    // Toggle functions for settings
-    const togglePushToTalk = useCallback(() => {
-        const newValue = !pushToTalkMode;
-        setPushToTalkMode(newValue);
-        localStorage.setItem('iasted-push-to-talk', String(newValue));
-        toast.success(newValue ? 'Mode Push-to-Talk activé' : 'Mode Push-to-Talk désactivé');
-    }, [pushToTalkMode]);
-
-    const toggleWakeWord = useCallback(() => {
-        const newValue = !wakeWordEnabled;
-        setWakeWordEnabled(newValue);
-        localStorage.setItem('iasted-wake-word', String(newValue));
-        if (newValue && wakeWord.isSupported) {
-            wakeWord.start();
-            toast.success('Détection "iAsted" activée - Dites "iAsted" pour activer');
-        } else {
-            wakeWord.stop();
-            toast.success('Détection "iAsted" désactivée');
-        }
-    }, [wakeWordEnabled, wakeWord]);
-
-    // Expose toggle functions via window for settings panel
-    useEffect(() => {
-        (window as any).__iastedTogglePushToTalk = togglePushToTalk;
-        (window as any).__iastedToggleWakeWord = toggleWakeWord;
-        (window as any).__iastedSettings = {
-            pushToTalkMode,
-            wakeWordEnabled,
-            wakeWordSupported: wakeWord.isSupported
-        };
-        return () => {
-            delete (window as any).__iastedTogglePushToTalk;
-            delete (window as any).__iastedToggleWakeWord;
-            delete (window as any).__iastedSettings;
-        };
-    }, [togglePushToTalk, toggleWakeWord, pushToTalkMode, wakeWordEnabled, wakeWord.isSupported]);
 
     return (
         <>
@@ -1290,10 +1185,6 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
                 audioLevel={openaiRTC.audioLevel}
                 onClick={handleButtonClick}
                 onDoubleClick={() => setIsOpen(true)}
-                onPushToTalkStart={handlePushToTalkStart}
-                onPushToTalkEnd={handlePushToTalkEnd}
-                pushToTalkMode={pushToTalkMode}
-                wakeWordActive={wakeWordEnabled && wakeWord.isListening}
             />
 
             <IAstedChatModal

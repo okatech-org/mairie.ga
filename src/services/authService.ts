@@ -107,14 +107,10 @@ export async function registerUser(data: RegistrationData) {
       lieu_naissance: profileData.placeOfBirth || null,
       profession: profileData.profession || null,
       situation_matrimoniale: profileData.maritalStatus || null,
-      address: profileData.address ? { 
-        full: profileData.address, 
-        city: profileData.city, 
-        postalCode: profileData.postalCode
-      } : null,
+      address: profileData.address ? { full: profileData.address, city: profileData.city, postalCode: profileData.postalCode } : null,
       pin_code: pinCode,
       pin_enabled: true,
-      // Extended fields - now using dedicated columns
+      // Extended fields
       father_name: profileData.fatherName || null,
       mother_name: profileData.motherName || null,
       emergency_contact_first_name: profileData.emergencyContactFirstName || null,
@@ -126,7 +122,7 @@ export async function registerUser(data: RegistrationData) {
 
   if (profileError) {
     console.error('Profile update error:', profileError);
-    throw new Error("Erreur lors de la mise à jour du profil: " + profileError.message);
+    // Don't throw - the user is created, profile update can fail silently but we should log it
   }
 
   // 4. Assign citizen role

@@ -22,7 +22,6 @@ export interface UseRealtimeVoiceWebRTC {
     clearSession: () => void;
     toggleConversation: (voice?: 'echo' | 'ash' | 'shimmer') => void;
     setSpeechRate: (rate: number) => void;
-    cancelResponse: () => void; // Interrupt current speech
 }
 
 export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) => void): UseRealtimeVoiceWebRTC => {
@@ -38,8 +37,6 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
     const audioContext = useRef<AudioContext | null>(null);
     const analyser = useRef<AnalyserNode | null>(null);
     const animationFrame = useRef<number | null>(null);
-    const audioElement = useRef<HTMLAudioElement | null>(null);
-    const currentResponseId = useRef<string | null>(null);
     const { toast } = useToast();
     const location = useLocation();
     const navigate = useNavigate();
@@ -109,14 +106,11 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             const pc = new RTCPeerConnection();
             peerConnection.current = pc;
 
-            // Audio Element for output (stored in ref for interruption control)
+            // Audio Element for output
             const audioEl = document.createElement('audio');
             audioEl.autoplay = true;
-            audioElement.current = audioEl;
             pc.ontrack = (e) => {
-                console.log('🎧 WebRTC Track received:', e.track.kind, e.streams[0].id);
                 audioEl.srcObject = e.streams[0];
-                audioEl.play().catch(err => console.error('❌ Audio play error:', err));
             };
 
             // Data Channel
@@ -128,36 +122,13 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                 setVoiceState('listening');
                 updateSession(voice, systemPrompt); // Send initial config
 
-                // Trigger iAsted to speak IMMEDIATELY with a personalized greeting
-                // Reduced delay for faster response
+                // Trigger iAsted to speak first (auto-greeting)
                 setTimeout(() => {
                     if (dc.readyState === 'open') {
                         console.log('🎙️ Triggering auto-greeting...');
-
-                        // Determine time of day for personalized greeting
-                        const hour = new Date().getHours();
-                        const timeOfDay = hour >= 5 && hour < 12 ? 'matin'
-                            : hour >= 12 && hour < 18 ? 'après-midi'
-                                : hour >= 18 && hour < 22 ? 'soir' : 'nuit';
-
-                        // Send a hidden user message to trigger the greeting
-                        const greetingTrigger = {
-                            type: 'conversation.item.create',
-                            item: {
-                                type: 'message',
-                                role: 'user',
-                                content: [{
-                                    type: 'input_text',
-                                    text: `[SALUTATION RAPIDE - ${timeOfDay.toUpperCase()}] Salue brièvement l'utilisateur (max 10 mots) adapté au ${timeOfDay}. Sois disponible.`
-                                }]
-                            }
-                        };
-                        dc.send(JSON.stringify(greetingTrigger));
-
-                        // Request AI response immediately
                         dc.send(JSON.stringify({ type: 'response.create' }));
                     }
-                }, 50);
+                }, 500);
             };
 
             dc.onmessage = (e) => {
@@ -239,35 +210,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                 input_audio_transcription: {
                     model: 'whisper-1',
                 },
-                // Turn detection config for noise filtering and barge-in sensitivity
-                turn_detection: {
-                    type: 'server_vad',
-                    threshold: 0.6,              // Higher = less sensitive to background noise
-                    prefix_padding_ms: 300,      // Wait before considering as speech
-                    silence_duration_ms: 700     // Silence duration to end turn
-                },
                 tools: [
-                    // ============= INTERRUPTION TOOL =============
-                    {
-                        type: 'function',
-                        name: 'interrupt_speech',
-                        description: 'Interrompre immédiatement la parole et écouter. Utiliser quand l\'utilisateur dit "stop", "arrête", "attends", "tais-toi", "une seconde", "pause", etc.',
-                        parameters: { type: 'object', properties: {} }
-                    },
-                    {
-                        type: 'function',
-                        name: 'evaluate_speech_target',
-                        description: 'Évaluer si la parole détectée est adressée à l\'assistant ou est une conversation parallèle/bruit. Utiliser quand tu doutes que l\'on s\'adresse à toi.',
-                        parameters: {
-                            type: 'object',
-                            properties: {
-                                is_addressed_to_me: { type: 'boolean', description: 'Vrai si la parole semble adressée à iAsted' },
-                                confidence: { type: 'number', description: 'Niveau de confiance 0-1' },
-                                reason: { type: 'string', description: 'Explication courte' }
-                            },
-                            required: ['is_addressed_to_me']
-                        }
-                    },
                     {
                         type: 'function',
                         name: 'change_voice',
@@ -618,60 +561,16 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
         dataChannel.current.send(JSON.stringify(event));
     };
 
-    // Cancel current AI response (interruption)
-    const cancelResponse = useCallback(() => {
-        console.log('🛑 Cancelling current response (interruption)');
-
-        // 1. Immediately mute the audio element
-        if (audioElement.current) {
-            audioElement.current.pause();
-            audioElement.current.currentTime = 0;
-            // Re-enable for next response
-            setTimeout(() => {
-                if (audioElement.current) {
-                    audioElement.current.play().catch(() => { });
-                }
-            }, 100);
-        }
-
-        // 2. Send cancel to server if we have an active response
-        if (dataChannel.current?.readyState === 'open') {
-            // Cancel ongoing response generation
-            dataChannel.current.send(JSON.stringify({ type: 'response.cancel' }));
-            console.log('📤 Sent response.cancel to server');
-        }
-
-        // 3. Update state to listening
-        setVoiceState('listening');
-        currentResponseId.current = null;
-    }, []);
-
     const handleServerEvent = (event: any) => {
         switch (event.type) {
-            case 'response.created':
-                // Track the current response ID for potential cancellation
-                if (event.response?.id) {
-                    currentResponseId.current = event.response.id;
-                }
-                break;
             case 'response.audio.delta':
                 setVoiceState('speaking');
                 break;
             case 'input_audio_buffer.speech_started':
-                // User started speaking - INTERRUPT immediately (barge-in)
-                console.log('🎤 User speech detected - interrupting AI');
-                if (voiceState === 'speaking') {
-                    cancelResponse();
-                }
-                setVoiceState('listening');
-                break;
-            case 'input_audio_buffer.speech_stopped':
-                // User stopped speaking
-                console.log('🎤 User speech stopped');
+                setVoiceState('listening'); // Actually user speaking
                 break;
             case 'response.done':
-                setVoiceState('listening');
-                currentResponseId.current = null;
+                setVoiceState('listening'); // Back to listening after response
                 if (event.response?.output) {
                     event.response.output.forEach((item: any) => {
                         if (item.type === 'function_call') {
@@ -685,9 +584,6 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                     setMessages(prev => [...prev, { role: 'assistant', content: event.item.content[0].text }]);
                 }
                 break;
-            case 'error':
-                console.error('❌ OpenAI Realtime error:', event.error);
-                break;
             default:
                 break;
         }
@@ -698,27 +594,6 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
         const args = JSON.parse(argsString);
 
         console.log(`🔧 Tool Call: ${name}`, args);
-
-        // ============= INTERRUPTION HANDLING =============
-        if (name === 'interrupt_speech') {
-            console.log('🛑 interrupt_speech tool called - interrupting immediately');
-            cancelResponse();
-            return;
-        }
-
-        if (name === 'evaluate_speech_target') {
-            const { is_addressed_to_me, confidence, reason } = args;
-            console.log(`🎯 Speech target evaluation: addressed=${is_addressed_to_me}, confidence=${confidence}, reason=${reason}`);
-
-            if (!is_addressed_to_me) {
-                // Speech was not addressed to iAsted - stay silent
-                console.log('👂 Speech not addressed to iAsted - ignoring');
-                // Don't respond, just listen
-                return;
-            }
-            // If addressed to iAsted, continue with normal response flow
-            return;
-        }
 
         if (name === 'stop_conversation') {
             disconnect();
@@ -756,12 +631,6 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
     };
 
     const disconnect = () => {
-        // Stop any ongoing audio
-        if (audioElement.current) {
-            audioElement.current.pause();
-            audioElement.current.srcObject = null;
-            audioElement.current = null;
-        }
         if (peerConnection.current) {
             peerConnection.current.close();
             peerConnection.current = null;
@@ -770,7 +639,6 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             dataChannel.current.close();
             dataChannel.current = null;
         }
-        currentResponseId.current = null;
         setVoiceState('idle');
     };
 
@@ -817,7 +685,6 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
         changeVoice,
         clearSession,
         toggleConversation,
-        setSpeechRate,
-        cancelResponse
+        setSpeechRate
     };
 };

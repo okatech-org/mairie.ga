@@ -1,8 +1,7 @@
 /**
  * Document OCR Service
- * Supports multiple providers:
- * 1. Gemini Vision (via Secure Edge Function) - DEFAULT
- * 2. OpenAI Vision (Client-side) - FALLBACK/OPTION
+ * Uses Edge Function with Gemini Vision API to extract structured data from identity documents
+ * SECURE: API keys are stored server-side, not exposed to client
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -67,43 +66,17 @@ const FIELD_PRIORITY: Record<string, DocumentType[]> = {
     expiryDate: ['passport', 'cni'],
 };
 
-// OCR Provider types
-export type OCRProvider = 'openai' | 'gemini';
-
-// API endpoints
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
-
-// Current provider (can be configured)
-let currentProvider: OCRProvider = 'gemini';
-
 /**
- * Set the OCR provider
+ * Convert File to base64 (without data URL prefix)
  */
-export function setOCRProvider(provider: OCRProvider): void {
-    currentProvider = provider;
-    console.log(`[DocumentOCR] Provider set to: ${provider}`);
-}
-
-/**
- * Get the current OCR provider
- */
-export function getOCRProvider(): OCRProvider {
-    return currentProvider;
-}
-
-/**
- * Convert File to base64 (raw for Gemini Edge, data URL for OpenAI)
- */
-async function fileToBase64(file: File, raw: boolean = false): Promise<string> {
+async function fileToBase64Raw(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => {
             const result = reader.result as string;
-            if (raw) {
-                resolve(result.split(',')[1]);
-            } else {
-                resolve(result);
-            }
+            // Remove data URL prefix (e.g., "data:image/jpeg;base64,")
+            const base64 = result.split(',')[1];
+            resolve(base64);
         };
         reader.onerror = reject;
         reader.readAsDataURL(file);
@@ -111,38 +84,20 @@ async function fileToBase64(file: File, raw: boolean = false): Promise<string> {
 }
 
 /**
- * Analyze a single document using the configured OCR provider
+ * Analyze a single document using the secure Edge Function
  */
 export async function analyzeDocument(
-    file: File,
-    documentType?: DocumentType,
-    options?: {
-        provider?: OCRProvider;
-        openaiKey?: string;
-    }
-): Promise<DocumentAnalysis> {
-    const provider = options?.provider || currentProvider;
-
-    if (provider === 'gemini') {
-        return analyzeWithGeminiEdge(file, documentType);
-    } else {
-        return analyzeWithOpenAI(file, documentType, options?.openaiKey);
-    }
-}
-
-/**
- * Analyze document using Gemini via Secure Edge Function
- */
-async function analyzeWithGeminiEdge(
     file: File,
     documentType?: DocumentType
 ): Promise<DocumentAnalysis> {
     try {
-        console.log(`[DocumentOCR:Gemini] Analyzing document: ${file.name}`);
-
-        const imageBase64 = await fileToBase64(file, true); // Raw base64
+        console.log(`[DocumentOCR] Analyzing document: ${file.name}, type hint: ${documentType || 'auto'}`);
+        
+        // Convert file to base64
+        const imageBase64 = await fileToBase64Raw(file);
         const mimeType = file.type || 'image/jpeg';
 
+        // Call the secure Edge Function
         const { data, error } = await supabase.functions.invoke('document-ocr', {
             body: {
                 imageBase64,
@@ -151,80 +106,44 @@ async function analyzeWithGeminiEdge(
             }
         });
 
-        if (error) throw new Error(error.message || 'Erreur Edge Function');
-        if (data.error) throw new Error(data.error);
+        if (error) {
+            console.error('[DocumentOCR] Edge function error:', error);
+            throw new Error(error.message || 'Erreur du service OCR');
+        }
 
+        if (data.error) {
+            console.error('[DocumentOCR] Analysis error:', data.error);
+            return createErrorAnalysis(documentType, data.error);
+        }
+
+        console.log(`[DocumentOCR] Analysis complete, confidence: ${data.confidence}`);
         return data as DocumentAnalysis;
 
-    } catch (error: any) {
-        console.error('[DocumentOCR:Gemini] Analysis error:', error);
-        return createErrorAnalysis(documentType, error.message);
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+        console.error('[DocumentOCR] Analysis error:', errorMessage);
+        return createErrorAnalysis(documentType, errorMessage);
     }
 }
 
 /**
- * Analyze document using OpenAI Vision API (Client-side)
+ * Create error analysis result
  */
-async function analyzeWithOpenAI(
-    file: File,
-    documentType?: DocumentType,
-    apiKey?: string
-): Promise<DocumentAnalysis> {
-    try {
-        const key = apiKey || import.meta.env.VITE_OPENAI_API_KEY;
-        if (!key) {
-            throw new Error('Clé API OpenAI non configurée (VITE_OPENAI_API_KEY)');
-        }
-
-        const base64Image = await fileToBase64(file, false); // Data URL
-
-        const response = await fetch(OPENAI_API_URL, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${key}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'gpt-4o',
-                messages: [
-                    {
-                        role: 'user',
-                        content: [
-                            { type: 'text', text: getExtractionPrompt(documentType) },
-                            { type: 'image_url', image_url: { url: base64Image, detail: 'high' } }
-                        ]
-                    }
-                ],
-                max_tokens: 2000,
-                temperature: 0.1
-            })
-        });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(`OpenAI API error: ${error.error?.message || response.statusText}`);
-        }
-
-        const result = await response.json();
-        const content = result.choices[0]?.message?.content;
-
-        return parseAndCleanAnalysis(content, documentType);
-
-    } catch (error: any) {
-        console.error('[DocumentOCR:OpenAI] Analysis error:', error);
-        return createErrorAnalysis(documentType, error.message);
-    }
+function createErrorAnalysis(documentType?: DocumentType, errorMessage?: string): DocumentAnalysis {
+    return {
+        documentType: documentType || 'other',
+        confidence: 0,
+        extractedData: {},
+        uncertainFields: [],
+        error: errorMessage
+    };
 }
 
 /**
  * Analyze multiple documents and consolidate data
  */
 export async function analyzeMultipleDocuments(
-    files: { file: File; suggestedType?: DocumentType }[],
-    options?: {
-        provider?: OCRProvider;
-        openaiKey?: string;
-    }
+    files: { file: File; suggestedType?: DocumentType }[]
 ): Promise<{
     analyses: DocumentAnalysis[];
     consolidatedData: ExtractedData;
@@ -233,7 +152,7 @@ export async function analyzeMultipleDocuments(
 }> {
     // Analyze all documents in parallel
     const analyses = await Promise.all(
-        files.map(({ file, suggestedType }) => analyzeDocument(file, suggestedType, options))
+        files.map(({ file, suggestedType }) => analyzeDocument(file, suggestedType))
     );
 
     // Consolidate data with priority rules
@@ -280,7 +199,7 @@ export async function analyzeMultipleDocuments(
             for (const docType of priority) {
                 const match = values.find(v => v.source === docType);
                 if (match) {
-                    (consolidatedData as any)[field] = match.value;
+                    (consolidatedData as Record<string, string>)[field] = match.value;
                     resolved = true;
                     break;
                 }
@@ -289,7 +208,7 @@ export async function analyzeMultipleDocuments(
             // If no priority match, use highest confidence
             if (!resolved) {
                 const sorted = values.sort((a, b) => b.confidence - a.confidence);
-                (consolidatedData as any)[field] = sorted[0].value;
+                (consolidatedData as Record<string, string>)[field] = sorted[0].value;
             }
 
             // Record the conflict for potential user review
@@ -299,7 +218,7 @@ export async function analyzeMultipleDocuments(
             });
         } else {
             // No conflict - use the value
-            (consolidatedData as any)[field] = values[0].value;
+            (consolidatedData as Record<string, string>)[field] = values[0].value;
         }
     }
 
@@ -320,18 +239,22 @@ export function detectSimilarNames(name1: string, name2: string): boolean {
     const n1 = name1.toUpperCase().trim();
     const n2 = name2.toUpperCase().trim();
 
+    // Exact match
     if (n1 === n2) return true;
+
+    // One contains the other
     if (n1.includes(n2) || n2.includes(n1)) return true;
 
+    // Levenshtein distance (simple implementation)
     const distance = levenshteinDistance(n1, n2);
     const maxLength = Math.max(n1.length, n2.length);
     const similarity = 1 - (distance / maxLength);
 
-    return similarity > 0.8;
+    return similarity > 0.8; // 80% similarity threshold
 }
 
 /**
- * Levenshtein distance
+ * Levenshtein distance for fuzzy string matching
  */
 function levenshteinDistance(s1: string, s2: string): number {
     const m = s1.length;
@@ -355,64 +278,42 @@ function levenshteinDistance(s1: string, s2: string): number {
 }
 
 /**
- * Get missing required fields
+ * Get missing required fields for registration
  */
 export function getMissingRegistrationFields(data: ExtractedData): string[] {
     const requiredFields = [
-        'lastName', 'firstName', 'dateOfBirth', 'placeOfBirth', 'address', 'city'
+        'lastName',
+        'firstName',
+        'dateOfBirth',
+        'placeOfBirth',
+        'address',
+        'city'
     ];
-    return requiredFields.filter(field => !(data as any)[field]);
+
+    return requiredFields.filter(field => !(data as Record<string, unknown>)[field]);
 }
 
 /**
- * Detect document type from filename
+ * Detect document type from filename or content hints
  */
 export function detectDocumentType(filename: string): DocumentType | undefined {
     const lower = filename.toLowerCase();
-    if (lower.includes('cni') || lower.includes('identite') || lower.includes('identity')) return 'cni';
-    if (lower.includes('passeport') || lower.includes('passport')) return 'passport';
-    if (lower.includes('naissance') || lower.includes('birth') || lower.includes('acte')) return 'birth_certificate';
-    if (lower.includes('domicile') || lower.includes('facture') || lower.includes('quittance') || lower.includes('edf')) return 'residence_proof';
-    if (lower.includes('livret') || lower.includes('famille') || lower.includes('family')) return 'family_record';
+
+    if (lower.includes('cni') || lower.includes('identite') || lower.includes('identity')) {
+        return 'cni';
+    }
+    if (lower.includes('passeport') || lower.includes('passport')) {
+        return 'passport';
+    }
+    if (lower.includes('naissance') || lower.includes('birth') || lower.includes('acte')) {
+        return 'birth_certificate';
+    }
+    if (lower.includes('domicile') || lower.includes('facture') || lower.includes('quittance') || lower.includes('edf')) {
+        return 'residence_proof';
+    }
+    if (lower.includes('livret') || lower.includes('famille') || lower.includes('family')) {
+        return 'family_record';
+    }
+
     return undefined;
-}
-
-// Helpers
-function getExtractionPrompt(documentType?: DocumentType): string {
-    const basePrompt = `Tu es un expert OCR spécialisé dans l'extraction de données de documents administratifs africains/gabonais.
-Analyse cette image de document et extrais TOUTES les informations visibles de manière structurée.
-IMPORTANT:
-- Les noms de famille sont généralement en MAJUSCULES
-- Les prénoms ont la première lettre en majuscule
-- Pour l'écriture manuscrite, fais de ton mieux pour déchiffrer
-- Si un champ est illisible ou incertain, marque-le dans uncertainFields
-- Date de naissance au format YYYY-MM-DD
-- Indique ton niveau de confiance global (0.0 à 1.0)
-Réponds UNIQUEMENT en JSON valide.`;
-
-    if (documentType) {
-        return basePrompt + `\nCe document est un(e) ${documentType}.`;
-    }
-    return basePrompt;
-}
-
-function parseAndCleanAnalysis(content: string | undefined, documentType?: DocumentType): DocumentAnalysis {
-    if (!content) throw new Error('Réponse vide');
-    let jsonString = content.trim();
-    if (jsonString.startsWith('```')) {
-        jsonString = jsonString.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
-    }
-    const analysis = JSON.parse(jsonString);
-    // Add cleanup logic here if needed (names formatting etc from previous step)
-    return analysis;
-}
-
-function createErrorAnalysis(documentType?: DocumentType, errorMessage?: string): DocumentAnalysis {
-    return {
-        documentType: documentType || 'other',
-        confidence: 0,
-        extractedData: {},
-        uncertainFields: [],
-        error: errorMessage
-    };
 }
