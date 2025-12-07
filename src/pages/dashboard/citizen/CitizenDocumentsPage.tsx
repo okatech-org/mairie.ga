@@ -1,9 +1,10 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { useDropzone } from 'react-dropzone';
 import { Document, DocumentType } from '@/types/document';
 import { documentService } from '@/services/document-service';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Upload, Trash2, Eye, Loader2, Image, FileIcon } from 'lucide-react';
+import { FileText, Upload, Trash2, Eye, Loader2, FileIcon } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
@@ -12,7 +13,6 @@ export default function CitizenDocumentsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isUploading, setIsUploading] = useState(false);
     const [selectedType, setSelectedType] = useState<DocumentType>('OTHER');
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         fetchDocuments();
@@ -30,10 +30,7 @@ export default function CitizenDocumentsPage() {
         }
     };
 
-    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
+    const handleUpload = async (file: File) => {
         if (file.size > 5 * 1024 * 1024) {
             toast.error("Le fichier est trop volumineux (max 5MB)");
             return;
@@ -49,9 +46,26 @@ export default function CitizenDocumentsPage() {
             toast.error(error.message || "Erreur lors de l'envoi du document");
         } finally {
             setIsUploading(false);
-            if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
+
+    const onDrop = useCallback((acceptedFiles: File[]) => {
+        if (acceptedFiles.length > 0) {
+            handleUpload(acceptedFiles[0]);
+        }
+    }, [selectedType]);
+
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        onDrop,
+        accept: {
+            'application/pdf': ['.pdf'],
+            'image/jpeg': ['.jpg', '.jpeg'],
+            'image/png': ['.png'],
+            'image/webp': ['.webp']
+        },
+        maxFiles: 1,
+        disabled: isUploading
+    });
 
     const handleDelete = async (id: string) => {
         try {
@@ -109,7 +123,6 @@ export default function CitizenDocumentsPage() {
             );
         }
         
-        // PDF or other document types
         return (
             <div className="w-full h-32 rounded-lg bg-muted/50 flex items-center justify-center">
                 {doc.fileType?.includes('pdf') ? (
@@ -142,18 +155,45 @@ export default function CitizenDocumentsPage() {
                             <SelectItem value="RESIDENCE_PERMIT">Carte de Séjour</SelectItem>
                         </SelectContent>
                     </Select>
+                </div>
+            </div>
 
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        className="hidden"
-                        onChange={handleFileUpload}
-                        accept=".pdf,.jpg,.jpeg,.png,.webp"
-                    />
-                    <Button className="gap-2" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
-                        {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                        Ajouter
-                    </Button>
+            {/* Drag & Drop Zone */}
+            <div
+                {...getRootProps()}
+                className={`
+                    border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all
+                    ${isDragActive 
+                        ? 'border-primary bg-primary/5 scale-[1.02]' 
+                        : 'border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/30'
+                    }
+                    ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}
+                `}
+            >
+                <input {...getInputProps()} />
+                <div className="flex flex-col items-center gap-3">
+                    {isUploading ? (
+                        <div className="p-4 bg-primary/10 rounded-full">
+                            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                        </div>
+                    ) : (
+                        <div className={`p-4 rounded-full transition-colors ${isDragActive ? 'bg-primary/20' : 'bg-muted'}`}>
+                            <Upload className={`w-8 h-8 ${isDragActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                        </div>
+                    )}
+                    <div>
+                        <p className="font-semibold">
+                            {isUploading 
+                                ? "Envoi en cours..." 
+                                : isDragActive 
+                                    ? "Déposez le fichier ici" 
+                                    : "Glissez-déposez un document ici"
+                            }
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                            {!isUploading && "ou cliquez pour sélectionner • PDF, JPG, PNG (max 5MB)"}
+                        </p>
+                    </div>
                 </div>
             </div>
 
@@ -173,10 +213,8 @@ export default function CitizenDocumentsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {documents.map((doc) => (
                         <div key={doc.id} className="neu-card p-4 rounded-xl space-y-3 flex flex-col group hover:border-primary/50 transition-all hover:shadow-lg">
-                            {/* Thumbnail Preview */}
                             <DocumentThumbnail doc={doc} />
                             
-                            {/* Document Info */}
                             <div className="flex-1 space-y-2">
                                 <div className="flex justify-between items-start gap-2">
                                     <h3 className="font-semibold text-sm line-clamp-2" title={doc.title}>
@@ -198,7 +236,6 @@ export default function CitizenDocumentsPage() {
                                 </div>
                             </div>
 
-                            {/* Actions */}
                             <div className="flex gap-2 pt-2 border-t">
                                 <Button 
                                     variant="ghost" 
@@ -219,28 +256,6 @@ export default function CitizenDocumentsPage() {
                             </div>
                         </div>
                     ))}
-
-                    {/* Upload Placeholder Card */}
-                    <div
-                        className="neu-inset border-2 border-dashed border-muted-foreground/20 rounded-xl p-6 flex flex-col items-center justify-center text-center space-y-4 min-h-[280px] cursor-pointer hover:bg-muted/50 hover:border-primary/30 transition-all"
-                        onClick={() => fileInputRef.current?.click()}
-                    >
-                        {isUploading ? (
-                            <div className="p-4 bg-primary/10 rounded-full animate-pulse">
-                                <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                            </div>
-                        ) : (
-                            <div className="p-4 bg-muted rounded-full">
-                                <Upload className="w-8 h-8 text-muted-foreground" />
-                            </div>
-                        )}
-                        <div>
-                            <h3 className="font-semibold">{isUploading ? "Envoi en cours..." : "Ajouter un document"}</h3>
-                            <p className="text-sm text-muted-foreground max-w-[180px] mx-auto mt-1">
-                                {!isUploading && "PDF, JPG, PNG (max 5MB)"}
-                            </p>
-                        </div>
-                    </div>
                 </div>
             )}
         </div>
