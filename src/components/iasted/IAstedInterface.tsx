@@ -940,14 +940,7 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
             return { success: true, message: 'Formulaire soumis pour validation' };
         }
 
-        if (toolName === 'security_override') {
-            console.log('🔓 [IAstedInterface] Override Sécurité:', args);
-            if (args.action === 'unlock_admin_access') {
-                localStorage.setItem('security_override', 'true');
-                toast.warning("🔓 SÉCURITÉ DÉSACTIVÉE - ACCÈS ADMIN AUTORISÉ");
-                window.dispatchEvent(new CustomEvent('security-override-activated'));
-            }
-        }
+        // SECURITY: security_override tool removed - all authorization must be server-side via RLS
 
         // 2. External Handler (for navigation, specific actions)
         if (onToolCall) {

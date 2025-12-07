@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -71,8 +72,34 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Verify PIN code
-    if (profile.pin_code !== pinCode) {
+    if (!profile.pin_code) {
+      return new Response(
+        JSON.stringify({ error: "Aucun code PIN configuré" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // SECURITY: Verify PIN using bcrypt comparison
+    // Check if the stored PIN is hashed (bcrypt hashes start with $2)
+    let isValidPin = false;
+    if (profile.pin_code.startsWith('$2')) {
+      // PIN is hashed - use bcrypt compare
+      isValidPin = await bcrypt.compare(pinCode, profile.pin_code);
+    } else {
+      // Legacy: PIN stored in plaintext - verify and upgrade to hash
+      if (profile.pin_code === pinCode) {
+        isValidPin = true;
+        // Upgrade: Hash the PIN for future logins
+        const hashedPin = await bcrypt.hash(pinCode);
+        await supabaseAdmin
+          .from('profiles')
+          .update({ pin_code: hashedPin })
+          .eq('user_id', profile.user_id);
+        console.log(`✅ Upgraded PIN to hashed for user ${profile.user_id}`);
+      }
+    }
+
+    if (!isValidPin) {
       console.log(`Invalid PIN for email: ${email}`);
       return new Response(
         JSON.stringify({ error: "Code PIN incorrect" }),
