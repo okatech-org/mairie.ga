@@ -41,6 +41,8 @@ export default function IAstedPresentationWrapper({
   }, [showPresentation]);
 
   const handlePositionChange = (x: number, y: number) => {
+    console.log('📍 Position change received:', { x, y });
+    
     // Only add trail points when position actually changes significantly
     const dx = Math.abs(x - lastPositionRef.current.x);
     const dy = Math.abs(y - lastPositionRef.current.y);
