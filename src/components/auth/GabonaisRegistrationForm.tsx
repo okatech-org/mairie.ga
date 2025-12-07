@@ -1063,40 +1063,161 @@ export function GabonaisRegistrationForm() {
                                 </div>
                             </div>
 
-                            {/* Récapitulatif */}
-                            <div className="p-4 bg-muted/30 rounded-lg space-y-3">
-                                <h3 className="font-medium text-sm">Récapitulatif de votre inscription</h3>
-                                <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                                    <div className="flex justify-between">
-                                        <span className="text-muted-foreground">Nom complet:</span>
-                                        <span className="font-medium">{formData.firstName} {formData.lastName}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-muted-foreground">Date de naissance:</span>
-                                        <span className="font-medium">{formData.dateOfBirth || '-'}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-muted-foreground">Lieu de naissance:</span>
-                                        <span className="font-medium">{formData.placeOfBirth || '-'}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-muted-foreground">Situation:</span>
-                                        <span className="font-medium">
-                                            {formData.maritalStatus === 'SINGLE' ? 'Célibataire' :
-                                                formData.maritalStatus === 'MARRIED' ? 'Marié(e)' :
-                                                    formData.maritalStatus === 'DIVORCED' ? 'Divorcé(e)' :
-                                                        formData.maritalStatus === 'WIDOWED' ? 'Veuf/Veuve' : '-'}
+                            {/* Récapitulatif complet avec données OCR */}
+                            <div className="p-4 bg-muted/30 rounded-lg space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="font-medium text-sm">Récapitulatif de votre inscription</h3>
+                                    {filledByIasted.size > 0 && (
+                                        <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-1 rounded-full flex items-center gap-1">
+                                            <Sparkles className="w-3 h-3" />
+                                            {filledByIasted.size} champs pré-remplis par OCR
                                         </span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-muted-foreground">Ville:</span>
-                                        <span className="font-medium">{formData.city || '-'}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-muted-foreground">Profession:</span>
-                                        <span className="font-medium">{formData.profession || '-'}</span>
+                                    )}
+                                </div>
+                                
+                                {/* Identité */}
+                                <div className="space-y-2">
+                                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Identité</h4>
+                                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Nom complet:</span>
+                                            <span className={`font-medium ${filledByIasted.has('firstName') || filledByIasted.has('lastName') ? 'text-purple-600 dark:text-purple-400' : ''}`}>
+                                                {formData.firstName} {formData.lastName}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Date de naissance:</span>
+                                            <span className={`font-medium ${filledByIasted.has('dateOfBirth') ? 'text-purple-600 dark:text-purple-400' : ''}`}>
+                                                {formData.dateOfBirth ? new Date(formData.dateOfBirth).toLocaleDateString('fr-FR') : '-'}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Lieu de naissance:</span>
+                                            <span className={`font-medium ${filledByIasted.has('placeOfBirth') ? 'text-purple-600 dark:text-purple-400' : ''}`}>
+                                                {formData.placeOfBirth || '-'}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Nationalité:</span>
+                                            <span className="font-medium">Gabonaise</span>
+                                        </div>
                                     </div>
                                 </div>
+
+                                {/* Famille */}
+                                <div className="space-y-2">
+                                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Famille</h4>
+                                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Situation:</span>
+                                            <span className={`font-medium ${filledByIasted.has('maritalStatus') ? 'text-purple-600 dark:text-purple-400' : ''}`}>
+                                                {formData.maritalStatus === 'SINGLE' ? 'Célibataire' :
+                                                    formData.maritalStatus === 'MARRIED' ? 'Marié(e)' :
+                                                        formData.maritalStatus === 'DIVORCED' ? 'Divorcé(e)' :
+                                                            formData.maritalStatus === 'WIDOWED' ? 'Veuf/Veuve' : '-'}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Père:</span>
+                                            <span className={`font-medium ${filledByIasted.has('fatherName') ? 'text-purple-600 dark:text-purple-400' : ''}`}>
+                                                {formData.fatherName || '-'}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Mère:</span>
+                                            <span className={`font-medium ${filledByIasted.has('motherName') ? 'text-purple-600 dark:text-purple-400' : ''}`}>
+                                                {formData.motherName || '-'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Adresse */}
+                                <div className="space-y-2">
+                                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Adresse</h4>
+                                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                                        <div className="flex justify-between col-span-2">
+                                            <span className="text-muted-foreground">Adresse:</span>
+                                            <span className={`font-medium ${filledByIasted.has('address') ? 'text-purple-600 dark:text-purple-400' : ''}`}>
+                                                {formData.address || '-'}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Ville:</span>
+                                            <span className={`font-medium ${filledByIasted.has('city') ? 'text-purple-600 dark:text-purple-400' : ''}`}>
+                                                {formData.city || '-'}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Code postal:</span>
+                                            <span className={`font-medium ${filledByIasted.has('postalCode') ? 'text-purple-600 dark:text-purple-400' : ''}`}>
+                                                {formData.postalCode || '-'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Contact d'urgence */}
+                                {(formData.emergencyContactFirstName || formData.emergencyContactLastName) && (
+                                    <div className="space-y-2">
+                                        <h4 className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wide">Contact d'urgence</h4>
+                                        <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                                            <div className="flex justify-between">
+                                                <span className="text-muted-foreground">Nom:</span>
+                                                <span className="font-medium">
+                                                    {formData.emergencyContactFirstName} {formData.emergencyContactLastName}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-muted-foreground">Téléphone:</span>
+                                                <span className="font-medium">{formData.emergencyContactPhone || '-'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Profession */}
+                                <div className="space-y-2">
+                                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Profession</h4>
+                                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Profession:</span>
+                                            <span className={`font-medium ${filledByIasted.has('profession') ? 'text-purple-600 dark:text-purple-400' : ''}`}>
+                                                {formData.profession || '-'}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Employeur:</span>
+                                            <span className={`font-medium ${filledByIasted.has('employer') ? 'text-purple-600 dark:text-purple-400' : ''}`}>
+                                                {formData.employer || '-'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Documents téléchargés */}
+                                {uploadedDocs.length > 0 && (
+                                    <div className="space-y-2">
+                                        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Documents ({uploadedDocs.length})</h4>
+                                        <div className="flex flex-wrap gap-2">
+                                            {uploadedDocs.map(doc => (
+                                                <span 
+                                                    key={doc.id} 
+                                                    className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${
+                                                        doc.status === 'completed' 
+                                                            ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
+                                                            : doc.status === 'error'
+                                                                ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                                                                : 'bg-muted text-muted-foreground'
+                                                    }`}
+                                                >
+                                                    {doc.status === 'completed' && <CheckCircle2 className="w-3 h-3" />}
+                                                    {getDocTypeLabel(doc.type)}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {!registrationComplete && (
