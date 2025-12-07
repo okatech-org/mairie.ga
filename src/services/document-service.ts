@@ -36,13 +36,16 @@ export const documentService = {
         return [...MOCK_DOCUMENTS];
     },
 
-    uploadDocument: async (doc: Omit<Document, 'id' | 'status' | 'uploadDate'>): Promise<Document> => {
+    uploadDocument: async (file: File, type: Document['type']): Promise<Document> => {
         await new Promise(resolve => setTimeout(resolve, 1500));
         const newDoc: Document = {
-            ...doc,
             id: Math.random().toString(36).substr(2, 9),
+            title: file.name,
+            type,
             status: 'PENDING',
-            uploadDate: new Date().toISOString().split('T')[0]
+            uploadDate: new Date().toISOString().split('T')[0],
+            url: URL.createObjectURL(file),
+            size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`
         };
         MOCK_DOCUMENTS.push(newDoc);
         return newDoc;
