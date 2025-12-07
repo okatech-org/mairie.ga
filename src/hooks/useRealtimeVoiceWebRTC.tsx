@@ -157,6 +157,9 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                     audioEl.volume = 1.0;
                     audioEl.muted = false;
                     
+                    // Detect if running in iframe (sandbox environment)
+                    const isInIframe = window !== window.parent;
+                    
                     // Force play with multiple fallback strategies
                     const attemptPlay = async () => {
                         try {
@@ -166,7 +169,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                         } catch (err: any) {
                             console.error('❌ Audio play error:', err.message);
                             
-                            // Strategy 2: Try with Web Audio API
+                            // Strategy 2: Try with Web Audio API (better for WebRTC streams)
                             try {
                                 const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
                                 await audioCtx.resume();
@@ -176,12 +179,22 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                             } catch (webAudioErr) {
                                 console.error('❌ Web Audio fallback failed:', webAudioErr);
                                 
-                                // Strategy 3: User notification
-                                toast({
-                                    title: "Audio bloqué",
-                                    description: "Cliquez sur le bouton iAsted pour activer l'audio",
-                                    variant: "destructive"
-                                });
+                                // If in iframe, show helpful message about sandbox
+                                if (isInIframe) {
+                                    toast({
+                                        title: "Audio bloqué par l'environnement",
+                                        description: "Ouvrez l'app dans un nouvel onglet (icône ↗️ en haut à droite) pour activer la voix iAsted",
+                                        variant: "destructive",
+                                        duration: 10000,
+                                    });
+                                    console.warn('⚠️ Audio blocked in iframe sandbox. Please open in new tab.');
+                                } else {
+                                    toast({
+                                        title: "Audio bloqué",
+                                        description: "Cliquez à nouveau sur iAsted pour activer l'audio",
+                                        variant: "destructive"
+                                    });
+                                }
                             }
                         }
                     };
