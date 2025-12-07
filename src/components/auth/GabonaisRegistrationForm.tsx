@@ -21,10 +21,10 @@ export function GabonaisRegistrationForm() {
     const [registrationComplete, setRegistrationComplete] = useState(false);
     const [generatedPin, setGeneratedPin] = useState("");
     const [pinCopied, setPinCopied] = useState(false);
-    
+
     // Tracker les champs remplis par iAsted
     const [filledByIasted, setFilledByIasted] = useState<Set<string>>(new Set());
-    
+
     // Données du formulaire avec état local
     const [formData, setFormData] = useState({
         firstName: '',
@@ -37,7 +37,8 @@ export function GabonaisRegistrationForm() {
         address: '',
         city: '',
         postalCode: '',
-        emergencyContactName: '',
+        emergencyContactFirstName: '',
+        emergencyContactLastName: '',
         emergencyContactPhone: '',
         professionalStatus: '',
         employer: '',
@@ -47,9 +48,21 @@ export function GabonaisRegistrationForm() {
         password: '',
         confirmPassword: '',
     });
-    
+
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [acceptPrivacy, setAcceptPrivacy] = useState(false);
+
+    // State pour les fichiers
+    const [files, setFiles] = useState<{
+        photo?: File;
+        passport?: File;
+        birthCert?: File;
+        proofOfAddress?: File;
+    }>({});
+
+    const handleFileChange = (key: string, file: File) => {
+        setFiles(prev => ({ ...prev, [key]: file }));
+    };
 
     // Écouter les événements d'iAsted
     useEffect(() => {
@@ -123,7 +136,7 @@ export function GabonaisRegistrationForm() {
 
     const handleSubmit = async () => {
         setLoading(true);
-        
+
         try {
             // Validate passwords match
             if (formData.password !== formData.confirmPassword) {
@@ -156,7 +169,17 @@ export function GabonaisRegistrationForm() {
                 maritalStatus: formData.maritalStatus,
                 address: formData.address,
                 city: formData.city,
+                postalCode: formData.postalCode,
                 pinCode,
+                // Extended fields
+                fatherName: formData.fatherName,
+                motherName: formData.motherName,
+                emergencyContactFirstName: formData.emergencyContactFirstName,
+                emergencyContactLastName: formData.emergencyContactLastName,
+                emergencyContactPhone: formData.emergencyContactPhone,
+                employer: formData.employer,
+                // Files
+                files
             });
 
             setRegistrationComplete(true);
@@ -220,28 +243,86 @@ export function GabonaisRegistrationForm() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-
                     {step === 1 && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-accent/50 cursor-pointer transition-colors">
-                                <Upload className="h-8 w-8 mx-auto mb-2 text-primary" />
-                                <p className="font-medium">Photo d'identité *</p>
-                                <p className="text-xs text-muted-foreground">JPG, PNG - Max 2MB</p>
+                            <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-accent/50 transition-colors relative">
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => e.target.files?.[0] && handleFileChange('photo', e.target.files[0])}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                />
+                                <div className="pointer-events-none">
+                                    {files.photo ? (
+                                        <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                                    ) : (
+                                        <Upload className="h-8 w-8 mx-auto mb-2 text-primary" />
+                                    )}
+                                    <p className="font-medium">Photo d'identité *</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {files.photo ? files.photo.name : "JPG, PNG - Max 2MB"}
+                                    </p>
+                                </div>
                             </div>
-                            <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-accent/50 cursor-pointer transition-colors">
-                                <Upload className="h-8 w-8 mx-auto mb-2 text-primary" />
-                                <p className="font-medium">Passeport *</p>
-                                <p className="text-xs text-muted-foreground">PDF, JPG - Max 5MB</p>
+
+                            <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-accent/50 transition-colors relative">
+                                <input
+                                    type="file"
+                                    accept=".pdf,image/*"
+                                    onChange={(e) => e.target.files?.[0] && handleFileChange('passport', e.target.files[0])}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                />
+                                <div className="pointer-events-none">
+                                    {files.passport ? (
+                                        <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                                    ) : (
+                                        <Upload className="h-8 w-8 mx-auto mb-2 text-primary" />
+                                    )}
+                                    <p className="font-medium">Passeport *</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {files.passport ? files.passport.name : "PDF, JPG - Max 5MB"}
+                                    </p>
+                                </div>
                             </div>
-                            <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-accent/50 cursor-pointer transition-colors">
-                                <Upload className="h-8 w-8 mx-auto mb-2 text-primary" />
-                                <p className="font-medium">Acte de Naissance *</p>
-                                <p className="text-xs text-muted-foreground">PDF, JPG - Max 5MB</p>
+
+                            <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-accent/50 transition-colors relative">
+                                <input
+                                    type="file"
+                                    accept=".pdf,image/*"
+                                    onChange={(e) => e.target.files?.[0] && handleFileChange('birthCert', e.target.files[0])}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                />
+                                <div className="pointer-events-none">
+                                    {files.birthCert ? (
+                                        <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                                    ) : (
+                                        <Upload className="h-8 w-8 mx-auto mb-2 text-primary" />
+                                    )}
+                                    <p className="font-medium">Acte de Naissance *</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {files.birthCert ? files.birthCert.name : "PDF, JPG - Max 5MB"}
+                                    </p>
+                                </div>
                             </div>
-                            <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-accent/50 cursor-pointer transition-colors">
-                                <Upload className="h-8 w-8 mx-auto mb-2 text-primary" />
-                                <p className="font-medium">Justificatif de Domicile *</p>
-                                <p className="text-xs text-muted-foreground">Moins de 3 mois</p>
+
+                            <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-accent/50 transition-colors relative">
+                                <input
+                                    type="file"
+                                    accept=".pdf,image/*"
+                                    onChange={(e) => e.target.files?.[0] && handleFileChange('proofOfAddress', e.target.files[0])}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                />
+                                <div className="pointer-events-none">
+                                    {files.proofOfAddress ? (
+                                        <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                                    ) : (
+                                        <Upload className="h-8 w-8 mx-auto mb-2 text-primary" />
+                                    )}
+                                    <p className="font-medium">Justificatif de Domicile *</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {files.proofOfAddress ? files.proofOfAddress.name : "Moins de 3 mois"}
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -251,8 +332,8 @@ export function GabonaisRegistrationForm() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <IAstedLabel filledByIasted={filledByIasted.has('firstName')}>Prénom(s) *</IAstedLabel>
-                                    <IAstedInput 
-                                        placeholder="Jean" 
+                                    <IAstedInput
+                                        placeholder="Jean"
                                         value={formData.firstName}
                                         onChange={(e) => handleInputChange('firstName', e.target.value)}
                                         filledByIasted={filledByIasted.has('firstName')}
@@ -260,8 +341,8 @@ export function GabonaisRegistrationForm() {
                                 </div>
                                 <div className="space-y-2">
                                     <IAstedLabel filledByIasted={filledByIasted.has('lastName')}>Nom(s) *</IAstedLabel>
-                                    <IAstedInput 
-                                        placeholder="Mba" 
+                                    <IAstedInput
+                                        placeholder="Mba"
                                         value={formData.lastName}
                                         onChange={(e) => handleInputChange('lastName', e.target.value)}
                                         filledByIasted={filledByIasted.has('lastName')}
@@ -271,8 +352,8 @@ export function GabonaisRegistrationForm() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <IAstedLabel filledByIasted={filledByIasted.has('dateOfBirth')}>Date de naissance *</IAstedLabel>
-                                    <IAstedInput 
-                                        type="date" 
+                                    <IAstedInput
+                                        type="date"
                                         value={formData.dateOfBirth}
                                         onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
                                         filledByIasted={filledByIasted.has('dateOfBirth')}
@@ -280,8 +361,8 @@ export function GabonaisRegistrationForm() {
                                 </div>
                                 <div className="space-y-2">
                                     <IAstedLabel filledByIasted={filledByIasted.has('placeOfBirth')}>Lieu de naissance *</IAstedLabel>
-                                    <IAstedInput 
-                                        placeholder="Libreville" 
+                                    <IAstedInput
+                                        placeholder="Libreville"
                                         value={formData.placeOfBirth}
                                         onChange={(e) => handleInputChange('placeOfBirth', e.target.value)}
                                         filledByIasted={filledByIasted.has('placeOfBirth')}
@@ -299,7 +380,7 @@ export function GabonaisRegistrationForm() {
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <IAstedLabel filledByIasted={filledByIasted.has('maritalStatus')}>Situation Matrimoniale *</IAstedLabel>
-                                <Select 
+                                <Select
                                     value={formData.maritalStatus}
                                     onValueChange={(value) => handleInputChange('maritalStatus', value)}
                                 >
@@ -321,8 +402,8 @@ export function GabonaisRegistrationForm() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <IAstedLabel filledByIasted={filledByIasted.has('fatherName')}>Nom du Père</IAstedLabel>
-                                        <IAstedInput 
-                                            placeholder="Nom complet" 
+                                        <IAstedInput
+                                            placeholder="Nom complet"
                                             value={formData.fatherName}
                                             onChange={(e) => handleInputChange('fatherName', e.target.value)}
                                             filledByIasted={filledByIasted.has('fatherName')}
@@ -330,8 +411,8 @@ export function GabonaisRegistrationForm() {
                                     </div>
                                     <div className="space-y-2">
                                         <IAstedLabel filledByIasted={filledByIasted.has('motherName')}>Nom de la Mère</IAstedLabel>
-                                        <IAstedInput 
-                                            placeholder="Nom complet" 
+                                        <IAstedInput
+                                            placeholder="Nom complet"
                                             value={formData.motherName}
                                             onChange={(e) => handleInputChange('motherName', e.target.value)}
                                             filledByIasted={filledByIasted.has('motherName')}
@@ -346,8 +427,8 @@ export function GabonaisRegistrationForm() {
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <IAstedLabel filledByIasted={filledByIasted.has('address')}>Adresse Complète *</IAstedLabel>
-                                <IAstedInput 
-                                    placeholder="Numéro, Rue, Apt" 
+                                <IAstedInput
+                                    placeholder="Numéro, Rue, Apt"
                                     value={formData.address}
                                     onChange={(e) => handleInputChange('address', e.target.value)}
                                     filledByIasted={filledByIasted.has('address')}
@@ -356,7 +437,7 @@ export function GabonaisRegistrationForm() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <IAstedLabel filledByIasted={filledByIasted.has('city')}>Ville *</IAstedLabel>
-                                    <IAstedInput 
+                                    <IAstedInput
                                         value={formData.city}
                                         onChange={(e) => handleInputChange('city', e.target.value)}
                                         filledByIasted={filledByIasted.has('city')}
@@ -364,7 +445,7 @@ export function GabonaisRegistrationForm() {
                                 </div>
                                 <div className="space-y-2">
                                     <IAstedLabel filledByIasted={filledByIasted.has('postalCode')}>Code Postal *</IAstedLabel>
-                                    <IAstedInput 
+                                    <IAstedInput
                                         value={formData.postalCode}
                                         onChange={(e) => handleInputChange('postalCode', e.target.value)}
                                         filledByIasted={filledByIasted.has('postalCode')}
@@ -374,20 +455,29 @@ export function GabonaisRegistrationForm() {
 
                             <div className="p-4 bg-red-50 dark:bg-red-950/30 rounded-lg space-y-4 border border-red-100 dark:border-red-900/50">
                                 <h3 className="font-medium text-sm text-red-800 dark:text-red-300">Contact d'Urgence</h3>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-3 gap-4">
                                     <div className="space-y-2">
-                                        <IAstedLabel filledByIasted={filledByIasted.has('emergencyContactName')}>Nom Complet</IAstedLabel>
-                                        <IAstedInput 
-                                            placeholder="Personne à contacter" 
-                                            value={formData.emergencyContactName}
-                                            onChange={(e) => handleInputChange('emergencyContactName', e.target.value)}
-                                            filledByIasted={filledByIasted.has('emergencyContactName')}
+                                        <IAstedLabel filledByIasted={filledByIasted.has('emergencyContactLastName')}>Nom *</IAstedLabel>
+                                        <IAstedInput
+                                            placeholder="NOM"
+                                            value={formData.emergencyContactLastName}
+                                            onChange={(e) => handleInputChange('emergencyContactLastName', e.target.value)}
+                                            filledByIasted={filledByIasted.has('emergencyContactLastName')}
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <IAstedLabel filledByIasted={filledByIasted.has('emergencyContactPhone')}>Téléphone</IAstedLabel>
-                                        <IAstedInput 
-                                            placeholder="+33..." 
+                                        <IAstedLabel filledByIasted={filledByIasted.has('emergencyContactFirstName')}>Prénom *</IAstedLabel>
+                                        <IAstedInput
+                                            placeholder="Prénom"
+                                            value={formData.emergencyContactFirstName}
+                                            onChange={(e) => handleInputChange('emergencyContactFirstName', e.target.value)}
+                                            filledByIasted={filledByIasted.has('emergencyContactFirstName')}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <IAstedLabel filledByIasted={filledByIasted.has('emergencyContactPhone')}>Téléphone *</IAstedLabel>
+                                        <IAstedInput
+                                            placeholder="+241..."
                                             value={formData.emergencyContactPhone}
                                             onChange={(e) => handleInputChange('emergencyContactPhone', e.target.value)}
                                             filledByIasted={filledByIasted.has('emergencyContactPhone')}
@@ -402,7 +492,7 @@ export function GabonaisRegistrationForm() {
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <IAstedLabel filledByIasted={filledByIasted.has('professionalStatus')}>Statut Professionnel</IAstedLabel>
-                                <Select 
+                                <Select
                                     value={formData.professionalStatus}
                                     onValueChange={(value) => handleInputChange('professionalStatus', value)}
                                 >
@@ -421,8 +511,8 @@ export function GabonaisRegistrationForm() {
                             </div>
                             <div className="space-y-2">
                                 <IAstedLabel filledByIasted={filledByIasted.has('employer')}>Employeur / Établissement</IAstedLabel>
-                                <IAstedInput 
-                                    placeholder="Nom de l'entreprise ou école" 
+                                <IAstedInput
+                                    placeholder="Nom de l'entreprise ou école"
                                     value={formData.employer}
                                     onChange={(e) => handleInputChange('employer', e.target.value)}
                                     filledByIasted={filledByIasted.has('employer')}
@@ -430,8 +520,8 @@ export function GabonaisRegistrationForm() {
                             </div>
                             <div className="space-y-2">
                                 <IAstedLabel filledByIasted={filledByIasted.has('profession')}>Profession / Poste</IAstedLabel>
-                                <IAstedInput 
-                                    placeholder="Intitulé du poste" 
+                                <IAstedInput
+                                    placeholder="Intitulé du poste"
                                     value={formData.profession}
                                     onChange={(e) => handleInputChange('profession', e.target.value)}
                                     filledByIasted={filledByIasted.has('profession')}
@@ -448,9 +538,9 @@ export function GabonaisRegistrationForm() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <IAstedLabel filledByIasted={filledByIasted.has('email')}>Email *</IAstedLabel>
-                                        <IAstedInput 
+                                        <IAstedInput
                                             type="email"
-                                            placeholder="votre@email.com" 
+                                            placeholder="votre@email.com"
                                             value={formData.email}
                                             onChange={(e) => handleInputChange('email', e.target.value)}
                                             filledByIasted={filledByIasted.has('email')}
@@ -458,9 +548,9 @@ export function GabonaisRegistrationForm() {
                                     </div>
                                     <div className="space-y-2">
                                         <IAstedLabel filledByIasted={filledByIasted.has('phone')}>Téléphone *</IAstedLabel>
-                                        <IAstedInput 
+                                        <IAstedInput
                                             type="tel"
-                                            placeholder="+241 XX XX XX XX" 
+                                            placeholder="+241 XX XX XX XX"
                                             value={formData.phone}
                                             onChange={(e) => handleInputChange('phone', e.target.value)}
                                             filledByIasted={filledByIasted.has('phone')}
@@ -470,18 +560,18 @@ export function GabonaisRegistrationForm() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label>Mot de passe *</Label>
-                                        <Input 
+                                        <Input
                                             type="password"
-                                            placeholder="••••••••" 
+                                            placeholder="••••••••"
                                             value={formData.password}
                                             onChange={(e) => handleInputChange('password', e.target.value)}
                                         />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Confirmer mot de passe *</Label>
-                                        <Input 
+                                        <Input
                                             type="password"
-                                            placeholder="••••••••" 
+                                            placeholder="••••••••"
                                             value={formData.confirmPassword}
                                             onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
                                         />
@@ -509,9 +599,9 @@ export function GabonaisRegistrationForm() {
                                         <span className="text-muted-foreground">Situation:</span>
                                         <span className="font-medium">
                                             {formData.maritalStatus === 'SINGLE' ? 'Célibataire' :
-                                             formData.maritalStatus === 'MARRIED' ? 'Marié(e)' :
-                                             formData.maritalStatus === 'DIVORCED' ? 'Divorcé(e)' :
-                                             formData.maritalStatus === 'WIDOWED' ? 'Veuf/Veuve' : '-'}
+                                                formData.maritalStatus === 'MARRIED' ? 'Marié(e)' :
+                                                    formData.maritalStatus === 'DIVORCED' ? 'Divorcé(e)' :
+                                                        formData.maritalStatus === 'WIDOWED' ? 'Veuf/Veuve' : '-'}
                                         </span>
                                     </div>
                                     <div className="flex justify-between">
@@ -551,15 +641,15 @@ export function GabonaisRegistrationForm() {
                                             <Key className="h-5 w-5" />
                                             <h3 className="font-semibold">Votre Code PIN de Connexion</h3>
                                         </div>
-                                        
-                                        <PinCodeInput 
-                                            value={generatedPin} 
-                                            onChange={() => {}} 
-                                            disabled 
+
+                                        <PinCodeInput
+                                            value={generatedPin}
+                                            onChange={() => { }}
+                                            disabled
                                         />
 
-                                        <Button 
-                                            variant="outline" 
+                                        <Button
+                                            variant="outline"
                                             onClick={copyPinToClipboard}
                                             className="w-full"
                                         >
@@ -581,8 +671,8 @@ export function GabonaisRegistrationForm() {
                                         </p>
                                     </div>
 
-                                    <Button 
-                                        onClick={() => navigate('/login')} 
+                                    <Button
+                                        onClick={() => navigate('/login')}
                                         className="w-full"
                                     >
                                         Accéder à mon espace
@@ -593,8 +683,8 @@ export function GabonaisRegistrationForm() {
                             {!registrationComplete && (
                                 <div className="space-y-3">
                                     <div className="flex items-start space-x-2">
-                                        <Checkbox 
-                                            id="terms" 
+                                        <Checkbox
+                                            id="terms"
                                             checked={acceptTerms}
                                             onCheckedChange={(checked) => setAcceptTerms(checked === true)}
                                         />
@@ -604,8 +694,8 @@ export function GabonaisRegistrationForm() {
                                         </label>
                                     </div>
                                     <div className="flex items-start space-x-2">
-                                        <Checkbox 
-                                            id="privacy" 
+                                        <Checkbox
+                                            id="privacy"
                                             checked={acceptPrivacy}
                                             onCheckedChange={(checked) => setAcceptPrivacy(checked === true)}
                                         />
@@ -634,8 +724,8 @@ export function GabonaisRegistrationForm() {
                                         Suivant
                                     </Button>
                                 ) : (
-                                    <Button 
-                                        onClick={handleSubmit} 
+                                    <Button
+                                        onClick={handleSubmit}
                                         disabled={loading || !acceptTerms || !acceptPrivacy || !formData.email || !formData.password || formData.password !== formData.confirmPassword}
                                     >
                                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

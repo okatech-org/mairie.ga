@@ -796,7 +796,32 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
 
         if (toolName === 'fill_form_field') {
             console.log('📝 [IAstedInterface] Remplissage de champ:', args);
-            const { field, value } = args;
+            const { field } = args;
+            let { value } = args;
+
+            // === FORMATAGE INTELLIGENT DES NOMS ===
+            // Les noms de famille sont convertis en MAJUSCULES
+            // Les prénoms sont convertis en Title Case (première lettre majuscule)
+            const formatToUpperCase = (str: string): string => str.toUpperCase().trim();
+            const formatToTitleCase = (str: string): string => {
+                return str
+                    .toLowerCase()
+                    .split(/[\s-]+/)
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(str.includes('-') ? '-' : ' ')
+                    .trim();
+            };
+
+            // Appliquer le formatage selon le type de champ
+            if (['lastName', 'fatherName', 'motherName', 'emergencyContactLastName'].includes(field)) {
+                // Noms de famille → MAJUSCULES
+                value = formatToUpperCase(value);
+                console.log(`🔠 [Format] ${field}: "${args.value}" → "${value}" (MAJUSCULES)`);
+            } else if (['firstName', 'emergencyContactFirstName'].includes(field)) {
+                // Prénoms → Title Case
+                value = formatToTitleCase(value);
+                console.log(`🔠 [Format] ${field}: "${args.value}" → "${value}" (Title Case)`);
+            }
 
             // Mettre à jour le store
             formAssistantStore.setField(field, value);
@@ -941,6 +966,198 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
 
             toast.success('Soumission du formulaire en cours...');
             return { success: true, message: 'Formulaire soumis pour validation' };
+        }
+
+        // ========== OUTILS DU COFFRE-FORT DE DOCUMENTS ==========
+
+        if (toolName === 'import_document') {
+            console.log('📂 [IAstedInterface] Import document:', args);
+            const { source, category, for_field } = args;
+
+            // Dispatch event to open the appropriate picker
+            window.dispatchEvent(new CustomEvent('iasted-import-document', {
+                detail: { source, category, for_field }
+            }));
+
+            const sourceLabels: Record<string, string> = {
+                local: 'fichiers locaux',
+                camera: 'la caméra',
+                vault: 'le coffre-fort'
+            };
+
+            toast.info(`Ouverture de ${sourceLabels[source] || source}...`);
+            return {
+                success: true,
+                message: `Import depuis ${sourceLabels[source]} en cours. Sélectionnez votre document.`
+            };
+        }
+
+        if (toolName === 'open_document_vault') {
+            console.log('🔐 [IAstedInterface] Ouvrir coffre-fort:', args);
+            const { category_filter, selection_mode } = args;
+
+            window.dispatchEvent(new CustomEvent('iasted-open-vault', {
+                detail: { category: category_filter, selectionMode: selection_mode || false }
+            }));
+
+            toast.info('Ouverture du coffre-fort de documents...');
+            return {
+                success: true,
+                message: selection_mode
+                    ? 'Coffre-fort ouvert en mode sélection. Choisissez un document.'
+                    : 'Coffre-fort ouvert. Gérez vos documents.'
+            };
+        }
+
+        if (toolName === 'list_saved_documents') {
+            console.log('📋 [IAstedInterface] Lister documents:', args);
+            const { category } = args;
+
+            // Get documents from vault store
+            const { documentVaultStore } = await import('@/stores/documentVaultStore');
+            await documentVaultStore.fetchDocuments();
+
+            let documents = documentVaultStore.getDocuments();
+            if (category) {
+                documents = documents.filter(doc => doc.category === category);
+            }
+
+            const categoryLabels: Record<string, string> = {
+                photo_identity: 'Photo d\'identité',
+                passport: 'Passeport',
+                birth_certificate: 'Acte de naissance',
+                residence_proof: 'Justificatif de domicile',
+                marriage_certificate: 'Acte de mariage',
+                family_record: 'Livret de famille',
+                diploma: 'Diplôme',
+                cv: 'CV',
+                other: 'Autre'
+            };
+
+            const summary = documents.map(doc => ({
+                id: doc.id,
+                name: doc.name,
+                category: categoryLabels[doc.category] || doc.category,
+                created: new Date(doc.created_at).toLocaleDateString('fr-FR')
+            }));
+
+            return {
+                success: true,
+                documents: summary,
+                count: documents.length,
+                message: documents.length > 0
+                    ? `Vous avez ${documents.length} document(s) dans votre coffre-fort${category ? ` (catégorie: ${categoryLabels[category]})` : ''}.`
+                    : 'Votre coffre-fort est vide. Voulez-vous importer un document ?'
+            };
+        }
+
+        if (toolName === 'use_saved_document') {
+            console.log('📎 [IAstedInterface] Utiliser document:', args);
+            const { document_id, for_field } = args;
+
+            // Get document from vault
+            const { getVaultDocument, markDocumentUsed } = await import('@/services/documentVaultService');
+            const { data: doc, error } = await getVaultDocument(document_id);
+
+            if (error || !doc) {
+                toast.error('Document non trouvé');
+                return { success: false, message: 'Document non trouvé dans le coffre-fort' };
+            }
+
+            // Mark as used
+            await markDocumentUsed(document_id);
+
+            // Dispatch event to attach document to form field
+            window.dispatchEvent(new CustomEvent('iasted-use-document', {
+                detail: { document: doc, field: for_field }
+            }));
+
+            toast.success(`${doc.name} sélectionné pour ${for_field}`);
+            return {
+                success: true,
+                document: { id: doc.id, name: doc.name, category: doc.category },
+                message: `Document "${doc.name}" utilisé pour le champ ${for_field}`
+            };
+        }
+
+        // ========== OUTILS D'ANALYSE DE DOCUMENTS ==========
+
+        if (toolName === 'analyze_dropped_documents') {
+            console.log('🔍 [IAstedInterface] Analyser documents:', args);
+            const { auto_fill } = args;
+
+            // Dispatch event to trigger analysis
+            window.dispatchEvent(new CustomEvent('iasted-analyze-documents', {
+                detail: { autoFill: auto_fill !== false }
+            }));
+
+            toast.info('Analyse des documents en cours...');
+            return {
+                success: true,
+                message: 'J\'analyse vos documents. Cela peut prendre quelques secondes...'
+            };
+        }
+
+        if (toolName === 'start_assisted_registration') {
+            console.log('🚀 [IAstedInterface] Inscription assistée:', args);
+            const { mode } = args;
+
+            // Dispatch event to start assisted registration
+            window.dispatchEvent(new CustomEvent('iasted-start-assisted-registration', {
+                detail: { mode: mode || 'form_preview' }
+            }));
+
+            const modeLabel = mode === 'autonomous'
+                ? 'Je vais vous inscrire directement après l\'analyse.'
+                : 'Je vais pré-remplir le formulaire avec les informations extraites.';
+
+            return {
+                success: true,
+                mode: mode || 'form_preview',
+                message: `Mode inscription assistée activé. ${modeLabel} Vous pouvez déposer vos documents dans le chat.`
+            };
+        }
+
+        if (toolName === 'confirm_extracted_field') {
+            console.log('✅ [IAstedInterface] Confirmer champ:', args);
+            const { field, confirmed_value } = args;
+
+            // Dispatch event to confirm field
+            window.dispatchEvent(new CustomEvent('iasted-confirm-field', {
+                detail: { field, value: confirmed_value }
+            }));
+
+            // Also update form
+            formAssistantStore.setField(field, confirmed_value);
+            window.dispatchEvent(new CustomEvent('iasted-fill-field', {
+                detail: { field, value: confirmed_value }
+            }));
+
+            toast.success(`${field} confirmé: ${confirmed_value}`);
+            return {
+                success: true,
+                field,
+                value: confirmed_value,
+                message: `Le champ ${field} a été mis à jour avec "${confirmed_value}".`
+            };
+        }
+
+        if (toolName === 'get_extraction_summary') {
+            console.log('📋 [IAstedInterface] Résumé extraction');
+
+            // Get summary from assisted registration state
+            const summaryEvent = new CustomEvent('iasted-get-extraction-summary', {
+                detail: { callback: null }
+            });
+            window.dispatchEvent(summaryEvent);
+
+            // Dispatch event to request summary (will be handled by chat modal)
+            window.dispatchEvent(new CustomEvent('iasted-request-summary'));
+
+            return {
+                success: true,
+                message: 'Voici le résumé des informations extraites de vos documents.'
+            };
         }
 
         // SECURITY: security_override tool removed - all authorization must be server-side via RLS

@@ -438,6 +438,122 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                             },
                             required: ['recipient_email']
                         }
+                    },
+                    // ============= DOCUMENT VAULT TOOLS =============
+                    {
+                        type: 'function',
+                        name: 'import_document',
+                        description: 'Importer un document depuis différentes sources. Utilise cet outil quand l\'utilisateur veut ajouter un document (photo, passeport, justificatif, etc.)',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                source: {
+                                    type: 'string',
+                                    enum: ['local', 'camera', 'vault'],
+                                    description: 'Source du document: local (fichiers), camera (scanner), vault (coffre-fort)'
+                                },
+                                category: {
+                                    type: 'string',
+                                    enum: ['photo_identity', 'passport', 'birth_certificate', 'residence_proof', 'marriage_certificate', 'family_record', 'diploma', 'cv', 'other'],
+                                    description: 'Catégorie du document'
+                                },
+                                for_field: { type: 'string', description: 'Champ du formulaire à remplir avec ce document (optionnel)' }
+                            },
+                            required: ['source']
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'open_document_vault',
+                        description: 'Ouvrir le coffre-fort de documents pour voir, gérer ou sélectionner des documents sauvegardés',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                category_filter: {
+                                    type: 'string',
+                                    enum: ['photo_identity', 'passport', 'birth_certificate', 'residence_proof', 'marriage_certificate', 'family_record', 'diploma', 'cv', 'other'],
+                                    description: 'Filtrer par catégorie (optionnel)'
+                                },
+                                selection_mode: { type: 'boolean', description: 'Mode sélection pour utiliser un document dans un formulaire' }
+                            }
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'list_saved_documents',
+                        description: 'Lister les documents sauvegardés dans le coffre-fort de l\'utilisateur',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                category: {
+                                    type: 'string',
+                                    enum: ['photo_identity', 'passport', 'birth_certificate', 'residence_proof', 'marriage_certificate', 'family_record', 'diploma', 'cv', 'other'],
+                                    description: 'Filtrer par catégorie'
+                                }
+                            }
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'use_saved_document',
+                        description: 'Utiliser un document déjà sauvegardé dans le coffre-fort pour remplir un champ du formulaire',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                document_id: { type: 'string', description: 'ID du document à utiliser' },
+                                for_field: { type: 'string', description: 'Champ du formulaire à remplir' }
+                            },
+                            required: ['document_id', 'for_field']
+                        }
+                    },
+                    // ============= DOCUMENT ANALYSIS TOOLS =============
+                    {
+                        type: 'function',
+                        name: 'analyze_dropped_documents',
+                        description: 'Analyser les documents déposés dans le chat et extraire les informations pour pré-remplir le formulaire',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                auto_fill: { type: 'boolean', description: 'Remplir automatiquement le formulaire avec les données extraites' }
+                            }
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'start_assisted_registration',
+                        description: 'Démarrer l\'inscription assistée avec analyse des documents. Deux modes: autonome (sans formulaire) ou aperçu formulaire',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                mode: {
+                                    type: 'string',
+                                    enum: ['autonomous', 'form_preview'],
+                                    description: 'autonomous: créer compte directement, form_preview: montrer le formulaire pré-rempli'
+                                }
+                            }
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'confirm_extracted_field',
+                        description: 'Confirmer ou corriger un champ extrait des documents',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                field: { type: 'string', description: 'Nom du champ à confirmer' },
+                                confirmed_value: { type: 'string', description: 'Valeur confirmée ou corrigée' }
+                            },
+                            required: ['field', 'confirmed_value']
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'get_extraction_summary',
+                        description: 'Obtenir un résumé des données extraites des documents',
+                        parameters: {
+                            type: 'object',
+                            properties: {}
+                        }
                     }
                 ]
             }

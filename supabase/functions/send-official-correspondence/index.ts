@@ -1,5 +1,14 @@
+// @ts-ignore - Deno imports
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+// @ts-ignore - Deno imports
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3"
+
+// Deno type declarations for Edge Functions
+declare const Deno: {
+    env: {
+        get(key: string): string | undefined;
+    };
+};
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -20,7 +29,7 @@ interface EmailRequest {
     cc?: string[];
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
     // Handle CORS preflight
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
@@ -124,12 +133,12 @@ serve(async (req) => {
         // Handle multiple attachments
         if (attachments && attachments.length > 0) {
             const emailAttachments: { filename: string; content: string }[] = []
-            
+
             for (const attachment of attachments) {
                 try {
                     console.log(`📎 Downloading attachment: ${attachment.name}`)
                     const attachmentResponse = await fetch(attachment.url)
-                    
+
                     if (attachmentResponse.ok) {
                         const attachmentBuffer = await attachmentResponse.arrayBuffer()
                         const base64Content = btoa(String.fromCharCode(...new Uint8Array(attachmentBuffer)))

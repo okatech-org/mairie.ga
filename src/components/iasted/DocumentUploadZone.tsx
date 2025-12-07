@@ -7,24 +7,37 @@ import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+    analyzeDocument,
+    DocumentAnalysis,
+    DocumentType,
+    detectDocumentType
+} from '@/services/documentOCRService';
 
 interface UploadedFile {
     id: string;
     file: File;
     status: 'uploading' | 'analyzing' | 'completed' | 'error';
     progress: number;
-    analysis?: any;
+    analysis?: DocumentAnalysis;
     error?: string;
+    suggestedType?: DocumentType;
 }
 
 interface DocumentUploadZoneProps {
-    onDocumentAnalyzed?: (documentId: string, analysis: any) => void;
+    onDocumentAnalyzed?: (documentId: string, analysis: DocumentAnalysis) => void;
     onFileSelect?: (file: File) => Promise<void>;
+    onFilesAdded?: (files: UploadedFile[]) => void;
     isProcessing?: boolean;
     label?: string;
+    mode?: 'standard' | 'assisted'; // 'assisted' uses direct OCR
 }
 
-export const DocumentUploadZone: React.FC<DocumentUploadZoneProps> = ({ onDocumentAnalyzed }) => {
+export const DocumentUploadZone: React.FC<DocumentUploadZoneProps> = ({
+    onDocumentAnalyzed,
+    onFilesAdded,
+    mode = 'assisted' // Default to new assisted mode with direct OCR
+}) => {
     const [files, setFiles] = useState<UploadedFile[]>([]);
     const { toast } = useToast();
 
@@ -36,6 +49,7 @@ export const DocumentUploadZone: React.FC<DocumentUploadZoneProps> = ({ onDocume
                 'application/pdf',
                 'image/jpeg',
                 'image/png',
+                'image/webp',
                 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                 'application/msword',
             ];
@@ -67,25 +81,77 @@ export const DocumentUploadZone: React.FC<DocumentUploadZoneProps> = ({ onDocume
             file,
             status: 'uploading',
             progress: 0,
+            suggestedType: detectDocumentType(file.name)
         }));
 
         setFiles(prev => [...prev, ...newFiles]);
 
-        // Uploader chaque fichier
-        for (const uploadedFile of newFiles) {
-            await uploadAndAnalyzeFile(uploadedFile);
+        // Notify parent of new files
+        if (onFilesAdded) {
+            onFilesAdded(newFiles);
         }
-    }, [toast]);
 
+        // Process files based on mode
+        for (const uploadedFile of newFiles) {
+            if (mode === 'assisted') {
+                await analyzeFileDirectly(uploadedFile);
+            } else {
+                await uploadAndAnalyzeFile(uploadedFile);
+            }
+        }
+    }, [toast, onFilesAdded, mode]);
+
+    /**
+     * Analyze file directly using documentOCRService (no upload required)
+     */
+    const analyzeFileDirectly = async (uploadedFile: UploadedFile) => {
+        try {
+            updateFileStatus(uploadedFile.id, 'analyzing', 50);
+
+            // Direct OCR analysis using OpenAI/Gemini
+            const analysis = await analyzeDocument(
+                uploadedFile.file,
+                uploadedFile.suggestedType
+            );
+
+            if (analysis.error) {
+                throw new Error(analysis.error);
+            }
+
+            updateFileStatus(uploadedFile.id, 'completed', 100, analysis);
+
+            toast({
+                title: '✅ Document analysé',
+                description: `${uploadedFile.file.name} - ${analysis.documentType}`,
+            });
+
+            // Callback with results
+            if (onDocumentAnalyzed) {
+                onDocumentAnalyzed(uploadedFile.id, analysis);
+            }
+
+        } catch (error: any) {
+            console.error('Error analyzing file:', error);
+            updateFileStatus(uploadedFile.id, 'error', 0, undefined, error.message);
+
+            toast({
+                title: 'Erreur d\'analyse',
+                description: `Impossible d'analyser ${uploadedFile.file.name}`,
+                variant: 'destructive',
+            });
+        }
+    };
+
+    /**
+     * Upload and analyze via Edge Function (legacy mode)
+     */
     const uploadAndAnalyzeFile = async (uploadedFile: UploadedFile) => {
         try {
-            // 1. Upload vers Supabase Storage
             updateFileStatus(uploadedFile.id, 'uploading', 25);
 
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('User not authenticated');
 
-            const fileExt = uploadedFile.file.name.split('.').pop();
             const filePath = `${user.id}/${Date.now()}_${uploadedFile.file.name}`;
 
             const { error: uploadError } = await supabase.storage
@@ -96,7 +162,6 @@ export const DocumentUploadZone: React.FC<DocumentUploadZoneProps> = ({ onDocume
 
             updateFileStatus(uploadedFile.id, 'uploading', 50);
 
-            // 2. Créer l'entrée dans la table documents
             const { data: document, error: docError } = await supabase
                 .from('documents')
                 .insert({
@@ -113,12 +178,9 @@ export const DocumentUploadZone: React.FC<DocumentUploadZoneProps> = ({ onDocume
 
             updateFileStatus(uploadedFile.id, 'analyzing', 75);
 
-            // 3. Déclencher l'analyse OCR via Edge Function
             const { data: analysisResult, error: analysisError } = await supabase.functions.invoke(
                 'document-ocr',
-                {
-                    body: { documentId: document.id },
-                }
+                { body: { documentId: document.id } }
             );
 
             if (analysisError) throw analysisError;
@@ -130,14 +192,13 @@ export const DocumentUploadZone: React.FC<DocumentUploadZoneProps> = ({ onDocume
                 description: `${uploadedFile.file.name} a été traité avec succès`,
             });
 
-            // Callback avec les résultats
             if (onDocumentAnalyzed) {
                 onDocumentAnalyzed(document.id, analysisResult.analysis);
             }
 
         } catch (error: any) {
             console.error('Error uploading/analyzing file:', error);
-            updateFileStatus(uploadedFile.id, 'error', 0, null, error.message);
+            updateFileStatus(uploadedFile.id, 'error', 0, undefined, error.message);
 
             toast({
                 title: 'Erreur',
