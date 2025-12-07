@@ -98,6 +98,7 @@ export async function registerUser(data: RegistrationData) {
   }
 
   // 3. Update the profile with additional data and PIN code
+  // Only use columns that exist in the profiles table
   const { error: profileError } = await supabase
     .from('profiles')
     .update({
@@ -107,22 +108,28 @@ export async function registerUser(data: RegistrationData) {
       lieu_naissance: profileData.placeOfBirth || null,
       profession: profileData.profession || null,
       situation_matrimoniale: profileData.maritalStatus || null,
-      address: profileData.address ? { full: profileData.address, city: profileData.city, postalCode: profileData.postalCode } : null,
+      address: profileData.address ? { 
+        full: profileData.address, 
+        city: profileData.city, 
+        postalCode: profileData.postalCode,
+        // Store extended fields in address JSON since columns don't exist
+        fatherName: profileData.fatherName,
+        motherName: profileData.motherName,
+        emergencyContact: profileData.emergencyContactFirstName ? {
+          firstName: profileData.emergencyContactFirstName,
+          lastName: profileData.emergencyContactLastName,
+          phone: profileData.emergencyContactPhone
+        } : undefined,
+        employer: profileData.employer
+      } : null,
       pin_code: pinCode,
       pin_enabled: true,
-      // Extended fields
-      father_name: profileData.fatherName || null,
-      mother_name: profileData.motherName || null,
-      emergency_contact_first_name: profileData.emergencyContactFirstName || null,
-      emergency_contact_last_name: profileData.emergencyContactLastName || null,
-      emergency_contact_phone: profileData.emergencyContactPhone || null,
-      employer: profileData.employer || null,
     })
     .eq('user_id', authData.user.id);
 
   if (profileError) {
     console.error('Profile update error:', profileError);
-    // Don't throw - the user is created, profile update can fail silently but we should log it
+    throw new Error("Erreur lors de la mise à jour du profil: " + profileError.message);
   }
 
   // 4. Assign citizen role
