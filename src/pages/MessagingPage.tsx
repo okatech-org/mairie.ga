@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import { MailSidebar } from '@/components/mail/MailSidebar';
 import { MailList } from '@/components/mail/MailList';
@@ -6,12 +7,12 @@ import { MailView } from '@/components/mail/MailView';
 import { MailComposer } from '@/components/mail/MailComposer';
 import { MOCK_CONVERSATIONS } from '@/data/mock-messages';
 import { Button } from '@/components/ui/button';
-import { Plus, Search, Menu, Mail } from 'lucide-react';
+import { Plus, Search, Menu, Mail, FolderOpen } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Separator } from '@/components/ui/separator';
 
 export default function MessagingPage() {
+    const navigate = useNavigate();
     const [currentFolder, setCurrentFolder] = useState('inbox');
     const [selectedMailId, setSelectedMailId] = useState<string | null>(null);
     const [isComposerOpen, setIsComposerOpen] = useState(false);
@@ -64,6 +65,15 @@ export default function MessagingPage() {
                                     <Button className="w-full gap-2 mb-4 neu-raised" onClick={handleCompose}>
                                         <Plus className="w-4 h-4" /> Nouveau Message
                                     </Button>
+                                    <Button
+                                        className="w-full gap-2 mb-4 neu-raised text-amber-600 font-bold"
+                                        onClick={() => navigate('/correspondance')}
+                                    >
+                                        <FolderOpen className="w-4 h-4" /> Correspondance
+                                        <span className="ml-auto bg-amber-500 text-white text-[10px] items-center justify-center flex h-5 min-w-5 rounded-full px-1">
+                                            3
+                                        </span>
+                                    </Button>
                                     <MailSidebar
                                         currentFolder={currentFolder}
                                         onSelectFolder={setCurrentFolder}
@@ -86,6 +96,17 @@ export default function MessagingPage() {
                         />
                     </div>
 
+                    <Button
+                        className="gap-2 hidden md:flex neu-raised hover:translate-y-[-2px] transition-transform text-amber-600 font-bold relative mr-2"
+                        onClick={() => navigate('/correspondance')}
+                    >
+                        <FolderOpen className="w-4 h-4" />
+                        <span className="hidden lg:inline">Correspondance</span>
+                        <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center shadow-md">
+                            3
+                        </span>
+                    </Button>
+
                     <Button className="gap-2 hidden md:flex neu-raised hover:text-primary" onClick={handleCompose}>
                         <Plus className="w-4 h-4" />
                         <span className="hidden lg:inline">Nouveau Message</span>
@@ -97,9 +118,12 @@ export default function MessagingPage() {
 
                     {/* Pane 1: Sidebar (Folders) */}
                     <div className="hidden md:flex w-48 flex-col border-r bg-background/30 p-3 gap-3">
-                        <Button className="w-full gap-2 neu-raised hover:translate-y-[-2px] transition-transform text-primary font-bold text-sm" onClick={handleCompose}>
-                            <Plus className="w-4 h-4" /> <span className="truncate">Nouveau</span>
-                        </Button>
+                        {/* Action Buttons */}
+                        <div className="flex flex-col gap-2">
+                            <Button className="w-full gap-2 neu-raised hover:translate-y-[-2px] transition-transform text-primary font-bold text-sm" onClick={handleCompose}>
+                                <Plus className="w-4 h-4" /> <span className="truncate">Nouveau</span>
+                            </Button>
+                        </div>
                         <MailSidebar
                             currentFolder={currentFolder}
                             onSelectFolder={setCurrentFolder}
@@ -148,13 +172,13 @@ export default function MessagingPage() {
                         )}
                     </div>
                 </div>
-            </div>
+            </div >
 
             <MailComposer
                 isOpen={isComposerOpen}
                 onClose={() => setIsComposerOpen(false)}
                 replyTo={replyTo}
             />
-        </DashboardLayout>
+        </DashboardLayout >
     );
 }

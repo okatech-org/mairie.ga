@@ -1,5 +1,5 @@
 import React from "react";
-import { LayoutDashboard, Settings, LogOut, FileText, Building2, Users, ShieldCheck, Globe, Mail, Bot, Database, LineChart, ScrollText, Shield, UserCheck, Briefcase, BookOpen, Calendar, ClipboardList, Home } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, FileText, Building2, Users, ShieldCheck, Globe, Mail, Bot, Database, LineChart, ScrollText, Shield, UserCheck, Briefcase, BookOpen, Calendar, ClipboardList, Home, FolderOpen, Wallet, Gavel, FileSignature, CalendarDays, Building, BarChart3 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { GlobalSettings } from "@/components/GlobalSettings";
 import { useDemo } from "@/contexts/DemoContext";
@@ -92,14 +92,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             ];
         }
 
-        // Maire / Maire Adjoint
-        if (isDirection) {
+        // Maire ou Maire Adjoint
+        if (isMaire || isMaireAdjoint) {
             return [
                 {
                     title: "PILOTAGE",
                     items: [
                         { label: "Cockpit", icon: LayoutDashboard, path: "/dashboard/maire" },
-                        { label: "Indicateurs", icon: LineChart, path: "/dashboard/maire/analytics" },
+                        { label: "Analytiques", icon: BarChart3, path: "/dashboard/maire/analytics" },
+                        { label: "Budget", icon: Wallet, path: "/dashboard/maire/budget" },
+                    ]
+                },
+                {
+                    title: "GOUVERNANCE",
+                    items: [
+                        { label: "Délibérations", icon: Gavel, path: "/dashboard/maire/deliberations" },
+                        { label: "Arrêtés", icon: FileSignature, path: "/dashboard/maire/arretes" },
+                        { label: "Agenda", icon: CalendarDays, path: "/dashboard/maire/agenda" },
                     ]
                 },
                 {
@@ -109,6 +118,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         { label: "Services", icon: FileText, path: "/dashboard/services" },
                         { label: "Personnel", icon: Users, path: "/dashboard/admin/agents" },
                         { label: "Rendez-vous", icon: Calendar, path: "/dashboard/agent/appointments" },
+                    ]
+                },
+                {
+                    title: "DOMAINES",
+                    items: [
+                        { label: "Urbanisme", icon: Building, path: "/dashboard/maire/urbanisme" },
+                        { label: "État Civil", icon: BookOpen, path: "/dashboard/agent/requests?type=etat-civil" },
+                    ]
+                },
+                {
+                    title: "DOCUMENTS",
+                    items: [
+                        { label: "Mes Documents", icon: FolderOpen, path: "/dashboard/maire/documents" },
                     ]
                 },
                 {

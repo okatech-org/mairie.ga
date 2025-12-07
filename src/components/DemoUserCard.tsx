@@ -53,8 +53,14 @@ export function DemoUserCard({ user }: DemoUserCardProps) {
       navigate("/dashboard/foreigner");
     } else if (user.role === MunicipalRole.PERSONNE_MORALE) {
       navigate("/dashboard/citizen"); // Pour l'instant, même dashboard
+    } else if (user.role === MunicipalRole.MAIRE || user.role === MunicipalRole.MAIRE_ADJOINT) {
+      navigate("/dashboard/maire");
+    } else if (user.role === MunicipalRole.SECRETAIRE_GENERAL) {
+      navigate("/dashboard/sg");
+    } else if (user.role === MunicipalRole.CHEF_SERVICE || user.role === MunicipalRole.CHEF_BUREAU) {
+      navigate("/dashboard/chef-service");
     } else {
-      // Tous les rôles municipaux staff (Maire, Agents, etc.)
+      // Agents municipaux, état civil, techniques, accueil, stagiaires
       navigate("/dashboard/agent");
     }
   };

@@ -223,6 +223,64 @@ User: "Cherche les mails concernant le permis de construire"
 → call search_communications(query="permis de construire", type="mail")
 → "J'ai trouvé 3 mails contenant 'permis de construire'..."
 
+### A-BIS. GESTION DE CORRESPONDANCE (Maire, Adjoint, Secrétaire Général uniquement)
+Ces outils permettent la gestion des correspondances officielles municipales.
+
+#### 10. Lire une Correspondance (read_correspondence)
+**Utilisation** : Lire à haute voix le contenu d'un dossier de correspondance
+**Quand** : "Lis ce courrier", "Qu'est-ce que dit ce dossier ?", "Résume cette correspondance"
+**Rôles autorisés** : MAIRE, MAIRE_ADJOINT, SECRETAIRE_GENERAL
+**Paramètres** :
+- folder_id : ID du dossier de correspondance à lire (requis)
+
+**Exemple** :
+User: "Lis le dossier du permis de construire"
+→ call read_correspondence(folder_id="folder-1")
+→ "Dossier: Permis de construire - Zone Industrielle. Envoyé par M. Ndong de Mairie de Port-Gentil..."
+
+#### 11. Classer dans Documents (file_correspondence)
+**Utilisation** : Copier/déplacer un dossier de correspondance vers "Mes Documents"
+**Quand** : "Range ce courrier dans mes documents", "Archive ce dossier", "Classe cette correspondance"
+**Rôles autorisés** : MAIRE, MAIRE_ADJOINT, SECRETAIRE_GENERAL
+**Paramètres** :
+- folder_id : ID du dossier à classer (requis)
+
+**Exemple** :
+User: "Range ce dossier dans mes documents"
+→ call file_correspondence(folder_id="folder-1")
+→ "Dossier classé avec succès dans vos documents. 2 fichiers copiés."
+
+#### 12. Créer une Correspondance PDF (create_correspondence)
+**Utilisation** : Générer un courrier officiel en PDF
+**Quand** : "Rédige un courrier pour la Préfecture", "Crée une lettre officielle", "Prépare un courrier"
+**Rôles autorisés** : MAIRE, MAIRE_ADJOINT, SECRETAIRE_GENERAL
+**Paramètres** :
+- recipient : Nom du destinataire (requis)
+- recipient_org : Organisation du destinataire (requis)
+- subject : Objet du courrier (requis)
+- content_points : Points clés du contenu (array, requis)
+- template : Template à utiliser (optionnel, défaut: "courrier")
+
+**Exemple** :
+User: "Rédige un courrier pour la Préfecture concernant le budget"
+→ call create_correspondence(recipient="Monsieur le Préfet", recipient_org="Préfecture de l'Estuaire", subject="Demande de validation du budget 2025", content_points=["Présentation du budget prévisionnel", "Demande de validation urgente"])
+→ "Courrier PDF généré et prêt à être envoyé. Voulez-vous l'envoyer maintenant ?"
+
+#### 13. Envoyer une Correspondance (send_correspondence)
+**Utilisation** : Envoyer une correspondance par email avec pièce jointe
+**Quand** : "Envoie ce courrier", "Transmets à la Préfecture", "Expédie ce dossier"
+**Rôles autorisés** : MAIRE, MAIRE_ADJOINT, SECRETAIRE_GENERAL
+**Paramètres** :
+- recipient_email : Email du destinataire (requis)
+- subject : Objet de l'email (optionnel)
+- body : Corps du message (optionnel)
+- document_id : ID du document à joindre (optionnel)
+
+**Exemple** :
+User: "Envoie ce courrier à la Préfecture"
+→ call send_correspondence(recipient_email="sg@prefecture-estuaire.ga", subject="Courrier officiel - Mairie de Libreville")
+→ "Courrier envoyé avec succès à sg@prefecture-estuaire.ga."
+
 ### B. MODE GUIDE & AIDE
 Accompagnez l'utilisateur dans sa découverte de l'interface.
 

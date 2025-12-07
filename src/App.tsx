@@ -39,6 +39,13 @@ import SuperAdminKnowledgeBase from "./pages/dashboard/super-admin/SuperAdminKno
 import SuperAdminAnalytics from "./pages/dashboard/super-admin/SuperAdminAnalytics";
 import MaireDashboard from "./pages/dashboard/MaireDashboard";
 import MaireAnalyticsPage from "./pages/dashboard/maire/MaireAnalyticsPage";
+import MaireBudgetPage from "./pages/dashboard/maire/MaireBudgetPage";
+import MaireDeliberationsPage from "./pages/dashboard/maire/MaireDeliberationsPage";
+import MaireArretesPage from "./pages/dashboard/maire/MaireArretesPage";
+import MaireAgendaPage from "./pages/dashboard/maire/MaireAgendaPage";
+import MaireUrbanismePage from "./pages/dashboard/maire/MaireUrbanismePage";
+import MaireDocumentsPage from "./pages/dashboard/maire/MaireDocumentsPage";
+import CorrespondancePage from "./pages/CorrespondancePage";
 
 import CompaniesPage from "./pages/companies/CompaniesPage";
 import NewCompanyPage from "./pages/companies/NewCompanyPage";
@@ -113,6 +120,7 @@ const App = () => (
 
                   <Route path="/messaging" element={<MessagingPage />} />
                   <Route path="/iboite" element={<MessagingPage />} />
+                  <Route path="/correspondance" element={<CorrespondancePage />} />
                   <Route path="/settings" element={<SettingsPage />} />
 
                   {/* DASHBOARDS (Protected in real app) */}
@@ -148,6 +156,12 @@ const App = () => (
                   {/* Municipal Personnel Routes */}
                   <Route path="/dashboard/maire" element={<DashboardLayout><MaireDashboard /></DashboardLayout>} />
                   <Route path="/dashboard/maire/analytics" element={<DashboardLayout><MaireAnalyticsPage /></DashboardLayout>} />
+                  <Route path="/dashboard/maire/budget" element={<DashboardLayout><MaireBudgetPage /></DashboardLayout>} />
+                  <Route path="/dashboard/maire/deliberations" element={<DashboardLayout><MaireDeliberationsPage /></DashboardLayout>} />
+                  <Route path="/dashboard/maire/arretes" element={<DashboardLayout><MaireArretesPage /></DashboardLayout>} />
+                  <Route path="/dashboard/maire/agenda" element={<DashboardLayout><MaireAgendaPage /></DashboardLayout>} />
+                  <Route path="/dashboard/maire/urbanisme" element={<DashboardLayout><MaireUrbanismePage /></DashboardLayout>} />
+                  <Route path="/dashboard/maire/documents" element={<DashboardLayout><MaireDocumentsPage /></DashboardLayout>} />
                   <Route path="/dashboard/sg" element={<DashboardLayout><AgentDashboard /></DashboardLayout>} />
                   <Route path="/dashboard/chef-service" element={<DashboardLayout><AgentDashboard /></DashboardLayout>} />
 

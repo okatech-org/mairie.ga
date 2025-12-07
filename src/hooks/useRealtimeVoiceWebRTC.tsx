@@ -150,7 +150,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             const baseUrl = 'https://api.openai.com/v1/realtime';
             const model = 'gpt-4o-realtime-preview-2024-12-17';
             console.log(`📡 Connecting to OpenAI Realtime API: ${baseUrl}?model=${model}`);
-            
+
             const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
                 method: 'POST',
                 body: offer.sdp,
@@ -244,8 +244,8 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                         parameters: {
                             type: 'object',
                             properties: {
-                                field: { 
-                                    type: 'string', 
+                                field: {
+                                    type: 'string',
                                     enum: [
                                         'firstName', 'lastName', 'dateOfBirth', 'placeOfBirth',
                                         'maritalStatus', 'fatherName', 'motherName',
@@ -268,8 +268,8 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                         parameters: {
                             type: 'object',
                             properties: {
-                                type: { 
-                                    type: 'string', 
+                                type: {
+                                    type: 'string',
                                     enum: ['gabonais', 'etranger'],
                                     description: 'Type de citoyen: gabonais ou étranger'
                                 }
@@ -284,8 +284,8 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                         parameters: {
                             type: 'object',
                             properties: {
-                                step: { 
-                                    type: 'number', 
+                                step: {
+                                    type: 'number',
                                     description: 'Numéro de l\'étape (1-6 pour gabonais: Documents, Infos Base, Famille, Contacts, Profession, Révision)'
                                 },
                                 direction: {
@@ -372,6 +372,63 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                                 service_type: { type: 'string' }
                             },
                             required: ['service_type']
+                        }
+                    },
+                    // ============= CORRESPONDANCE TOOLS (Maire, Adjoint, SG) =============
+                    {
+                        type: 'function',
+                        name: 'read_correspondence',
+                        description: 'Lire à haute voix le contenu d\'un dossier de correspondance officielle. Réservé au Maire, Adjoint, et Secrétaire Général.',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                folder_id: { type: 'string', description: 'ID du dossier de correspondance à lire' }
+                            },
+                            required: ['folder_id']
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'file_correspondence',
+                        description: 'Classer un dossier de correspondance dans "Mes Documents". Réservé au Maire, Adjoint, et Secrétaire Général.',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                folder_id: { type: 'string', description: 'ID du dossier à classer' }
+                            },
+                            required: ['folder_id']
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'create_correspondence',
+                        description: 'Créer un courrier officiel en PDF. Réservé au Maire, Adjoint, et Secrétaire Général.',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                recipient: { type: 'string', description: 'Nom du destinataire' },
+                                recipient_org: { type: 'string', description: 'Organisation du destinataire' },
+                                recipient_email: { type: 'string', description: 'Email du destinataire (optionnel)' },
+                                subject: { type: 'string', description: 'Objet du courrier' },
+                                content_points: { type: 'array', items: { type: 'string' }, description: 'Points clés du contenu' },
+                                template: { type: 'string', description: 'Template à utiliser (défaut: courrier)' }
+                            },
+                            required: ['recipient', 'recipient_org', 'subject', 'content_points']
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'send_correspondence',
+                        description: 'Envoyer une correspondance par email. Réservé au Maire, Adjoint, et Secrétaire Général.',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                recipient_email: { type: 'string', description: 'Email du destinataire' },
+                                subject: { type: 'string', description: 'Objet de l\'email' },
+                                body: { type: 'string', description: 'Corps du message' },
+                                document_id: { type: 'string', description: 'ID du document à joindre' }
+                            },
+                            required: ['recipient_email']
                         }
                     }
                 ]

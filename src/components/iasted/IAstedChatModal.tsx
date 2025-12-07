@@ -897,6 +897,144 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                     }
                     break;
 
+                // ============= CORRESPONDANCE TOOLS (Maire, Adjoint, SG) =============
+                case 'read_correspondence': {
+                    const { correspondanceService } = await import('@/services/correspondanceService');
+                    try {
+                        const result = await correspondanceService.readCorrespondance(args.folder_id);
+
+                        const msgContent = `📂 **${result.folderName}**\n\n${result.summary}`;
+                        setMessages(prev => [...prev, {
+                            id: crypto.randomUUID(),
+                            role: 'assistant',
+                            content: msgContent,
+                            timestamp: new Date().toISOString(),
+                        }]);
+
+                        toast({
+                            title: "📖 Correspondance lue",
+                            description: `Dossier: ${result.folderName}`,
+                        });
+                    } catch (error: any) {
+                        toast({
+                            title: "Erreur",
+                            description: error.message,
+                            variant: "destructive",
+                        });
+                    }
+                    break;
+                }
+
+                case 'file_correspondence': {
+                    const { correspondanceService } = await import('@/services/correspondanceService');
+                    try {
+                        const result = await correspondanceService.fileToDocuments(args.folder_id);
+
+                        toast({
+                            title: "📁 Classé dans Documents",
+                            description: `${result.documentIds.length} fichier(s) copié(s)`,
+                        });
+
+                        setMessages(prev => [...prev, {
+                            id: crypto.randomUUID(),
+                            role: 'assistant',
+                            content: `Dossier classé avec succès dans vos documents. ${result.documentIds.length} fichier(s) copié(s) vers: ${result.destinationPath}`,
+                            timestamp: new Date().toISOString(),
+                        }]);
+                    } catch (error: any) {
+                        toast({
+                            title: "Erreur de classement",
+                            description: error.message,
+                            variant: "destructive",
+                        });
+                    }
+                    break;
+                }
+
+                case 'create_correspondence': {
+                    const { correspondanceService } = await import('@/services/correspondanceService');
+                    try {
+                        const result = await correspondanceService.createCorrespondance({
+                            recipient: args.recipient,
+                            recipientOrg: args.recipient_org,
+                            recipientEmail: args.recipient_email,
+                            subject: args.subject,
+                            contentPoints: args.content_points || [],
+                            template: args.template || 'courrier',
+                        });
+
+                        const docPreview = {
+                            id: result.documentId,
+                            name: result.fileName,
+                            url: result.localUrl,
+                            type: 'application/pdf',
+                        };
+
+                        setMessages(prev => [...prev, {
+                            id: crypto.randomUUID(),
+                            role: 'assistant',
+                            content: `📄 Courrier généré pour **${args.recipient}** (${args.recipient_org})\n\nObjet: ${args.subject}`,
+                            timestamp: new Date().toISOString(),
+                            metadata: { documents: [docPreview] },
+                        }]);
+
+                        toast({
+                            title: "📄 Courrier PDF créé",
+                            description: `Pour: ${args.recipient}`,
+                        });
+
+                        // Auto-download if voice mode
+                        if (openaiRTC.isConnected) {
+                            setTimeout(() => {
+                                const link = document.createElement('a');
+                                link.href = result.localUrl;
+                                link.download = result.fileName;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                            }, 500);
+                        }
+                    } catch (error: any) {
+                        toast({
+                            title: "Erreur de création",
+                            description: error.message,
+                            variant: "destructive",
+                        });
+                    }
+                    break;
+                }
+
+                case 'send_correspondence': {
+                    const { correspondanceService } = await import('@/services/correspondanceService');
+                    try {
+                        const result = await correspondanceService.sendCorrespondance({
+                            recipientEmail: args.recipient_email,
+                            subject: args.subject,
+                            body: args.body,
+                            documentId: args.document_id,
+                        });
+
+                        toast({
+                            title: "✉️ Courrier envoyé",
+                            description: `Email envoyé à ${args.recipient_email}`,
+                        });
+
+                        setMessages(prev => [...prev, {
+                            id: crypto.randomUUID(),
+                            role: 'assistant',
+                            content: `Courrier envoyé avec succès à **${args.recipient_email}**.\n\nEnvoyé le: ${new Date(result.sentAt).toLocaleString('fr-FR')}`,
+                            timestamp: new Date().toISOString(),
+                        }]);
+                    } catch (error: any) {
+                        toast({
+                            title: "Erreur d'envoi",
+                            description: error.message,
+                            variant: "destructive",
+                        });
+                    }
+                    break;
+                }
+
                 case 'manage_system_settings':
                     if (args.setting === 'voice_mode') {
                         // Legacy support or ignore
