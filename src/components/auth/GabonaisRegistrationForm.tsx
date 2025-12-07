@@ -118,44 +118,98 @@ function EditableOCRField({ field, label, value, isDate, onSave }: EditableOCRFi
     );
 }
 
-// Validation schemas for each step
-const stepValidations = {
-    1: () => ({ isValid: true, errors: [] }), // Documents are optional at step 1
-    2: (data: typeof initialFormData) => {
-        const errors: string[] = [];
-        if (!data.firstName.trim()) errors.push("Prénom requis");
-        if (!data.lastName.trim()) errors.push("Nom requis");
-        if (!data.dateOfBirth) errors.push("Date de naissance requise");
-        if (!data.placeOfBirth.trim()) errors.push("Lieu de naissance requis");
-        return { isValid: errors.length === 0, errors };
-    },
-    3: (data: typeof initialFormData) => {
-        const errors: string[] = [];
-        if (!data.maritalStatus) errors.push("Situation matrimoniale requise");
-        return { isValid: errors.length === 0, errors };
-    },
-    4: (data: typeof initialFormData) => {
-        const errors: string[] = [];
-        if (!data.address.trim()) errors.push("Adresse requise");
-        if (!data.city.trim()) errors.push("Ville requise");
-        if (!data.postalCode.trim()) errors.push("Code postal requis");
-        if (!data.emergencyContactLastName.trim()) errors.push("Nom du contact d'urgence requis");
-        if (!data.emergencyContactFirstName.trim()) errors.push("Prénom du contact d'urgence requis");
-        if (!data.emergencyContactPhone.trim()) errors.push("Téléphone du contact d'urgence requis");
-        return { isValid: errors.length === 0, errors };
-    },
-    5: () => ({ isValid: true, errors: [] }), // Profession is optional
-    6: (data: typeof initialFormData) => {
-        const errors: string[] = [];
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!data.email.trim()) errors.push("Email requis");
-        else if (!emailRegex.test(data.email)) errors.push("Email invalide");
-        if (!data.phone.trim()) errors.push("Téléphone requis");
-        if (!data.password) errors.push("Mot de passe requis");
-        else if (data.password.length < 6) errors.push("Mot de passe: minimum 6 caractères");
-        if (data.password !== data.confirmPassword) errors.push("Les mots de passe ne correspondent pas");
-        return { isValid: errors.length === 0, errors };
+// Field-level validation with error tracking
+type FieldErrors = Record<string, string>;
+
+const validateStep = (step: number, data: typeof initialFormData): { isValid: boolean; errors: string[]; fieldErrors: FieldErrors } => {
+    const errors: string[] = [];
+    const fieldErrors: FieldErrors = {};
+
+    switch (step) {
+        case 1:
+            // Documents are optional
+            break;
+        case 2:
+            if (!data.firstName.trim()) {
+                errors.push("Prénom requis");
+                fieldErrors.firstName = "Prénom requis";
+            }
+            if (!data.lastName.trim()) {
+                errors.push("Nom requis");
+                fieldErrors.lastName = "Nom requis";
+            }
+            if (!data.dateOfBirth) {
+                errors.push("Date de naissance requise");
+                fieldErrors.dateOfBirth = "Date de naissance requise";
+            }
+            if (!data.placeOfBirth.trim()) {
+                errors.push("Lieu de naissance requis");
+                fieldErrors.placeOfBirth = "Lieu de naissance requis";
+            }
+            break;
+        case 3:
+            if (!data.maritalStatus) {
+                errors.push("Situation matrimoniale requise");
+                fieldErrors.maritalStatus = "Situation matrimoniale requise";
+            }
+            break;
+        case 4:
+            if (!data.address.trim()) {
+                errors.push("Adresse requise");
+                fieldErrors.address = "Adresse requise";
+            }
+            if (!data.city.trim()) {
+                errors.push("Ville requise");
+                fieldErrors.city = "Ville requise";
+            }
+            if (!data.postalCode.trim()) {
+                errors.push("Code postal requis");
+                fieldErrors.postalCode = "Code postal requis";
+            }
+            if (!data.emergencyContactLastName.trim()) {
+                errors.push("Nom du contact d'urgence requis");
+                fieldErrors.emergencyContactLastName = "Nom requis";
+            }
+            if (!data.emergencyContactFirstName.trim()) {
+                errors.push("Prénom du contact d'urgence requis");
+                fieldErrors.emergencyContactFirstName = "Prénom requis";
+            }
+            if (!data.emergencyContactPhone.trim()) {
+                errors.push("Téléphone du contact d'urgence requis");
+                fieldErrors.emergencyContactPhone = "Téléphone requis";
+            }
+            break;
+        case 5:
+            // Profession is optional
+            break;
+        case 6:
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!data.email.trim()) {
+                errors.push("Email requis");
+                fieldErrors.email = "Email requis";
+            } else if (!emailRegex.test(data.email)) {
+                errors.push("Email invalide");
+                fieldErrors.email = "Email invalide";
+            }
+            if (!data.phone.trim()) {
+                errors.push("Téléphone requis");
+                fieldErrors.phone = "Téléphone requis";
+            }
+            if (!data.password) {
+                errors.push("Mot de passe requis");
+                fieldErrors.password = "Mot de passe requis";
+            } else if (data.password.length < 6) {
+                errors.push("Mot de passe: minimum 6 caractères");
+                fieldErrors.password = "Minimum 6 caractères";
+            }
+            if (data.password !== data.confirmPassword) {
+                errors.push("Les mots de passe ne correspondent pas");
+                fieldErrors.confirmPassword = "Ne correspond pas";
+            }
+            break;
     }
+
+    return { isValid: errors.length === 0, errors, fieldErrors };
 };
 
 const initialFormData = {
@@ -189,6 +243,11 @@ export function GabonaisRegistrationForm() {
     const [generatedPin, setGeneratedPin] = useState("");
     const [pinCopied, setPinCopied] = useState(false);
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
+    const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+
+    // Helper to check if a field has an error
+    const hasFieldError = (field: string) => !!fieldErrors[field];
+    const getFieldError = (field: string) => fieldErrors[field];
 
     // Tracker les champs remplis par iAsted
     const [filledByIasted, setFilledByIasted] = useState<Set<string>>(new Set());
@@ -429,11 +488,9 @@ export function GabonaisRegistrationForm() {
     ];
 
     const validateCurrentStep = (): boolean => {
-        const validator = stepValidations[step as keyof typeof stepValidations];
-        if (!validator) return true;
-        
-        const { isValid, errors } = validator(formData);
+        const { isValid, errors, fieldErrors: newFieldErrors } = validateStep(step, formData);
         setValidationErrors(errors);
+        setFieldErrors(newFieldErrors);
         
         if (!isValid) {
             toast.error(errors[0], {
@@ -447,6 +504,7 @@ export function GabonaisRegistrationForm() {
     const handleNext = () => {
         // Clear previous errors
         setValidationErrors([]);
+        setFieldErrors({});
         
         // Validate current step
         if (!validateCurrentStep()) {
@@ -911,6 +969,8 @@ export function GabonaisRegistrationForm() {
                                         value={formData.firstName}
                                         onChange={(e) => handleInputChange('firstName', e.target.value)}
                                         filledByIasted={filledByIasted.has('firstName')}
+                                        hasError={hasFieldError('firstName')}
+                                        errorMessage={getFieldError('firstName')}
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -920,6 +980,8 @@ export function GabonaisRegistrationForm() {
                                         value={formData.lastName}
                                         onChange={(e) => handleInputChange('lastName', e.target.value)}
                                         filledByIasted={filledByIasted.has('lastName')}
+                                        hasError={hasFieldError('lastName')}
+                                        errorMessage={getFieldError('lastName')}
                                     />
                                 </div>
                             </div>
@@ -931,6 +993,8 @@ export function GabonaisRegistrationForm() {
                                         value={formData.dateOfBirth}
                                         onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
                                         filledByIasted={filledByIasted.has('dateOfBirth')}
+                                        hasError={hasFieldError('dateOfBirth')}
+                                        errorMessage={getFieldError('dateOfBirth')}
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -940,6 +1004,8 @@ export function GabonaisRegistrationForm() {
                                         value={formData.placeOfBirth}
                                         onChange={(e) => handleInputChange('placeOfBirth', e.target.value)}
                                         filledByIasted={filledByIasted.has('placeOfBirth')}
+                                        hasError={hasFieldError('placeOfBirth')}
+                                        errorMessage={getFieldError('placeOfBirth')}
                                     />
                                 </div>
                             </div>
@@ -958,7 +1024,7 @@ export function GabonaisRegistrationForm() {
                                     value={formData.maritalStatus}
                                     onValueChange={(value) => handleInputChange('maritalStatus', value)}
                                 >
-                                    <SelectTrigger className={getIAstedSelectClasses(filledByIasted.has('maritalStatus'))}>
+                                    <SelectTrigger className={getIAstedSelectClasses(filledByIasted.has('maritalStatus'), 'primary', hasFieldError('maritalStatus'))}>
                                         <SelectValue placeholder="Sélectionner" />
                                         <IAstedSelectIndicator filledByIasted={filledByIasted.has('maritalStatus')} />
                                     </SelectTrigger>
@@ -969,6 +1035,11 @@ export function GabonaisRegistrationForm() {
                                         <SelectItem value="WIDOWED">Veuf/Veuve</SelectItem>
                                     </SelectContent>
                                 </Select>
+                                {hasFieldError('maritalStatus') && (
+                                    <p className="text-xs text-destructive animate-in fade-in slide-in-from-top-1 duration-200">
+                                        {getFieldError('maritalStatus')}
+                                    </p>
+                                )}
                             </div>
 
                             <div className="p-4 bg-muted/30 rounded-lg space-y-4">
@@ -1006,6 +1077,8 @@ export function GabonaisRegistrationForm() {
                                     value={formData.address}
                                     onChange={(e) => handleInputChange('address', e.target.value)}
                                     filledByIasted={filledByIasted.has('address')}
+                                    hasError={hasFieldError('address')}
+                                    errorMessage={getFieldError('address')}
                                 />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
@@ -1015,6 +1088,8 @@ export function GabonaisRegistrationForm() {
                                         value={formData.city}
                                         onChange={(e) => handleInputChange('city', e.target.value)}
                                         filledByIasted={filledByIasted.has('city')}
+                                        hasError={hasFieldError('city')}
+                                        errorMessage={getFieldError('city')}
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -1023,6 +1098,8 @@ export function GabonaisRegistrationForm() {
                                         value={formData.postalCode}
                                         onChange={(e) => handleInputChange('postalCode', e.target.value)}
                                         filledByIasted={filledByIasted.has('postalCode')}
+                                        hasError={hasFieldError('postalCode')}
+                                        errorMessage={getFieldError('postalCode')}
                                     />
                                 </div>
                             </div>
@@ -1037,6 +1114,8 @@ export function GabonaisRegistrationForm() {
                                             value={formData.emergencyContactLastName}
                                             onChange={(e) => handleInputChange('emergencyContactLastName', e.target.value)}
                                             filledByIasted={filledByIasted.has('emergencyContactLastName')}
+                                            hasError={hasFieldError('emergencyContactLastName')}
+                                            errorMessage={getFieldError('emergencyContactLastName')}
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -1046,6 +1125,8 @@ export function GabonaisRegistrationForm() {
                                             value={formData.emergencyContactFirstName}
                                             onChange={(e) => handleInputChange('emergencyContactFirstName', e.target.value)}
                                             filledByIasted={filledByIasted.has('emergencyContactFirstName')}
+                                            hasError={hasFieldError('emergencyContactFirstName')}
+                                            errorMessage={getFieldError('emergencyContactFirstName')}
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -1055,6 +1136,8 @@ export function GabonaisRegistrationForm() {
                                             value={formData.emergencyContactPhone}
                                             onChange={(e) => handleInputChange('emergencyContactPhone', e.target.value)}
                                             filledByIasted={filledByIasted.has('emergencyContactPhone')}
+                                            hasError={hasFieldError('emergencyContactPhone')}
+                                            errorMessage={getFieldError('emergencyContactPhone')}
                                         />
                                     </div>
                                 </div>
@@ -1118,6 +1201,8 @@ export function GabonaisRegistrationForm() {
                                             value={formData.email}
                                             onChange={(e) => handleInputChange('email', e.target.value)}
                                             filledByIasted={filledByIasted.has('email')}
+                                            hasError={hasFieldError('email')}
+                                            errorMessage={getFieldError('email')}
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -1128,6 +1213,8 @@ export function GabonaisRegistrationForm() {
                                             value={formData.phone}
                                             onChange={(e) => handleInputChange('phone', e.target.value)}
                                             filledByIasted={filledByIasted.has('phone')}
+                                            hasError={hasFieldError('phone')}
+                                            errorMessage={getFieldError('phone')}
                                         />
                                     </div>
                                 </div>
@@ -1139,7 +1226,13 @@ export function GabonaisRegistrationForm() {
                                             placeholder="••••••••"
                                             value={formData.password}
                                             onChange={(e) => handleInputChange('password', e.target.value)}
+                                            className={hasFieldError('password') ? 'border-destructive bg-destructive/5' : ''}
                                         />
+                                        {hasFieldError('password') && (
+                                            <p className="text-xs text-destructive animate-in fade-in slide-in-from-top-1 duration-200">
+                                                {getFieldError('password')}
+                                            </p>
+                                        )}
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Confirmer mot de passe *</Label>
@@ -1148,7 +1241,13 @@ export function GabonaisRegistrationForm() {
                                             placeholder="••••••••"
                                             value={formData.confirmPassword}
                                             onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                                            className={hasFieldError('confirmPassword') ? 'border-destructive bg-destructive/5' : ''}
                                         />
+                                        {hasFieldError('confirmPassword') && (
+                                            <p className="text-xs text-destructive animate-in fade-in slide-in-from-top-1 duration-200">
+                                                {getFieldError('confirmPassword')}
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
                             </div>
