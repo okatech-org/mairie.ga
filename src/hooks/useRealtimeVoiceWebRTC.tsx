@@ -121,6 +121,14 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                 console.log('Data Channel Open');
                 setVoiceState('listening');
                 updateSession(voice, systemPrompt); // Send initial config
+
+                // Trigger iAsted to speak first (auto-greeting)
+                setTimeout(() => {
+                    if (dc.readyState === 'open') {
+                        console.log('🎙️ Triggering auto-greeting...');
+                        dc.send(JSON.stringify({ type: 'response.create' }));
+                    }
+                }, 500);
             };
 
             dc.onmessage = (e) => {

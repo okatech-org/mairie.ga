@@ -665,11 +665,13 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
         if (toolName === 'navigate_app') {
             console.log('🌍 [IAstedInterface] Navigation Globale (Admin):', args);
 
-            // Navigation complète vers une autre route (admin uniquement)
-            if (args.route) {
-                navigate(args.route);
-                toast.success(`Navigation vers ${args.route}`);
-                console.log(`✅ [IAstedInterface] Navigation vers: ${args.route}`);
+            // Accept both 'path' and 'route' parameters for compatibility
+            const targetRoute = args.path || args.route;
+
+            if (targetRoute) {
+                console.log(`🚀 [IAstedInterface] Navigating to: ${targetRoute}`);
+                navigate(targetRoute);
+                toast.success(`Navigation vers ${targetRoute}`);
 
                 // Si module_id est spécifié, scroll après navigation
                 if (args.module_id) {
@@ -680,6 +682,8 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
                         }
                     }, 500);
                 }
+            } else {
+                console.warn('⚠️ [IAstedInterface] navigate_app called without path or route');
             }
         }
 
@@ -694,7 +698,7 @@ export default function IAstedInterface({ userRole = 'user', defaultOpen = false
                 navigate(resolvedPath);
                 toast.success(`Navigation vers ${resolvedPath}`);
 
-            // Note: chameleon_role feature removed for security - role impersonation must be validated server-side
+                // Note: chameleon_role feature removed for security - role impersonation must be validated server-side
                 if (args.target_role) {
                     console.log(`🦎 [IAstedInterface] Mode Caméléon demandé: ${args.target_role} (ignoré pour sécurité - validation côté serveur requise)`);
                 }
