@@ -174,5 +174,23 @@ export const documentService = {
             .createSignedUrl(filePath, 3600);
         
         return data?.signedUrl || null;
+    },
+
+    renameDocument: async (id: string, newName: string): Promise<void> => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            throw new Error('User must be authenticated to rename documents');
+        }
+
+        const { error } = await supabase
+            .from('document_vault')
+            .update({ name: newName, updated_at: new Date().toISOString() })
+            .eq('id', id)
+            .eq('user_id', user.id);
+
+        if (error) {
+            console.error('Rename error:', error);
+            throw error;
+        }
     }
 };

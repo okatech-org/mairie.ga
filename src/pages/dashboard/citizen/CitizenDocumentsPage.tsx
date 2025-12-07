@@ -4,7 +4,10 @@ import { Document, DocumentType } from '@/types/document';
 import { documentService } from '@/services/document-service';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Upload, Trash2, Eye, Loader2, FileIcon } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
+import { FileText, Upload, Trash2, Eye, Loader2, FileIcon, Pencil, X, Check } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
     AlertDialog,
@@ -16,14 +19,31 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
+
+interface UploadingFile {
+    id: string;
+    name: string;
+    progress: number;
+    status: 'uploading' | 'success' | 'error';
+}
 
 export default function CitizenDocumentsPage() {
     const [documents, setDocuments] = useState<Document[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [uploadingCount, setUploadingCount] = useState(0);
+    const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
     const [selectedType, setSelectedType] = useState<DocumentType>('OTHER');
     const [deleteTarget, setDeleteTarget] = useState<Document | null>(null);
+    const [renameTarget, setRenameTarget] = useState<Document | null>(null);
+    const [newName, setNewName] = useState('');
 
     useEffect(() => {
         fetchDocuments();
@@ -41,6 +61,12 @@ export default function CitizenDocumentsPage() {
         }
     };
 
+    const updateFileProgress = (id: string, progress: number, status?: UploadingFile['status']) => {
+        setUploadingFiles(prev => prev.map(f => 
+            f.id === id ? { ...f, progress, status: status || f.status } : f
+        ));
+    };
+
     const handleUpload = async (files: File[]) => {
         const validFiles = files.filter(file => {
             if (file.size > 5 * 1024 * 1024) {
@@ -52,34 +78,69 @@ export default function CitizenDocumentsPage() {
 
         if (validFiles.length === 0) return;
 
-        setUploadingCount(validFiles.length);
+        // Initialize upload tracking
+        const newUploadingFiles: UploadingFile[] = validFiles.map(file => ({
+            id: Math.random().toString(36).substr(2, 9),
+            name: file.name,
+            progress: 0,
+            status: 'uploading' as const
+        }));
         
-        const results = await Promise.allSettled(
-            validFiles.map(file => documentService.uploadDocument(file, selectedType))
-        );
+        setUploadingFiles(prev => [...newUploadingFiles, ...prev]);
 
-        const successful: Document[] = [];
-        let failedCount = 0;
+        // Upload files with simulated progress
+        const uploadPromises = validFiles.map(async (file, index) => {
+            const uploadId = newUploadingFiles[index].id;
+            
+            try {
+                // Simulate progress updates
+                const progressInterval = setInterval(() => {
+                    setUploadingFiles(prev => {
+                        const current = prev.find(f => f.id === uploadId);
+                        if (current && current.progress < 90 && current.status === 'uploading') {
+                            return prev.map(f => 
+                                f.id === uploadId ? { ...f, progress: Math.min(f.progress + 15, 90) } : f
+                            );
+                        }
+                        return prev;
+                    });
+                }, 200);
 
-        results.forEach((result, index) => {
-            if (result.status === 'fulfilled') {
-                successful.push(result.value);
-            } else {
-                failedCount++;
-                console.error(`Upload failed for ${validFiles[index].name}:`, result.reason);
+                const newDoc = await documentService.uploadDocument(file, selectedType);
+                
+                clearInterval(progressInterval);
+                updateFileProgress(uploadId, 100, 'success');
+                
+                // Remove from uploading list after delay
+                setTimeout(() => {
+                    setUploadingFiles(prev => prev.filter(f => f.id !== uploadId));
+                }, 1500);
+
+                return newDoc;
+            } catch (error) {
+                updateFileProgress(uploadId, 100, 'error');
+                setTimeout(() => {
+                    setUploadingFiles(prev => prev.filter(f => f.id !== uploadId));
+                }, 3000);
+                throw error;
             }
         });
+
+        const results = await Promise.allSettled(uploadPromises);
+        
+        const successful = results
+            .filter((r): r is PromiseFulfilledResult<Document> => r.status === 'fulfilled')
+            .map(r => r.value);
 
         if (successful.length > 0) {
             setDocuments(prev => [...successful, ...prev]);
             toast.success(`${successful.length} document${successful.length > 1 ? 's' : ''} ajouté${successful.length > 1 ? 's' : ''}`);
         }
 
+        const failedCount = results.filter(r => r.status === 'rejected').length;
         if (failedCount > 0) {
             toast.error(`${failedCount} document${failedCount > 1 ? 's' : ''} n'ont pas pu être envoyés`);
         }
-
-        setUploadingCount(0);
     };
 
     const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -96,7 +157,7 @@ export default function CitizenDocumentsPage() {
             'image/png': ['.png'],
             'image/webp': ['.webp']
         },
-        disabled: uploadingCount > 0
+        disabled: uploadingFiles.length > 0
     });
 
     const confirmDelete = async () => {
@@ -110,6 +171,28 @@ export default function CitizenDocumentsPage() {
             toast.error("Erreur lors de la suppression");
         } finally {
             setDeleteTarget(null);
+        }
+    };
+
+    const openRenameDialog = (doc: Document) => {
+        setRenameTarget(doc);
+        setNewName(doc.title);
+    };
+
+    const confirmRename = async () => {
+        if (!renameTarget || !newName.trim()) return;
+        
+        try {
+            await documentService.renameDocument(renameTarget.id, newName.trim());
+            setDocuments(prev => prev.map(d => 
+                d.id === renameTarget.id ? { ...d, title: newName.trim() } : d
+            ));
+            toast.success("Document renommé");
+        } catch (error) {
+            toast.error("Erreur lors du renommage");
+        } finally {
+            setRenameTarget(null);
+            setNewName('');
         }
     };
 
@@ -170,7 +253,7 @@ export default function CitizenDocumentsPage() {
         );
     };
 
-    const isUploading = uploadingCount > 0;
+    const isUploading = uploadingFiles.length > 0;
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -205,35 +288,55 @@ export default function CitizenDocumentsPage() {
                         ? 'border-primary bg-primary/5 scale-[1.02]' 
                         : 'border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/30'
                     }
-                    ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}
+                    ${isUploading ? 'pointer-events-none' : ''}
                 `}
             >
                 <input {...getInputProps()} />
                 <div className="flex flex-col items-center gap-3">
-                    {isUploading ? (
-                        <div className="p-4 bg-primary/10 rounded-full">
-                            <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                        </div>
-                    ) : (
-                        <div className={`p-4 rounded-full transition-colors ${isDragActive ? 'bg-primary/20' : 'bg-muted'}`}>
-                            <Upload className={`w-8 h-8 ${isDragActive ? 'text-primary' : 'text-muted-foreground'}`} />
-                        </div>
-                    )}
+                    <div className={`p-4 rounded-full transition-colors ${isDragActive ? 'bg-primary/20' : 'bg-muted'}`}>
+                        <Upload className={`w-8 h-8 ${isDragActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                    </div>
                     <div>
                         <p className="font-semibold">
-                            {isUploading 
-                                ? `Envoi de ${uploadingCount} document${uploadingCount > 1 ? 's' : ''}...` 
-                                : isDragActive 
-                                    ? "Déposez les fichiers ici" 
-                                    : "Glissez-déposez vos documents ici"
-                            }
+                            {isDragActive ? "Déposez les fichiers ici" : "Glissez-déposez vos documents ici"}
                         </p>
                         <p className="text-sm text-muted-foreground mt-1">
-                            {!isUploading && "ou cliquez pour sélectionner • Plusieurs fichiers acceptés • PDF, JPG, PNG (max 5MB)"}
+                            ou cliquez pour sélectionner • Plusieurs fichiers acceptés • PDF, JPG, PNG (max 5MB)
                         </p>
                     </div>
                 </div>
             </div>
+
+            {/* Upload Progress List */}
+            {uploadingFiles.length > 0 && (
+                <div className="space-y-3 p-4 bg-muted/30 rounded-xl">
+                    <p className="text-sm font-medium text-muted-foreground">Envoi en cours...</p>
+                    {uploadingFiles.map(file => (
+                        <div key={file.id} className="flex items-center gap-3 bg-background p-3 rounded-lg">
+                            <div className={`p-2 rounded-lg ${
+                                file.status === 'success' ? 'bg-green-500/10 text-green-500' :
+                                file.status === 'error' ? 'bg-destructive/10 text-destructive' :
+                                'bg-primary/10 text-primary'
+                            }`}>
+                                {file.status === 'success' ? (
+                                    <Check className="w-4 h-4" />
+                                ) : file.status === 'error' ? (
+                                    <X className="w-4 h-4" />
+                                ) : (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">{file.name}</p>
+                                <Progress value={file.progress} className="h-1.5 mt-1" />
+                            </div>
+                            <span className="text-xs text-muted-foreground w-10 text-right">
+                                {file.progress}%
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            )}
 
             {isLoading ? (
                 <div className="flex justify-center p-12">
@@ -274,11 +377,11 @@ export default function CitizenDocumentsPage() {
                                 </div>
                             </div>
 
-                            <div className="flex gap-2 pt-2 border-t">
+                            <div className="flex gap-1 pt-2 border-t">
                                 <Button 
                                     variant="ghost" 
                                     size="sm" 
-                                    className="flex-1 gap-2 text-xs" 
+                                    className="flex-1 gap-1.5 text-xs" 
                                     onClick={() => window.open(doc.url, '_blank')}
                                 >
                                     <Eye className="w-3.5 h-3.5" /> Voir
@@ -286,7 +389,15 @@ export default function CitizenDocumentsPage() {
                                 <Button 
                                     variant="ghost" 
                                     size="sm" 
-                                    className="gap-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10" 
+                                    className="gap-1.5 text-xs" 
+                                    onClick={() => openRenameDialog(doc)}
+                                >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="gap-1.5 text-xs text-destructive hover:text-destructive hover:bg-destructive/10" 
                                     onClick={() => setDeleteTarget(doc)}
                                 >
                                     <Trash2 className="w-3.5 h-3.5" />
@@ -317,6 +428,36 @@ export default function CitizenDocumentsPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Rename Dialog */}
+            <Dialog open={!!renameTarget} onOpenChange={(open) => !open && setRenameTarget(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Renommer le document</DialogTitle>
+                        <DialogDescription>
+                            Entrez le nouveau nom pour ce document.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2 py-4">
+                        <Label htmlFor="doc-name">Nom du document</Label>
+                        <Input
+                            id="doc-name"
+                            value={newName}
+                            onChange={(e) => setNewName(e.target.value)}
+                            placeholder="Nom du document"
+                            onKeyDown={(e) => e.key === 'Enter' && confirmRename()}
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setRenameTarget(null)}>
+                            Annuler
+                        </Button>
+                        <Button onClick={confirmRename} disabled={!newName.trim()}>
+                            Renommer
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
