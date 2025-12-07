@@ -103,26 +103,44 @@ export const DocumentUploadZone: React.FC<DocumentUploadZoneProps> = ({
 
     /**
      * Analyze file directly using documentOCRService (no upload required)
+     * With enhanced progress indication
      */
     const analyzeFileDirectly = async (uploadedFile: UploadedFile) => {
         try {
-            updateFileStatus(uploadedFile.id, 'analyzing', 50);
+            // Step 1: Uploading animation
+            updateFileStatus(uploadedFile.id, 'uploading', 15);
+            await new Promise(r => setTimeout(r, 300));
+            
+            // Step 2: Scanning
+            updateFileStatus(uploadedFile.id, 'analyzing', 35);
+            await new Promise(r => setTimeout(r, 200));
 
-            // Direct OCR analysis using OpenAI/Gemini
+            // Step 3: Extracting - actual OCR call
+            updateFileStatus(uploadedFile.id, 'analyzing', 55);
+            
             const analysis = await analyzeDocument(
                 uploadedFile.file,
                 uploadedFile.suggestedType
             );
 
+            // Step 4: Validating
+            updateFileStatus(uploadedFile.id, 'analyzing', 85);
+            await new Promise(r => setTimeout(r, 200));
+
             if (analysis.error) {
                 throw new Error(analysis.error);
             }
 
+            // Step 5: Complete
             updateFileStatus(uploadedFile.id, 'completed', 100, analysis);
 
+            const extractedCount = analysis.extractedData 
+                ? Object.keys(analysis.extractedData).length 
+                : 0;
+
             toast({
-                title: '✅ Document analysé',
-                description: `${uploadedFile.file.name} - ${analysis.documentType}`,
+                title: '✅ Document analysé avec succès',
+                description: `${uploadedFile.file.name} - ${extractedCount} champs extraits`,
             });
 
             // Callback with results
@@ -304,12 +322,23 @@ export const DocumentUploadZone: React.FC<DocumentUploadZoneProps> = ({
                         <Card>
                             <CardContent className="p-4">
                                 <div className="flex items-start gap-4">
-                                    {/* Icône */}
+                                    {/* Icône avec animation améliorée */}
                                     <div className={`flex-shrink-0 ${getStatusColor(uploadedFile.status)}`}>
                                         {uploadedFile.status === 'completed' ? (
-                                            <CheckCircle className="w-8 h-8" />
+                                            <motion.div
+                                                initial={{ scale: 0 }}
+                                                animate={{ scale: 1 }}
+                                                transition={{ type: "spring", stiffness: 500, damping: 25 }}
+                                            >
+                                                <CheckCircle className="w-8 h-8" />
+                                            </motion.div>
                                         ) : uploadedFile.status === 'uploading' || uploadedFile.status === 'analyzing' ? (
-                                            <Loader2 className="w-8 h-8 animate-spin" />
+                                            <motion.div
+                                                animate={{ rotate: 360 }}
+                                                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                            >
+                                                <Loader2 className="w-8 h-8" />
+                                            </motion.div>
                                         ) : (
                                             getFileIcon(uploadedFile.file)
                                         )}
@@ -320,11 +349,44 @@ export const DocumentUploadZone: React.FC<DocumentUploadZoneProps> = ({
                                         <p className="font-medium text-sm truncate">{uploadedFile.file.name}</p>
                                         <p className={`text-xs mt-1 ${getStatusColor(uploadedFile.status)}`}>
                                             {getStatusLabel(uploadedFile.status)}
+                                            {uploadedFile.status === 'analyzing' && (
+                                                <span className="ml-1 inline-flex">
+                                                    <motion.span
+                                                        animate={{ opacity: [0, 1, 0] }}
+                                                        transition={{ duration: 1.5, repeat: Infinity, delay: 0 }}
+                                                    >.</motion.span>
+                                                    <motion.span
+                                                        animate={{ opacity: [0, 1, 0] }}
+                                                        transition={{ duration: 1.5, repeat: Infinity, delay: 0.3 }}
+                                                    >.</motion.span>
+                                                    <motion.span
+                                                        animate={{ opacity: [0, 1, 0] }}
+                                                        transition={{ duration: 1.5, repeat: Infinity, delay: 0.6 }}
+                                                    >.</motion.span>
+                                                </span>
+                                            )}
                                         </p>
 
-                                        {/* Progress bar */}
+                                        {/* Progress bar améliorée avec effet shimmer */}
                                         {uploadedFile.status !== 'completed' && uploadedFile.status !== 'error' && (
-                                            <Progress value={uploadedFile.progress} className="mt-2 h-1" />
+                                            <div className="relative mt-2">
+                                                <Progress value={uploadedFile.progress} className="h-1.5" />
+                                                <motion.div
+                                                    className="absolute inset-0 h-1.5 rounded-full overflow-hidden"
+                                                    style={{
+                                                        background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
+                                                        backgroundSize: '200% 100%'
+                                                    }}
+                                                    animate={{
+                                                        backgroundPosition: ['100% 0%', '-100% 0%']
+                                                    }}
+                                                    transition={{
+                                                        duration: 1.5,
+                                                        repeat: Infinity,
+                                                        ease: 'linear'
+                                                    }}
+                                                />
+                                            </div>
                                         )}
 
                                         {/* Résumé de l'analyse */}
