@@ -88,25 +88,12 @@ export default function IAstedPresentationWrapper({
     onClosePresentation();
   };
 
-  // Convert percentage to pixel position
-  const getButtonStyle = () => {
+  // Debug: log position updates
+  useEffect(() => {
     if (isPresentationActive && showPresentation) {
-      return {
-        position: 'fixed' as const,
-        left: `${buttonPosition.x}%`,
-        top: `${buttonPosition.y}%`,
-        transform: 'translate(-50%, -50%)',
-        transition: 'left 0.8s cubic-bezier(0.4, 0, 0.2, 1), top 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
-        zIndex: 9999
-      };
+      console.log('🔄 Button position updated:', buttonPosition);
     }
-    return {
-      position: 'fixed' as const,
-      right: '24px',
-      bottom: '24px',
-      zIndex: 9999
-    };
-  };
+  }, [buttonPosition, isPresentationActive, showPresentation]);
 
   return (
     <>
@@ -178,19 +165,22 @@ export default function IAstedPresentationWrapper({
         </motion.div>
       )}
 
-      {/* Animated iAsted Button */}
-      <motion.div
-        layout
-        style={getButtonStyle()}
-        animate={isPresentationActive && showPresentation ? {
-          left: `${buttonPosition.x}%`,
-          top: `${buttonPosition.y}%`
-        } : undefined}
-        transition={{
-          type: "spring",
-          stiffness: 120,
-          damping: 20
-        }}
+      {/* Animated iAsted Button - using pure CSS for reliable positioning */}
+      <div
+        className="fixed z-[9999]"
+        style={
+          isPresentationActive && showPresentation
+            ? {
+                left: `${buttonPosition.x}%`,
+                top: `${buttonPosition.y}%`,
+                transform: 'translate(-50%, -50%)',
+                transition: 'left 0.6s ease-out, top 0.6s ease-out',
+              }
+            : {
+                right: '24px',
+                bottom: '24px',
+              }
+        }
       >
         <div className="relative">
           {/* Speaking indicator during presentation */}
@@ -225,7 +215,7 @@ export default function IAstedPresentationWrapper({
             voiceProcessing={voiceProcessing}
           />
         </div>
-      </motion.div>
+      </div>
 
       {/* Presentation Mode */}
       <AnimatePresence>
