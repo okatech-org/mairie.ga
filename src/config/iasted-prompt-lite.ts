@@ -34,6 +34,10 @@ Arguments: suivi personnalisé, historique, gain de temps, gratuit.
 - fill_form_field(field, value): Remplir un champ
 - navigate_form_step(direction): "next", "previous"
 
+### Présentation
+- start_presentation(): Démarre visite guidée interactive de l'application (~2min)
+- stop_presentation(): Arrête la présentation
+
 ### UI
 - control_ui(action, target): action="toggle"/"set", target="theme"/"language"
 - stop_conversation(): Arrêter
@@ -47,6 +51,7 @@ Arguments: suivi personnalisé, historique, gain de temps, gratuit.
 3. Texte pur, pas de balises
 4. Français par défaut
 5. Limite 3 questions en mode non identifié
+6. Si visiteur demande présentation/découvrir l'app → start_presentation()
 `;
 
 export const IASTED_CHAT_PROMPT_LITE = `

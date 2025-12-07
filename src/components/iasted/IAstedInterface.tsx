@@ -9,6 +9,7 @@ import { useTheme } from 'next-themes';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { resolveRoute } from '@/utils/route-mapping';
 import { formAssistantStore } from '@/stores/formAssistantStore';
+import PresentationMode from './PresentationMode';
 
 interface IAstedInterfaceProps {
     userRole?: string;
@@ -36,6 +37,7 @@ export default function IAstedInterface({ userRole = 'user', userFirstName, defa
     const [selectedVoice, setSelectedVoice] = useState<'echo' | 'ash' | 'shimmer'>('ash');
     const [pendingDocument, setPendingDocument] = useState<any>(null);
     const [questionsRemaining, setQuestionsRemaining] = useState(3);
+    const [isPresentationMode, setIsPresentationMode] = useState(false);
     const { setTheme, theme } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
@@ -246,6 +248,24 @@ export default function IAstedInterface({ userRole = 'user', userFirstName, defa
         if (toolName === 'close_chat') {
             setIsOpen(false);
             return { success: true, message: 'Chat fermé' };
+        }
+
+        // ========== MODE PRÉSENTATION ==========
+        
+        if (toolName === 'start_presentation') {
+            console.log('🎬 [IAstedInterface] Démarrage mode présentation');
+            setIsPresentationMode(true);
+            toast.success('Mode présentation activé !');
+            return { 
+                success: true, 
+                message: 'Mode présentation démarré. Je vais vous faire découvrir MAIRIE.GA en moins de 2 minutes.' 
+            };
+        }
+
+        if (toolName === 'stop_presentation') {
+            console.log('🎬 [IAstedInterface] Arrêt mode présentation');
+            setIsPresentationMode(false);
+            return { success: true, message: 'Mode présentation arrêté.' };
         }
 
         // ========== COMMUNICATION & COLLABORATION ==========
@@ -1216,6 +1236,13 @@ export default function IAstedInterface({ userRole = 'user', userFirstName, defa
                 pendingDocument={pendingDocument}
                 onClearPendingDocument={() => setPendingDocument(null)}
             />
+
+            {isPresentationMode && (
+                <PresentationMode 
+                    onClose={() => setIsPresentationMode(false)}
+                    autoStart={true}
+                />
+            )}
         </>
     );
 }
