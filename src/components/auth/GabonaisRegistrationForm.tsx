@@ -567,6 +567,77 @@ export function GabonaisRegistrationForm() {
                                 )}
                             </AnimatePresence>
 
+                            {/* Bannière d'information OCR - affichée quand des champs sont pré-remplis */}
+                            <AnimatePresence>
+                                {filledByIasted.size > 0 && uploadedDocs.some(d => d.status === 'completed') && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 20, height: 0 }}
+                                        animate={{ opacity: 1, y: 0, height: 'auto' }}
+                                        exit={{ opacity: 0, y: -10, height: 0 }}
+                                        className="overflow-hidden"
+                                    >
+                                        <Alert className="border-primary/30 bg-primary/5">
+                                            <Sparkles className="h-4 w-4 text-primary" />
+                                            <AlertTitle className="flex items-center gap-2">
+                                                <span>Données extraites automatiquement</span>
+                                                <span className="text-xs font-normal px-2 py-0.5 bg-primary/10 rounded-full text-primary">
+                                                    {filledByIasted.size} champs
+                                                </span>
+                                            </AlertTitle>
+                                            <AlertDescription className="mt-2 space-y-3">
+                                                <p className="text-sm text-muted-foreground">
+                                                    Les informations suivantes ont été extraites de vos documents. 
+                                                    Vérifiez leur exactitude avant de continuer.
+                                                </p>
+                                                
+                                                {/* Résumé des champs extraits */}
+                                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-3">
+                                                    {Array.from(filledByIasted).map(field => {
+                                                        const value = formData[field as keyof typeof formData];
+                                                        if (!value) return null;
+                                                        
+                                                        const fieldLabels: Record<string, string> = {
+                                                            firstName: 'Prénom',
+                                                            lastName: 'Nom',
+                                                            dateOfBirth: 'Date de naissance',
+                                                            placeOfBirth: 'Lieu de naissance',
+                                                            fatherName: 'Nom du père',
+                                                            motherName: 'Nom de la mère',
+                                                            address: 'Adresse',
+                                                            city: 'Ville'
+                                                        };
+                                                        
+                                                        return (
+                                                            <motion.div
+                                                                key={field}
+                                                                initial={{ opacity: 0, scale: 0.9 }}
+                                                                animate={{ opacity: 1, scale: 1 }}
+                                                                className="bg-background/80 border rounded-lg p-2 text-xs"
+                                                            >
+                                                                <p className="text-muted-foreground font-medium">
+                                                                    {fieldLabels[field] || field}
+                                                                </p>
+                                                                <p className="text-foreground truncate font-medium">
+                                                                    {value}
+                                                                </p>
+                                                            </motion.div>
+                                                        );
+                                                    })}
+                                                </div>
+
+                                                {/* Actions */}
+                                                <div className="flex items-center gap-3 pt-2 border-t border-border/50 mt-3">
+                                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                                        <CheckCircle2 className="w-3 h-3 text-green-600" />
+                                                        <span>Vous pourrez modifier ces informations dans les étapes suivantes</span>
+                                                    </div>
+                                                </div>
+                                            </AlertDescription>
+                                        </Alert>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
                             {/* Zones d'upload individuelles (fallback) */}
                             {uploadedDocs.length === 0 && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
