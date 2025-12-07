@@ -1,18 +1,22 @@
 import { useState, useRef, useEffect } from 'react';
-import { Mic, MessageCircle, Brain } from 'lucide-react';
+import { Mic, MessageCircle, Brain, Square, Hand } from 'lucide-react';
 
 interface IAstedButtonProps {
   voiceListening?: boolean;
   voiceSpeaking?: boolean;
   voiceProcessing?: boolean;
-  pulsing?: boolean; // Visual feedback for sound events
+  pulsing?: boolean;
   onClick?: () => void;
   onSingleClick?: () => void;
   onDoubleClick?: () => void;
+  onPushToTalkStart?: () => void;
+  onPushToTalkEnd?: () => void;
   className?: string;
-  audioLevel?: number; // 0 to 1
-  size?: 'sm' | 'md' | 'lg'; // Button size variant
+  audioLevel?: number;
+  size?: 'sm' | 'md' | 'lg';
   isInterfaceOpen?: boolean;
+  pushToTalkMode?: boolean;
+  wakeWordActive?: boolean;
 }
 
 interface Shockwave {
@@ -1147,8 +1151,12 @@ export const IAstedButtonFull: React.FC<IAstedButtonProps> = ({
   voiceProcessing = false,
   pulsing = false,
   audioLevel = 0,
-  size = 'md', // Default size
-  isInterfaceOpen = false
+  size = 'md',
+  isInterfaceOpen = false,
+  pushToTalkMode = false,
+  wakeWordActive = false,
+  onPushToTalkStart,
+  onPushToTalkEnd
 }) => {
   const [shockwaves, setShockwaves] = useState<Shockwave[]>([]);
   const [isClicked, setIsClicked] = useState(false);
@@ -1245,6 +1253,10 @@ export const IAstedButtonFull: React.FC<IAstedButtonProps> = ({
     }
   };
 
+  // Push-to-talk refs
+  const pushToTalkTimer = useRef<NodeJS.Timeout | null>(null);
+  const isPushToTalkActive = useRef(false);
+
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsActive(true);
 
@@ -1255,11 +1267,29 @@ export const IAstedButtonFull: React.FC<IAstedButtonProps> = ({
         y: e.clientY - rect.top
       };
     }
+
+    // Push-to-talk: Start after short hold (300ms) to differentiate from click
+    if (pushToTalkMode && onPushToTalkStart) {
+      pushToTalkTimer.current = setTimeout(() => {
+        isPushToTalkActive.current = true;
+        onPushToTalkStart();
+      }, 300);
+    }
   };
 
   const handleMouseUp = () => {
     setIsActive(false);
     setIsDragging(false);
+
+    // Push-to-talk: End
+    if (pushToTalkTimer.current) {
+      clearTimeout(pushToTalkTimer.current);
+      pushToTalkTimer.current = null;
+    }
+    if (isPushToTalkActive.current && onPushToTalkEnd) {
+      onPushToTalkEnd();
+      isPushToTalkActive.current = false;
+    }
 
     if (containerRef.current) {
       const pos = buttonPosition.current;
@@ -1270,6 +1300,16 @@ export const IAstedButtonFull: React.FC<IAstedButtonProps> = ({
   const handleMouseLeave = () => {
     setIsActive(false);
     setIsDragging(false);
+
+    // Push-to-talk: End on leave
+    if (pushToTalkTimer.current) {
+      clearTimeout(pushToTalkTimer.current);
+      pushToTalkTimer.current = null;
+    }
+    if (isPushToTalkActive.current && onPushToTalkEnd) {
+      onPushToTalkEnd();
+      isPushToTalkActive.current = false;
+    }
 
     if (containerRef.current) {
       const pos = buttonPosition.current;
@@ -1403,17 +1443,48 @@ export const IAstedButtonFull: React.FC<IAstedButtonProps> = ({
               <div key={shockwave.id} className="shockwave-effect"></div>
             ))}
 
+            {/* Indicateur STOP quand l'IA parle */}
+            {voiceSpeaking && (
+              <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none">
+                <div className="absolute inset-0 bg-red-500/20 rounded-full animate-pulse" />
+                <div className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1.5 shadow-lg animate-bounce">
+                  <Square className="w-3 h-3 text-white fill-white" />
+                </div>
+              </div>
+            )}
+
+            {/* Indicateur Push-to-Talk */}
+            {pushToTalkMode && !voiceListening && !voiceSpeaking && !voiceProcessing && (
+              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-amber-500/90 rounded-full px-2 py-0.5 shadow-lg z-50">
+                <span className="text-[10px] text-white font-medium whitespace-nowrap flex items-center gap-1">
+                  <Hand className="w-3 h-3" />
+                  Maintenir
+                </span>
+              </div>
+            )}
+
+            {/* Indicateur Wake Word actif */}
+            {wakeWordActive && !voiceListening && !voiceSpeaking && !voiceProcessing && (
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-emerald-500/90 rounded-full px-2 py-0.5 shadow-lg z-50 animate-pulse">
+                <span className="text-[10px] text-white font-medium whitespace-nowrap">
+                  "iAsted..."
+                </span>
+              </div>
+            )}
+
             {/* Conteneur des icônes au centre - État basé sur le mode actif */}
             <div className="fixed-icons-container">
               <div className="icon-container">
-                {isInterfaceOpen && !voiceListening && !voiceSpeaking && !voiceProcessing ? (
+                {voiceSpeaking ? (
+                  // Afficher STOP quand l'IA parle
+                  <div className="flex flex-col items-center gap-1">
+                    <Square className="text-white icon-svg fill-white/30" style={{ opacity: 1, transform: 'scale(1.1)' }} />
+                    <span className="text-white/80 text-[10px] font-medium">STOP</span>
+                  </div>
+                ) : isInterfaceOpen && !voiceListening && !voiceProcessing ? (
                   <MessageCircle className="text-white icon-svg" style={{ opacity: 1, transform: 'scale(1.2)' }} />
                 ) : voiceListening ? (
                   <Mic className="text-white icon-svg" style={{ opacity: 1, transform: 'scale(1.3)' }} />
-                ) : voiceSpeaking ? (
-                  <span className="text-white iasted-text" style={{ opacity: 1, transform: 'scale(1.2)', fontSize: 'var(--iasted-text-size)' }}>
-                    iAsted
-                  </span>
                 ) : voiceProcessing ? (
                   <Brain className="text-white icon-svg" style={{ opacity: 1, transform: 'scale(1.2)' }} />
                 ) : (
