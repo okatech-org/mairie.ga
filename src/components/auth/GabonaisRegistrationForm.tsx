@@ -118,6 +118,69 @@ function EditableOCRField({ field, label, value, isDate, onSave }: EditableOCRFi
     );
 }
 
+// Validation schemas for each step
+const stepValidations = {
+    1: () => ({ isValid: true, errors: [] }), // Documents are optional at step 1
+    2: (data: typeof initialFormData) => {
+        const errors: string[] = [];
+        if (!data.firstName.trim()) errors.push("Prénom requis");
+        if (!data.lastName.trim()) errors.push("Nom requis");
+        if (!data.dateOfBirth) errors.push("Date de naissance requise");
+        if (!data.placeOfBirth.trim()) errors.push("Lieu de naissance requis");
+        return { isValid: errors.length === 0, errors };
+    },
+    3: (data: typeof initialFormData) => {
+        const errors: string[] = [];
+        if (!data.maritalStatus) errors.push("Situation matrimoniale requise");
+        return { isValid: errors.length === 0, errors };
+    },
+    4: (data: typeof initialFormData) => {
+        const errors: string[] = [];
+        if (!data.address.trim()) errors.push("Adresse requise");
+        if (!data.city.trim()) errors.push("Ville requise");
+        if (!data.postalCode.trim()) errors.push("Code postal requis");
+        if (!data.emergencyContactLastName.trim()) errors.push("Nom du contact d'urgence requis");
+        if (!data.emergencyContactFirstName.trim()) errors.push("Prénom du contact d'urgence requis");
+        if (!data.emergencyContactPhone.trim()) errors.push("Téléphone du contact d'urgence requis");
+        return { isValid: errors.length === 0, errors };
+    },
+    5: () => ({ isValid: true, errors: [] }), // Profession is optional
+    6: (data: typeof initialFormData) => {
+        const errors: string[] = [];
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!data.email.trim()) errors.push("Email requis");
+        else if (!emailRegex.test(data.email)) errors.push("Email invalide");
+        if (!data.phone.trim()) errors.push("Téléphone requis");
+        if (!data.password) errors.push("Mot de passe requis");
+        else if (data.password.length < 6) errors.push("Mot de passe: minimum 6 caractères");
+        if (data.password !== data.confirmPassword) errors.push("Les mots de passe ne correspondent pas");
+        return { isValid: errors.length === 0, errors };
+    }
+};
+
+const initialFormData = {
+    firstName: '',
+    lastName: '',
+    dateOfBirth: '',
+    placeOfBirth: '',
+    maritalStatus: '',
+    fatherName: '',
+    motherName: '',
+    address: '',
+    city: '',
+    postalCode: '',
+    emergencyContactFirstName: '',
+    emergencyContactLastName: '',
+    emergencyContactPhone: '',
+    professionalStatus: '',
+    employer: '',
+    profession: '',
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: '',
+};
+
 export function GabonaisRegistrationForm() {
     const navigate = useNavigate();
     const [step, setStep] = useState(1);
@@ -125,33 +188,13 @@ export function GabonaisRegistrationForm() {
     const [registrationComplete, setRegistrationComplete] = useState(false);
     const [generatedPin, setGeneratedPin] = useState("");
     const [pinCopied, setPinCopied] = useState(false);
+    const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
     // Tracker les champs remplis par iAsted
     const [filledByIasted, setFilledByIasted] = useState<Set<string>>(new Set());
 
     // Données du formulaire avec état local
-    const [formData, setFormData] = useState({
-        firstName: '',
-        lastName: '',
-        dateOfBirth: '',
-        placeOfBirth: '',
-        maritalStatus: '',
-        fatherName: '',
-        motherName: '',
-        address: '',
-        city: '',
-        postalCode: '',
-        emergencyContactFirstName: '',
-        emergencyContactLastName: '',
-        emergencyContactPhone: '',
-        professionalStatus: '',
-        employer: '',
-        profession: '',
-        email: '',
-        phone: '',
-        password: '',
-        confirmPassword: '',
-    });
+    const [formData, setFormData] = useState(initialFormData);
 
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [acceptPrivacy, setAcceptPrivacy] = useState(false);
@@ -385,12 +428,36 @@ export function GabonaisRegistrationForm() {
         { id: 6, label: "Révision", icon: Eye },
     ];
 
+    const validateCurrentStep = (): boolean => {
+        const validator = stepValidations[step as keyof typeof stepValidations];
+        if (!validator) return true;
+        
+        const { isValid, errors } = validator(formData);
+        setValidationErrors(errors);
+        
+        if (!isValid) {
+            toast.error(errors[0], {
+                description: errors.length > 1 ? `Et ${errors.length - 1} autre(s) erreur(s)` : undefined
+            });
+        }
+        
+        return isValid;
+    };
+
     const handleNext = () => {
+        // Clear previous errors
+        setValidationErrors([]);
+        
+        // Validate current step
+        if (!validateCurrentStep()) {
+            return;
+        }
+        
         setLoading(true);
         setTimeout(() => {
             setLoading(false);
             setStep(step + 1);
-        }, 800);
+        }, 500);
     };
 
     const copyPinToClipboard = () => {
@@ -509,6 +576,29 @@ export function GabonaisRegistrationForm() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                    {/* Affichage des erreurs de validation */}
+                    <AnimatePresence>
+                        {validationErrors.length > 0 && (
+                            <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                            >
+                                <Alert variant="destructive" className="border-destructive/50 bg-destructive/5">
+                                    <X className="h-4 w-4" />
+                                    <AlertTitle>Veuillez corriger les erreurs suivantes</AlertTitle>
+                                    <AlertDescription>
+                                        <ul className="list-disc list-inside mt-2 space-y-1">
+                                            {validationErrors.map((error, idx) => (
+                                                <li key={idx} className="text-sm">{error}</li>
+                                            ))}
+                                        </ul>
+                                    </AlertDescription>
+                                </Alert>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
                     {step === 1 && (
                         <div className="space-y-6">
                             {/* Zone de drag-and-drop principale avec OCR */}
