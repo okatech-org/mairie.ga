@@ -266,7 +266,11 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
 
       case 'move':
         if (action.position) {
-          setButtonPosition({ x: action.position.x, y: action.position.y });
+          console.log('🎯 Moving button to:', action.position);
+          const newPosition = { x: action.position.x, y: action.position.y };
+          setButtonPosition(newPosition);
+          // Immediately notify parent of position change
+          onButtonPositionChange?.(newPosition.x, newPosition.y);
         }
         break;
 
@@ -305,7 +309,7 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
         setTimeout(() => setShowPointer(false), 500);
         break;
     }
-  }, []);
+  }, [onButtonPositionChange]);
 
   // Execute all actions for a step
   const executeStepActions = useCallback((actions: PresentationAction[]) => {
