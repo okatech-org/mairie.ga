@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import "https://deno.land/x/xhr@0.1.0/mod.ts"
 
 const corsHeaders = {
@@ -12,6 +13,34 @@ serve(async (req) => {
     }
 
     try {
+        // Verify user authentication
+        const authHeader = req.headers.get('Authorization')
+        if (!authHeader) {
+            console.error('No authorization header provided')
+            return new Response(JSON.stringify({ error: 'Unauthorized - No token provided' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            })
+        }
+
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
+        
+        const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+            global: { headers: { Authorization: authHeader } }
+        })
+
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+        if (authError || !user) {
+            console.error('Authentication failed:', authError?.message)
+            return new Response(JSON.stringify({ error: 'Unauthorized - Invalid token' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            })
+        }
+
+        console.log(`Authenticated user: ${user.id}`)
+
         const { message, conversationHistory, systemPrompt } = await req.json()
         const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')
 
@@ -45,6 +74,7 @@ serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
     } catch (error) {
+        console.error('Error in chat-with-iasted:', error)
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
         return new Response(JSON.stringify({ error: errorMessage }), {
             status: 400,
