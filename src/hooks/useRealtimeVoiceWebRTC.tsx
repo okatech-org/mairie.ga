@@ -118,14 +118,34 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             peerConnection.current = pc;
 
             // Audio Element for output (stored in ref for interruption control)
+            // Remove any existing audio element first
+            if (audioElement.current) {
+                audioElement.current.pause();
+                audioElement.current.srcObject = null;
+                audioElement.current.remove();
+            }
+            
             const audioEl = document.createElement('audio');
+            audioEl.id = 'iasted-audio-output';
             audioEl.autoplay = true;
             audioEl.setAttribute('playsinline', 'true');
+            audioEl.setAttribute('webkit-playsinline', 'true');
             audioEl.muted = false;
+            audioEl.volume = 1.0;
             // Append to DOM to ensure browser allows playback
-            audioEl.style.display = 'none';
+            audioEl.style.cssText = 'position:fixed;top:-9999px;left:-9999px;';
             document.body.appendChild(audioEl);
             audioElement.current = audioEl;
+            
+            // Pre-warm the audio context with user gesture
+            try {
+                const tempContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+                await tempContext.resume();
+                console.log('🔊 Audio context pre-warmed');
+                tempContext.close();
+            } catch (e) {
+                console.log('⚠️ Audio context pre-warm skipped:', e);
+            }
             
             pc.ontrack = (e) => {
                 console.log('🎧 WebRTC Track received:', e.track.kind, e.streams[0].id);
@@ -137,20 +157,36 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                     audioEl.volume = 1.0;
                     audioEl.muted = false;
                     
-                    // Force play with user gesture context
-                    const playPromise = audioEl.play();
-                    if (playPromise !== undefined) {
-                        playPromise
-                            .then(() => {
-                                console.log('✅ Audio playback started successfully');
-                            })
-                            .catch(err => {
-                                console.error('❌ Audio play error:', err);
-                                // Try unmuting and playing again
-                                audioEl.muted = false;
-                                audioEl.play().catch(e => console.error('❌ Retry play failed:', e));
-                            });
-                    }
+                    // Force play with multiple fallback strategies
+                    const attemptPlay = async () => {
+                        try {
+                            // Strategy 1: Direct play
+                            await audioEl.play();
+                            console.log('✅ Audio playback started successfully');
+                        } catch (err: any) {
+                            console.error('❌ Audio play error:', err.message);
+                            
+                            // Strategy 2: Try with Web Audio API
+                            try {
+                                const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                                await audioCtx.resume();
+                                const source = audioCtx.createMediaStreamSource(e.streams[0]);
+                                source.connect(audioCtx.destination);
+                                console.log('✅ Audio playback via Web Audio API');
+                            } catch (webAudioErr) {
+                                console.error('❌ Web Audio fallback failed:', webAudioErr);
+                                
+                                // Strategy 3: User notification
+                                toast({
+                                    title: "Audio bloqué",
+                                    description: "Cliquez sur le bouton iAsted pour activer l'audio",
+                                    variant: "destructive"
+                                });
+                            }
+                        }
+                    };
+                    
+                    attemptPlay();
                 }
             };
 
