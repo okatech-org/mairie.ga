@@ -841,7 +841,10 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
     };
 
     const handleToolCall = async (item: any) => {
-        const { name, arguments: argsString, call_id } = item;
+        // OpenAI Realtime API uses 'id' for function call items, not 'call_id'
+        const { name, arguments: argsString, id: callId, call_id } = item;
+        const actualCallId = callId || call_id || item.id;
+        
         let args = {};
         try {
             args = JSON.parse(argsString || '{}');
@@ -849,7 +852,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             console.error('Failed to parse tool args:', argsString);
         }
 
-        console.log(`🔧 Tool Call: ${name}`, args, 'call_id:', call_id);
+        console.log(`🔧 Tool Call: ${name}`, args, 'callId:', actualCallId, 'item:', item);
 
         let result = '';
 
@@ -858,7 +861,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             console.log('🛑 interrupt_speech tool called - interrupting immediately');
             cancelResponse();
             result = 'Parole interrompue. J\'écoute.';
-            if (call_id) sendToolOutput(call_id, result);
+            if (actualCallId) sendToolOutput(actualCallId, result);
             return;
         }
 
@@ -872,13 +875,13 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             } else {
                 result = 'Parole adressée à moi, je réponds.';
             }
-            if (call_id) sendToolOutput(call_id, result);
+            if (actualCallId) sendToolOutput(actualCallId, result);
             return;
         }
 
         if (name === 'stop_conversation') {
             result = 'Conversation arrêtée. Au revoir!';
-            if (call_id) sendToolOutput(call_id, result);
+            if (actualCallId) sendToolOutput(actualCallId, result);
             setTimeout(() => disconnect(), 500);
             return;
         }
@@ -887,7 +890,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             const nextVoice = currentVoice === 'shimmer' ? 'ash' : 'shimmer';
             changeVoice(nextVoice);
             result = `Voix changée pour ${nextVoice === 'shimmer' ? 'une voix féminine' : 'une voix masculine'}.`;
-            if (call_id) sendToolOutput(call_id, result);
+            if (actualCallId) sendToolOutput(actualCallId, result);
             return;
         }
 
@@ -899,7 +902,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             } else {
                 result = 'Chemin non spécifié.';
             }
-            if (call_id) sendToolOutput(call_id, result);
+            if (actualCallId) sendToolOutput(actualCallId, result);
             if (onToolCall) onToolCall(name, args);
             return;
         }
@@ -913,7 +916,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                 detail: { action: 'control_ui', controlAction: action, rate }
             }));
             
-            if (call_id) sendToolOutput(call_id, result);
+            if (actualCallId) sendToolOutput(actualCallId, result);
             if (onToolCall) onToolCall(name, args);
             return;
         }
@@ -925,7 +928,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
 
         // Send generic success response for other tools
         result = `Outil ${name} exécuté avec succès.`;
-        if (call_id) sendToolOutput(call_id, result);
+        if (actualCallId) sendToolOutput(actualCallId, result);
     };
 
     const sendMessage = (text: string) => {
