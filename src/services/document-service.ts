@@ -310,7 +310,7 @@ export const documentService = {
 
         const { error } = await supabase
             .from('documents')
-            .update({ expiration_date: date })
+            .update({ expiration_date: date } as any)
             .eq('id', id)
             .eq('user_id', user.id);
 

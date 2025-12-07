@@ -27,7 +27,7 @@ export const MOCK_FOREIGNERS: ForeignerUser[] = [
         phone: '+33698765432',
         email: 'john.doe@example.com',
         preferredLanguage: 'EN',
-        assignedConsulate: 'fr-consulat-paris',
+        assignedMunicipality: 'Libreville',
         registrationStatus: RegistrationStatus.PENDING_APPROVAL,
         registrationDate: new Date('2024-03-15'),
         accessLevel: 'LIMITED',

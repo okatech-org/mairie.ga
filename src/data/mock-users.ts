@@ -179,7 +179,7 @@ const MAPPED_CITIZENS: DemoUser[] = MOCK_GABONAIS_CITIZENS.map(c => ({
   id: c.id,
   role: MunicipalRole.CITOYEN,
   name: `${c.firstName} ${c.lastName}`,
-  entityId: c.assignedConsulate, // Will need to be mapped to mairie
+  entityId: c.assignedMunicipality, // Mapped to municipality
   permissions: ['Accès complet', 'État Civil', 'Urbanisme', 'Légalisation'],
   badge: '🇬🇦',
   description: `Citoyen Gabonais - ${c.profession}`,
@@ -192,7 +192,7 @@ const MAPPED_FOREIGNERS: DemoUser[] = MOCK_FOREIGNERS.map(f => ({
   id: f.id,
   role: MunicipalRole.ETRANGER_RESIDENT,
   name: `${f.firstName} ${f.lastName}`,
-  entityId: f.assignedConsulate, // Will need to be mapped to mairie
+  entityId: f.assignedMunicipality, // Mapped to municipality
   permissions: ['Certificat résidence', 'Légalisations', 'Attestations'],
   badge: '🌍',
   description: `Étranger Résident - ${f.nationality}`,
