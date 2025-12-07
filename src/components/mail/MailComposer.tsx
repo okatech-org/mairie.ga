@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Paperclip, Send, Loader2, X, FileText } from 'lucide-react';
+import { Paperclip, Send, Loader2, X, FileText, Eye } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -21,6 +21,7 @@ interface Attachment {
     file: File;
     uploading: boolean;
     url?: string;
+    localPreviewUrl?: string;
 }
 
 export function MailComposer({ isOpen, onClose, replyTo }: MailComposerProps) {
@@ -29,6 +30,7 @@ export function MailComposer({ isOpen, onClose, replyTo }: MailComposerProps) {
     const [content, setContent] = useState('');
     const [isSending, setIsSending] = useState(false);
     const [attachments, setAttachments] = useState<Attachment[]>([]);
+    const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,7 +51,9 @@ export function MailComposer({ isOpen, onClose, replyTo }: MailComposerProps) {
             return;
         }
 
-        const newAttachment: Attachment = { file, uploading: true };
+        // Create local preview URL
+        const localPreviewUrl = URL.createObjectURL(file);
+        const newAttachment: Attachment = { file, uploading: true, localPreviewUrl };
         setAttachments(prev => [...prev, newAttachment]);
 
         try {
@@ -75,6 +79,7 @@ export function MailComposer({ isOpen, onClose, replyTo }: MailComposerProps) {
         } catch (error: any) {
             console.error('Erreur upload:', error);
             toast.error('Erreur lors du téléchargement du fichier');
+            URL.revokeObjectURL(localPreviewUrl);
             setAttachments(prev => prev.filter(att => att.file !== file));
         }
 
@@ -85,7 +90,11 @@ export function MailComposer({ isOpen, onClose, replyTo }: MailComposerProps) {
     };
 
     const removeAttachment = (file: File) => {
-        setAttachments(prev => prev.filter(att => att.file !== file));
+        const att = attachments.find(a => a.file === file);
+        if (att?.localPreviewUrl) {
+            URL.revokeObjectURL(att.localPreviewUrl);
+        }
+        setAttachments(prev => prev.filter(a => a.file !== file));
     };
 
     const handleSend = async () => {
@@ -124,6 +133,10 @@ export function MailComposer({ isOpen, onClose, replyTo }: MailComposerProps) {
 
             if (data?.success) {
                 toast.success('Email envoyé avec succès');
+                // Cleanup preview URLs
+                attachments.forEach(att => {
+                    if (att.localPreviewUrl) URL.revokeObjectURL(att.localPreviewUrl);
+                });
                 setSubject('');
                 setRecipient('');
                 setContent('');
@@ -142,129 +155,175 @@ export function MailComposer({ isOpen, onClose, replyTo }: MailComposerProps) {
 
     const handleClose = () => {
         if (!isSending) {
+            // Cleanup preview URLs
+            attachments.forEach(att => {
+                if (att.localPreviewUrl) URL.revokeObjectURL(att.localPreviewUrl);
+            });
             setAttachments([]);
             onClose();
         }
     };
 
+    const formatFileSize = (bytes: number) => {
+        if (bytes < 1024) return `${bytes} o`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
+    };
+
     return (
-        <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-[600px] p-0 gap-0 overflow-hidden">
-                <DialogHeader className="p-4 border-b bg-muted/30">
-                    <DialogTitle className="flex items-center justify-between">
-                        <span>{replyTo ? 'Répondre' : 'Nouveau Message'}</span>
-                    </DialogTitle>
-                </DialogHeader>
+        <>
+            <Dialog open={isOpen} onOpenChange={handleClose}>
+                <DialogContent className="sm:max-w-[600px] p-0 gap-0 overflow-hidden">
+                    <DialogHeader className="p-4 border-b bg-muted/30">
+                        <DialogTitle className="flex items-center justify-between">
+                            <span>{replyTo ? 'Répondre' : 'Nouveau Message'}</span>
+                        </DialogTitle>
+                    </DialogHeader>
 
-                <div className="p-4 flex flex-col gap-4">
-                    <div className="grid gap-2">
-                        <Label htmlFor="to" className="text-xs font-medium text-muted-foreground">À</Label>
-                        <Input
-                            id="to"
-                            type="email"
-                            value={recipient}
-                            onChange={(e) => setRecipient(e.target.value)}
-                            className="border-0 border-b rounded-none px-0 focus-visible:ring-0 shadow-none"
-                            placeholder="destinataire@exemple.com"
-                            disabled={isSending}
-                        />
-                    </div>
-
-                    <div className="grid gap-2">
-                        <Label htmlFor="subject" className="text-xs font-medium text-muted-foreground">Objet</Label>
-                        <Input
-                            id="subject"
-                            value={subject}
-                            onChange={(e) => setSubject(e.target.value)}
-                            className="border-0 border-b rounded-none px-0 focus-visible:ring-0 shadow-none font-medium"
-                            placeholder="Sujet du message"
-                            disabled={isSending}
-                        />
-                    </div>
-
-                    <div className="min-h-[200px]">
-                        <Textarea
-                            value={content}
-                            onChange={(e) => setContent(e.target.value)}
-                            className="min-h-[200px] border-0 focus-visible:ring-0 resize-none p-0 shadow-none"
-                            placeholder="Rédigez votre message ici..."
-                            disabled={isSending}
-                        />
-                    </div>
-
-                    {/* Attachments display */}
-                    {attachments.length > 0 && (
-                        <div className="flex flex-wrap gap-2 pt-2 border-t">
-                            {attachments.map((att, index) => (
-                                <div 
-                                    key={index}
-                                    className="flex items-center gap-2 bg-muted/50 rounded-md px-3 py-2 text-sm"
-                                >
-                                    <FileText className="w-4 h-4 text-primary" />
-                                    <span className="max-w-[150px] truncate">{att.file.name}</span>
-                                    {att.uploading ? (
-                                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                                    ) : (
-                                        <button 
-                                            onClick={() => removeAttachment(att.file)}
-                                            className="hover:text-destructive transition-colors"
-                                            disabled={isSending}
-                                        >
-                                            <X className="w-4 h-4" />
-                                        </button>
-                                    )}
-                                </div>
-                            ))}
+                    <div className="p-4 flex flex-col gap-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="to" className="text-xs font-medium text-muted-foreground">À</Label>
+                            <Input
+                                id="to"
+                                type="email"
+                                value={recipient}
+                                onChange={(e) => setRecipient(e.target.value)}
+                                className="border-0 border-b rounded-none px-0 focus-visible:ring-0 shadow-none"
+                                placeholder="destinataire@exemple.com"
+                                disabled={isSending}
+                            />
                         </div>
-                    )}
-                </div>
 
-                <DialogFooter className="p-4 border-t bg-muted/10 flex justify-between items-center sm:justify-between">
-                    <div className="flex items-center gap-2">
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="application/pdf"
-                            onChange={handleFileSelect}
-                            className="hidden"
-                            disabled={isSending || attachments.length >= 5}
-                        />
-                        <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="gap-2 text-muted-foreground"
-                            disabled={isSending || attachments.length >= 5}
-                            onClick={() => fileInputRef.current?.click()}
-                        >
-                            <Paperclip className="w-4 h-4" /> 
-                            Joindre un PDF
-                        </Button>
+                        <div className="grid gap-2">
+                            <Label htmlFor="subject" className="text-xs font-medium text-muted-foreground">Objet</Label>
+                            <Input
+                                id="subject"
+                                value={subject}
+                                onChange={(e) => setSubject(e.target.value)}
+                                className="border-0 border-b rounded-none px-0 focus-visible:ring-0 shadow-none font-medium"
+                                placeholder="Sujet du message"
+                                disabled={isSending}
+                            />
+                        </div>
+
+                        <div className="min-h-[200px]">
+                            <Textarea
+                                value={content}
+                                onChange={(e) => setContent(e.target.value)}
+                                className="min-h-[200px] border-0 focus-visible:ring-0 resize-none p-0 shadow-none"
+                                placeholder="Rédigez votre message ici..."
+                                disabled={isSending}
+                            />
+                        </div>
+
+                        {/* Attachments display */}
                         {attachments.length > 0 && (
-                            <span className="text-xs text-muted-foreground">
-                                {attachments.length}/5 fichier{attachments.length > 1 ? 's' : ''}
-                            </span>
+                            <div className="flex flex-wrap gap-2 pt-2 border-t">
+                                {attachments.map((att, index) => (
+                                    <div 
+                                        key={index}
+                                        className="flex items-center gap-2 bg-muted/50 rounded-md px-3 py-2 text-sm group"
+                                    >
+                                        <FileText className="w-4 h-4 text-primary flex-shrink-0" />
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="max-w-[120px] truncate text-sm font-medium">{att.file.name}</span>
+                                            <span className="text-xs text-muted-foreground">{formatFileSize(att.file.size)}</span>
+                                        </div>
+                                        {att.uploading ? (
+                                            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground flex-shrink-0" />
+                                        ) : (
+                                            <div className="flex items-center gap-1 flex-shrink-0">
+                                                <button 
+                                                    onClick={() => setPreviewAttachment(att)}
+                                                    className="p-1 hover:bg-primary/10 rounded transition-colors"
+                                                    title="Aperçu"
+                                                >
+                                                    <Eye className="w-4 h-4 text-primary" />
+                                                </button>
+                                                <button 
+                                                    onClick={() => removeAttachment(att.file)}
+                                                    className="p-1 hover:bg-destructive/10 rounded transition-colors hover:text-destructive"
+                                                    disabled={isSending}
+                                                    title="Supprimer"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
                         )}
                     </div>
-                    <div className="flex gap-2">
-                        <Button variant="ghost" onClick={handleClose} disabled={isSending}>
-                            Annuler
-                        </Button>
-                        <Button onClick={handleSend} disabled={isSending} className="gap-2">
-                            {isSending ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    Envoi...
-                                </>
-                            ) : (
-                                <>
-                                    <Send className="w-4 h-4" />
-                                    Envoyer
-                                </>
+
+                    <DialogFooter className="p-4 border-t bg-muted/10 flex justify-between items-center sm:justify-between">
+                        <div className="flex items-center gap-2">
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="application/pdf"
+                                onChange={handleFileSelect}
+                                className="hidden"
+                                disabled={isSending || attachments.length >= 5}
+                            />
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="gap-2 text-muted-foreground"
+                                disabled={isSending || attachments.length >= 5}
+                                onClick={() => fileInputRef.current?.click()}
+                            >
+                                <Paperclip className="w-4 h-4" /> 
+                                Joindre un PDF
+                            </Button>
+                            {attachments.length > 0 && (
+                                <span className="text-xs text-muted-foreground">
+                                    {attachments.length}/5 fichier{attachments.length > 1 ? 's' : ''}
+                                </span>
                             )}
-                        </Button>
+                        </div>
+                        <div className="flex gap-2">
+                            <Button variant="ghost" onClick={handleClose} disabled={isSending}>
+                                Annuler
+                            </Button>
+                            <Button onClick={handleSend} disabled={isSending} className="gap-2">
+                                {isSending ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Envoi...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Send className="w-4 h-4" />
+                                        Envoyer
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* PDF Preview Modal */}
+            <Dialog open={!!previewAttachment} onOpenChange={() => setPreviewAttachment(null)}>
+                <DialogContent className="max-w-4xl h-[80vh] p-0 gap-0 overflow-hidden">
+                    <DialogHeader className="p-4 border-b bg-muted/30">
+                        <DialogTitle className="flex items-center gap-2">
+                            <FileText className="w-5 h-5 text-primary" />
+                            <span className="truncate">{previewAttachment?.file.name}</span>
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="flex-1 h-full min-h-0">
+                        {previewAttachment?.localPreviewUrl && (
+                            <iframe
+                                src={previewAttachment.localPreviewUrl}
+                                className="w-full h-[calc(80vh-80px)] border-0"
+                                title="Aperçu PDF"
+                            />
+                        )}
                     </div>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }
