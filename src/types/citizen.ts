@@ -57,6 +57,7 @@ export interface GabonaisCitizen {
     dateOfBirth: Date;
     birthPlace: string; // Région gabonaise
     gender: 'M' | 'F' | 'O';
+    photoUrl?: string; // Photo d'identité
 
     // Documents d'identification
     cniNumber: string;
@@ -88,9 +89,9 @@ export interface GabonaisCitizen {
     preferredLanguage: 'FR' | 'EN';
     preferredContact: 'EMAIL' | 'SMS' | 'PHONE';
 
-    // Consulat
-    assignedConsulate: string; // ID du consulat de compétence
-    consulateFile?: string; // Numéro dossier au consulat
+    // Mairie / Municipalité
+    assignedMunicipality: string; // Nom de la mairie
+    municipalFile?: string; // Numéro dossier municipal
 
     // Inscription
     registrationStatus: RegistrationStatus.APPROVED; // Toujours approuvé
@@ -121,6 +122,7 @@ export interface ForeignerUser {
     birthPlace: string; // Pays d'origine
     gender: 'M' | 'F' | 'O';
     nationality: string; // Pays de nationalité
+    photoUrl?: string;
 
     // Documents d'identification
     documentType: 'PASSPORT' | 'RESIDENCE_CARD' | 'WORK_PERMIT' | 'ID_CARD';
@@ -156,9 +158,9 @@ export interface ForeignerUser {
     email: string;
     preferredLanguage: 'FR' | 'EN';
 
-    // Consulat
-    assignedConsulate: string; // ID du consulat de compétence
-    consultantFileNumber?: string; // Généré après approbation
+    // Mairie
+    assignedMunicipality: string;
+    municipalFileNumber?: string;
 
     // Inscription
     registrationStatus: RegistrationStatus; // PENDING_APPROVAL, APPROVED, etc.

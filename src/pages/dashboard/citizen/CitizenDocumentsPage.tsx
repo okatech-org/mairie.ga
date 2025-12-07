@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Document, DocumentType } from '@/types/document';
@@ -62,7 +63,7 @@ export default function CitizenDocumentsPage() {
     };
 
     const updateFileProgress = (id: string, progress: number, status?: UploadingFile['status']) => {
-        setUploadingFiles(prev => prev.map(f => 
+        setUploadingFiles(prev => prev.map(f =>
             f.id === id ? { ...f, progress, status: status || f.status } : f
         ));
     };
@@ -85,20 +86,20 @@ export default function CitizenDocumentsPage() {
             progress: 0,
             status: 'uploading' as const
         }));
-        
+
         setUploadingFiles(prev => [...newUploadingFiles, ...prev]);
 
         // Upload files with simulated progress
         const uploadPromises = validFiles.map(async (file, index) => {
             const uploadId = newUploadingFiles[index].id;
-            
+
             try {
                 // Simulate progress updates
                 const progressInterval = setInterval(() => {
                     setUploadingFiles(prev => {
                         const current = prev.find(f => f.id === uploadId);
                         if (current && current.progress < 90 && current.status === 'uploading') {
-                            return prev.map(f => 
+                            return prev.map(f =>
                                 f.id === uploadId ? { ...f, progress: Math.min(f.progress + 15, 90) } : f
                             );
                         }
@@ -107,10 +108,10 @@ export default function CitizenDocumentsPage() {
                 }, 200);
 
                 const newDoc = await documentService.uploadDocument(file, selectedType);
-                
+
                 clearInterval(progressInterval);
                 updateFileProgress(uploadId, 100, 'success');
-                
+
                 // Remove from uploading list after delay
                 setTimeout(() => {
                     setUploadingFiles(prev => prev.filter(f => f.id !== uploadId));
@@ -127,7 +128,7 @@ export default function CitizenDocumentsPage() {
         });
 
         const results = await Promise.allSettled(uploadPromises);
-        
+
         const successful = results
             .filter((r): r is PromiseFulfilledResult<Document> => r.status === 'fulfilled')
             .map(r => r.value);
@@ -162,7 +163,7 @@ export default function CitizenDocumentsPage() {
 
     const confirmDelete = async () => {
         if (!deleteTarget) return;
-        
+
         try {
             await documentService.deleteDocument(deleteTarget.id);
             toast.success("Document supprimé");
@@ -181,10 +182,10 @@ export default function CitizenDocumentsPage() {
 
     const confirmRename = async () => {
         if (!renameTarget || !newName.trim()) return;
-        
+
         try {
             await documentService.renameDocument(renameTarget.id, newName.trim());
-            setDocuments(prev => prev.map(d => 
+            setDocuments(prev => prev.map(d =>
                 d.id === renameTarget.id ? { ...d, title: newName.trim() } : d
             ));
             toast.success("Document renommé");
@@ -221,18 +222,18 @@ export default function CitizenDocumentsPage() {
     };
 
     const isImageFile = (doc: Document) => {
-        return doc.fileType?.startsWith('image/') || 
-               doc.url?.match(/\.(jpg|jpeg|png|gif|webp)(\?|$)/i);
+        return doc.fileType?.startsWith('image/') ||
+            doc.url?.match(/\.(jpg|jpeg|png|gif|webp)(\?|$)/i);
     };
 
     const DocumentThumbnail = ({ doc }: { doc: Document }) => {
         const [imageError, setImageError] = useState(false);
-        
+
         if (isImageFile(doc) && doc.thumbnailUrl && !imageError) {
             return (
                 <div className="relative w-full h-32 rounded-lg overflow-hidden bg-muted">
-                    <img 
-                        src={doc.thumbnailUrl} 
+                    <img
+                        src={doc.thumbnailUrl}
                         alt={doc.title}
                         className="w-full h-full object-cover"
                         onError={() => setImageError(true)}
@@ -241,7 +242,7 @@ export default function CitizenDocumentsPage() {
                 </div>
             );
         }
-        
+
         return (
             <div className="w-full h-32 rounded-lg bg-muted/50 flex items-center justify-center">
                 {doc.fileType?.includes('pdf') ? (
@@ -252,8 +253,6 @@ export default function CitizenDocumentsPage() {
             </div>
         );
     };
-
-    const isUploading = uploadingFiles.length > 0;
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -284,11 +283,11 @@ export default function CitizenDocumentsPage() {
                 {...getRootProps()}
                 className={`
                     border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all
-                    ${isDragActive 
-                        ? 'border-primary bg-primary/5 scale-[1.02]' 
+                    ${isDragActive
+                        ? 'border-primary bg-primary/5 scale-[1.02]'
                         : 'border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/30'
                     }
-                    ${isUploading ? 'pointer-events-none' : ''}
+                    ${uploadingFiles.length > 0 ? 'pointer-events-none' : ''}
                 `}
             >
                 <input {...getInputProps()} />
@@ -313,11 +312,10 @@ export default function CitizenDocumentsPage() {
                     <p className="text-sm font-medium text-muted-foreground">Envoi en cours...</p>
                     {uploadingFiles.map(file => (
                         <div key={file.id} className="flex items-center gap-3 bg-background p-3 rounded-lg">
-                            <div className={`p-2 rounded-lg ${
-                                file.status === 'success' ? 'bg-green-500/10 text-green-500' :
-                                file.status === 'error' ? 'bg-destructive/10 text-destructive' :
-                                'bg-primary/10 text-primary'
-                            }`}>
+                            <div className={`p-2 rounded-lg ${file.status === 'success' ? 'bg-green-500/10 text-green-500' :
+                                    file.status === 'error' ? 'bg-destructive/10 text-destructive' :
+                                        'bg-primary/10 text-primary'
+                                }`}>
                                 {file.status === 'success' ? (
                                     <Check className="w-4 h-4" />
                                 ) : file.status === 'error' ? (
@@ -355,7 +353,7 @@ export default function CitizenDocumentsPage() {
                     {documents.map((doc) => (
                         <div key={doc.id} className="neu-card p-4 rounded-xl space-y-3 flex flex-col group hover:border-primary/50 transition-all hover:shadow-lg">
                             <DocumentThumbnail doc={doc} />
-                            
+
                             <div className="flex-1 space-y-2">
                                 <div className="flex justify-between items-start gap-2">
                                     <h3 className="font-semibold text-sm line-clamp-2" title={doc.title}>
@@ -378,26 +376,26 @@ export default function CitizenDocumentsPage() {
                             </div>
 
                             <div className="flex gap-1 pt-2 border-t">
-                                <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="flex-1 gap-1.5 text-xs" 
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="flex-1 gap-1.5 text-xs"
                                     onClick={() => window.open(doc.url, '_blank')}
                                 >
                                     <Eye className="w-3.5 h-3.5" /> Voir
                                 </Button>
-                                <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="gap-1.5 text-xs" 
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="gap-1.5 text-xs"
                                     onClick={() => openRenameDialog(doc)}
                                 >
                                     <Pencil className="w-3.5 h-3.5" />
                                 </Button>
-                                <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="gap-1.5 text-xs text-destructive hover:text-destructive hover:bg-destructive/10" 
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="gap-1.5 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
                                     onClick={() => setDeleteTarget(doc)}
                                 >
                                     <Trash2 className="w-3.5 h-3.5" />
@@ -419,7 +417,7 @@ export default function CitizenDocumentsPage() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Annuler</AlertDialogCancel>
-                        <AlertDialogAction 
+                        <AlertDialogAction
                             onClick={confirmDelete}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >

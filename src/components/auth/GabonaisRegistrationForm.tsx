@@ -32,8 +32,10 @@ export function GabonaisRegistrationForm() {
         dateOfBirth: '',
         placeOfBirth: '',
         maritalStatus: '',
-        fatherName: '',
-        motherName: '',
+        fatherFirstName: '',
+        fatherLastName: '',
+        motherFirstName: '',
+        motherLastName: '',
         address: '',
         city: '',
         postalCode: '',
@@ -70,7 +72,14 @@ export function GabonaisRegistrationForm() {
 
         const handleFillField = (event: CustomEvent) => {
             const { field, value } = event.detail;
-            setFormData(prev => ({ ...prev, [field]: value }));
+
+            if (field === 'acceptTerms') {
+                setAcceptTerms(value === true || value === 'true');
+            } else if (field === 'acceptPrivacy') {
+                setAcceptPrivacy(value === true || value === 'true');
+            } else {
+                setFormData(prev => ({ ...prev, [field]: value }));
+            }
             // Marquer le champ comme rempli par iAsted
             setFilledByIasted(prev => new Set([...prev, field]));
         };
@@ -81,7 +90,19 @@ export function GabonaisRegistrationForm() {
         };
 
         const handleSubmitForm = () => {
-            handleSubmit();
+            // Checkboxes must be checked to submit
+            if (!acceptTerms) setAcceptTerms(true);
+            if (!acceptPrivacy) setAcceptPrivacy(true);
+
+            // Allow state update to propagate then submit
+            setTimeout(() => {
+                const submitBtn = document.getElementById('submit-registration-btn');
+                if (submitBtn) {
+                    submitBtn.click();
+                } else {
+                    handleSubmit();
+                }
+            }, 100);
         };
 
         window.addEventListener('iasted-fill-field', handleFillField as EventListener);
@@ -172,8 +193,9 @@ export function GabonaisRegistrationForm() {
                 postalCode: formData.postalCode,
                 pinCode,
                 // Extended fields
-                fatherName: formData.fatherName,
-                motherName: formData.motherName,
+                // Concatenate names for API/DB compatibility
+                fatherName: `${formData.fatherLastName} ${formData.fatherFirstName}`.trim(),
+                motherName: `${formData.motherLastName} ${formData.motherFirstName}`.trim(),
                 emergencyContactFirstName: formData.emergencyContactFirstName,
                 emergencyContactLastName: formData.emergencyContactLastName,
                 emergencyContactPhone: formData.emergencyContactPhone,
@@ -401,21 +423,39 @@ export function GabonaisRegistrationForm() {
                                 <h3 className="font-medium text-sm">Filiation</h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <IAstedLabel filledByIasted={filledByIasted.has('fatherName')}>Nom du Père</IAstedLabel>
+                                        <IAstedLabel filledByIasted={filledByIasted.has('fatherLastName')}>Nom du Père</IAstedLabel>
                                         <IAstedInput
-                                            placeholder="Nom complet"
-                                            value={formData.fatherName}
-                                            onChange={(e) => handleInputChange('fatherName', e.target.value)}
-                                            filledByIasted={filledByIasted.has('fatherName')}
+                                            placeholder="Nom"
+                                            value={formData.fatherLastName}
+                                            onChange={(e) => handleInputChange('fatherLastName', e.target.value)}
+                                            filledByIasted={filledByIasted.has('fatherLastName')}
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <IAstedLabel filledByIasted={filledByIasted.has('motherName')}>Nom de la Mère</IAstedLabel>
+                                        <IAstedLabel filledByIasted={filledByIasted.has('fatherFirstName')}>Prénom du Père</IAstedLabel>
                                         <IAstedInput
-                                            placeholder="Nom complet"
-                                            value={formData.motherName}
-                                            onChange={(e) => handleInputChange('motherName', e.target.value)}
-                                            filledByIasted={filledByIasted.has('motherName')}
+                                            placeholder="Prénom"
+                                            value={formData.fatherFirstName}
+                                            onChange={(e) => handleInputChange('fatherFirstName', e.target.value)}
+                                            filledByIasted={filledByIasted.has('fatherFirstName')}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <IAstedLabel filledByIasted={filledByIasted.has('motherLastName')}>Nom de la Mère</IAstedLabel>
+                                        <IAstedInput
+                                            placeholder="Nom"
+                                            value={formData.motherLastName}
+                                            onChange={(e) => handleInputChange('motherLastName', e.target.value)}
+                                            filledByIasted={filledByIasted.has('motherLastName')}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <IAstedLabel filledByIasted={filledByIasted.has('motherFirstName')}>Prénom de la Mère</IAstedLabel>
+                                        <IAstedInput
+                                            placeholder="Prénom"
+                                            value={formData.motherFirstName}
+                                            onChange={(e) => handleInputChange('motherFirstName', e.target.value)}
+                                            filledByIasted={filledByIasted.has('motherFirstName')}
                                         />
                                     </div>
                                 </div>
@@ -725,7 +765,7 @@ export function GabonaisRegistrationForm() {
                                     </Button>
                                 ) : (
                                     <Button
-                                        onClick={handleSubmit}
+                                        id="submit-registration-btn"
                                         disabled={loading || !acceptTerms || !acceptPrivacy || !formData.email || !formData.password || formData.password !== formData.confirmPassword}
                                     >
                                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

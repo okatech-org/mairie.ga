@@ -12,16 +12,26 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { useAuth } from '@/hooks/useAuth';
+
 export default function CitizenRequestsPage() {
     const [requests, setRequests] = useState<ServiceRequest[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
     const [detailModalOpen, setDetailModalOpen] = useState(false);
     const [newUpdates, setNewUpdates] = useState<string[]>([]);
+    const { user } = useAuth();
 
     useEffect(() => {
-        loadRequests();
+        if (user) {
+            loadRequests();
+        }
+    }, [user]);
 
+    // Realtime subscription setup remains similar but could be optimized to filter by user_id if RLS didn't handle it
+    // For now assuming RLS or client-side filtering logic via `requestService.getAll`
+
+    useEffect(() => {
         // Realtime subscription for request updates
         const channel = supabase
             .channel('requests-updates')
@@ -30,24 +40,25 @@ export default function CitizenRequestsPage() {
                 {
                     event: 'UPDATE',
                     schema: 'public',
-                    table: 'requests'
+                    table: 'requests',
+                    filter: user ? `citizen_id=eq.${user.id}` : undefined
                 },
                 (payload) => {
                     const updatedRequest = payload.new as ServiceRequest;
-                    setRequests(prev => 
-                        prev.map(req => 
+                    setRequests(prev =>
+                        prev.map(req =>
                             req.id === updatedRequest.id ? updatedRequest : req
                         )
                     );
-                    
+
                     // Show notification
                     toast.success("Mise à jour de votre demande", {
                         description: `Le statut de votre demande a été mis à jour`,
                         icon: <Bell className="h-4 w-4" />
                     });
-                    
+
                     setNewUpdates(prev => [...prev, updatedRequest.id]);
-                    
+
                     // Clear update indicator after 5 seconds
                     setTimeout(() => {
                         setNewUpdates(prev => prev.filter(id => id !== updatedRequest.id));
@@ -59,14 +70,16 @@ export default function CitizenRequestsPage() {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, []);
+    }, [user]);
 
     const loadRequests = async () => {
+        if (!user) return;
         try {
-            const data = await requestService.getAll();
+            const data = await requestService.getAll(user.id);
             setRequests(data);
         } catch (error) {
             console.error("Failed to load requests", error);
+            toast.error("Impossible de charger vos demandes");
         } finally {
             setLoading(false);
         }

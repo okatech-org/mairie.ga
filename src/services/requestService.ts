@@ -76,5 +76,22 @@ export const requestService = {
 
         if (error) throw error;
         return data as Request;
+    },
+
+    async getStats(userId: string) {
+        const { data, error } = await supabase
+            .from('requests')
+            .select('status, id')
+            .eq('citizen_id', userId);
+
+        if (error) throw error;
+
+        const total = data.length;
+        const pending = data.filter(r => r.status === 'PENDING').length;
+        const inProgress = data.filter(r => r.status === 'IN_PROGRESS').length;
+        const completed = data.filter(r => r.status === 'COMPLETED' || r.status === 'VALIDATED').length;
+        const rejected = data.filter(r => r.status === 'REJECTED').length;
+
+        return { total, pending, inProgress, completed, rejected };
     }
 };

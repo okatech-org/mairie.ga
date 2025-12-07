@@ -1,144 +1,238 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { MOCK_GABONAIS_CITIZENS } from "@/data/mock-citizens";
-import { MOCK_CHILDREN } from "@/data/mock-children";
-import { FileText, Plane, UserCheck, Stamp, Plus, TrendingUp, Building2, MapPin, ChevronRight } from "lucide-react";
-import { QuickChildProfileModal } from "@/components/registration/QuickChildProfileModal";
-import { useState } from "react";
-import { MunicipalServicesList } from "@/components/services/MunicipalServicesList";
-import { Link } from "react-router-dom";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+    FileText,
+    Clock,
+    Bell,
+    CheckCircle,
+    AlertCircle,
+    Plus
+} from "lucide-react";
+
+import { useCitizenProfile } from '@/hooks/useCitizenProfile';
+import { useNavigate } from 'react-router-dom';
+import { requestService } from '@/services/requestService';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function CitizenDashboard() {
-    const user = MOCK_GABONAIS_CITIZENS[0]; // Simulate logged in user
-    const [isChildModalOpen, setIsChildModalOpen] = useState(false);
+    const { user: citizen, loading, error } = useCitizenProfile();
+    const { user: authUser } = useAuth();
+    const navigate = useNavigate();
+
+    const [stats, setStats] = useState({
+        total: 0,
+        pending: 0,
+        inProgress: 0,
+        completed: 0,
+        rejected: 0
+    });
+
+    useEffect(() => {
+        if (authUser?.id) {
+            loadStats(authUser.id);
+        }
+    }, [authUser?.id]);
+
+    const loadStats = async (userId: string) => {
+        try {
+            const data = await requestService.getStats(userId);
+            setStats(data);
+        } catch (err) {
+            console.error("Failed to load dashboard stats", err);
+        }
+    };
+
+    if (loading) return <div className="p-8 text-center">Chargement du profil...</div>;
+    if (error) return <div className="p-8 text-center text-red-500">Erreur: {error}</div>;
+    if (!citizen) return <div className="p-8 text-center">Profil introuvable</div>;
 
     return (
-        <>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-foreground">Bienvenue, {user.firstName}</h1>
-                    <div className="flex items-center gap-4 mt-2 text-sm">
-                        <p className="text-muted-foreground">
-                            Dossier Consulaire : <span className="font-mono font-medium text-primary">{user.consulateFile}</span>
-                        </p>
-                        {/* Territorial Status Display */}
-                        <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 gap-1">
-                                <Building2 className="w-3 h-3" />
-                                Géré par: Consulat France
-                            </Badge>
-                            {/* Mocking the signaled status for demo purposes if needed, or dynamic based on user */}
-                        </div>
+        <div className="space-y-8 animate-fade-in">
+            {/* Welcome Banner */}
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary to-primary/80 p-8 text-primary-foreground shadow-lg">
+                <div className="relative z-10">
+                    <h1 className="text-3xl font-bold mb-2">
+                        Bonjour, {citizen.firstName} {citizen.lastName}
+                    </h1>
+                    <p className="opacity-90 max-w-xl">
+                        Bienvenue sur votre espace citoyen unifié. Gérez toutes vos démarches administratives,
+                        suivez vos demandes et accédez à vos documents officiels en un seul endroit.
+                    </p>
+                    <div className="mt-6 flex flex-wrap gap-3">
+                        <Button
+                            variant="secondary"
+                            onClick={() => navigate('/dashboard/citizen/requests')}
+                            className="gap-2"
+                        >
+                            <Plus className="h-4 w-4" />
+                            Nouvelle Demande
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10"
+                            onClick={() => navigate('/dashboard/citizen/documents')}
+                        >
+                            Mes Documents
+                        </Button>
                     </div>
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" className="neu-raised gap-2">
-                        <MapPin className="w-4 h-4" />
-                        Signaler mon déplacement
-                    </Button>
-                    <Button className="neu-raised bg-primary text-primary-foreground hover:shadow-neo-md transition-all border-none">
-                        <Plus className="mr-2 h-4 w-4" /> Nouvelle Demande
-                    </Button>
+
+                {/* Decorative background elements */}
+                <div className="absolute top-0 right-0 p-8 opacity-10">
+                    <FileText className="h-64 w-64" />
                 </div>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-6 mb-8">
-                <div className="neu-raised p-6 rounded-2xl hover:-translate-y-1 transition-transform duration-300">
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="p-3 rounded-xl bg-primary/10 text-primary">
-                            <UserCheck size={20} />
-                        </div>
-                        <div className="flex items-center gap-1 text-success text-sm font-medium">
-                            <TrendingUp size={14} />
-                            Actif
-                        </div>
-                    </div>
-                    <p className="text-muted-foreground text-sm font-medium mb-1">Statut du Dossier</p>
-                    <h3 className="text-2xl font-bold text-foreground">Vérifié</h3>
-                    <p className="text-xs text-muted-foreground mt-2">Mis à jour le {user.updatedAt.toLocaleDateString()}</p>
-                </div>
-
-                <div className="neu-raised p-6 rounded-2xl hover:-translate-y-1 transition-transform duration-300">
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="p-3 rounded-xl bg-blue-500/10 text-blue-600">
-                            <FileText size={20} />
-                        </div>
-                    </div>
-                    <p className="text-muted-foreground text-sm font-medium mb-1">Demandes en cours</p>
-                    <h3 className="text-2xl font-bold text-foreground">1</h3>
-                    <p className="text-xs text-muted-foreground mt-2">Renouvellement Passeport</p>
-                </div>
-
-                <div className="neu-raised p-6 rounded-2xl hover:-translate-y-1 transition-transform duration-300">
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="p-3 rounded-xl bg-purple-500/10 text-purple-600">
-                            <Stamp size={20} />
-                        </div>
-                    </div>
-                    <p className="text-muted-foreground text-sm font-medium mb-1">Documents Disponibles</p>
-                    <h3 className="text-2xl font-bold text-foreground">3</h3>
-                    <p className="text-xs text-muted-foreground mt-2">Carte Consulaire, Actes...</p>
-                </div>
-            </div>
-
-            <div className="neu-inset p-6 rounded-2xl mb-8">
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-bold">Mes Enfants</h2>
-                    <Button variant="outline" size="sm" onClick={() => setIsChildModalOpen(true)} className="neu-raised border-none hover:shadow-neo-md">
-                        <Plus className="mr-2 h-4 w-4" /> Ajouter un enfant
-                    </Button>
-                </div>
-
-                <div className="grid md:grid-cols-3 gap-6">
-                    {MOCK_CHILDREN.map((child) => (
-                        <div key={child.id} className="neu-raised p-5 rounded-xl hover:shadow-neo-lg transition-all cursor-pointer bg-card">
-                            <div className="flex justify-between items-start mb-3">
-                                <h3 className="text-lg font-bold">{child.personal.firstName} {child.personal.lastName}</h3>
-                                <Badge variant={child.status === 'ACTIVE' ? 'default' : 'secondary'} className="rounded-full">
-                                    {child.status}
-                                </Badge>
+            {/* Stats Grid */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {[
+                    {
+                        label: "Demandes en cours",
+                        value: stats.inProgress + stats.pending,
+                        icon: Clock,
+                        color: "text-blue-500",
+                        bg: "bg-blue-500/10",
+                    },
+                    {
+                        label: "Documents disponibles",
+                        value: stats.total, // Using total requests as proxy if needed, ideally separate
+                        icon: FileText,
+                        color: "text-purple-500",
+                        bg: "bg-purple-500/10",
+                    },
+                    {
+                        label: "Dossiers terminés",
+                        value: stats.completed,
+                        icon: CheckCircle,
+                        color: "text-emerald-500",
+                        bg: "bg-emerald-500/10",
+                    },
+                    {
+                        label: "Notifications",
+                        value: "0",
+                        icon: Bell,
+                        color: "text-orange-500",
+                        bg: "bg-orange-500/10",
+                    }
+                ].map((stat, i) => (
+                    <Card key={i} className="hover:shadow-md transition-shadow cursor-default group">
+                        <CardContent className="p-6 flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-muted-foreground mb-1">
+                                    {stat.label}
+                                </p>
+                                <h3 className="text-2xl font-bold group-hover:scale-105 transition-transform origin-left">
+                                    {stat.value}
+                                </h3>
                             </div>
-                            <p className="text-sm text-muted-foreground mb-4">Né(e) le {child.personal.birthDate?.toLocaleDateString()}</p>
-
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-                                <UserCheck className="h-4 w-4" />
-                                {child.parents.length} Parent(s) lié(s)
+                            <div className={`p-3 rounded-xl ${stat.bg}`}>
+                                <stat.icon className={`h-6 w-6 ${stat.color}`} />
                             </div>
-                            <Button className="w-full neu-inset bg-transparent hover:bg-muted text-primary border-none shadow-none" size="sm">
-                                Gérer le profil
-                            </Button>
-                        </div>
-                    ))}
-
-                    {MOCK_CHILDREN.length === 0 && (
-                        <div className="col-span-3 text-center py-8 border-2 border-dashed border-border rounded-lg text-muted-foreground">
-                            Aucun enfant enregistré pour le moment.
-                        </div>
-                    )}
-                </div>
+                        </CardContent>
+                    </Card>
+                ))}
             </div>
 
-            <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold">Services Municipaux Disponibles</h2>
-                <Link to="/services">
-                    <Button variant="ghost" size="sm" className="gap-1">
-                        Voir tout
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
-                </Link>
-            </div>
-            <MunicipalServicesList maxItems={6} showSearch={false} />
+            {/* Profile & Info Cards */}
+            <div className="grid gap-6 md:grid-cols-2">
+                {/* Identity Card */}
+                <Card className="md:row-span-2">
+                    <div className="p-6 border-b flex items-center justify-between bg-muted/30">
+                        <h2 className="font-semibold text-lg flex items-center gap-2">
+                            <FileText className="h-5 w-5 text-primary" />
+                            Identité Numérique
+                        </h2>
+                        <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard/citizen/settings')}>Modifier</Button>
+                    </div>
+                    <CardContent className="p-6 space-y-6">
+                        <div className="flex items-center gap-4">
+                            <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center border-4 border-background shadow-lg overflow-hidden relative">
+                                {citizen.photoUrl ? (
+                                    <img
+                                        src={citizen.photoUrl}
+                                        alt={`${citizen.firstName} ${citizen.lastName}`}
+                                        className="h-full w-full object-cover"
+                                    />
+                                ) : (
+                                    <span className="text-2xl font-bold text-primary">
+                                        {citizen.firstName[0]}{citizen.lastName[0]}
+                                    </span>
+                                )}
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-xl">{citizen.firstName} {citizen.lastName}</h3>
+                                <p className="text-muted-foreground">Né(e) le {citizen.dateOfBirth.toLocaleDateString()}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-300">
+                                        Vérifié
+                                    </span>
+                                    <span className="text-sm text-muted-foreground">• {citizen.profession}</span>
+                                </div>
+                            </div>
+                        </div>
 
-            <QuickChildProfileModal
-                open={isChildModalOpen}
-                onOpenChange={setIsChildModalOpen}
-                residenceCountry={user.currentAddress.country}
-                onSuccess={(childId) => {
-                    // In a real app, we would refresh the list here
-                    console.log("Child created:", childId);
-                }}
-            />
-        </>
+                        <div className="grid gap-4 pt-4 border-t">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-sm font-medium text-muted-foreground">N° NIP / CNI</p>
+                                    <p className="font-medium">{citizen.cniNumber || "Non renseigné"}</p>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-muted-foreground">Nationalité</p>
+                                    <p className="font-medium">Gabonaise 🇬🇦</p>
+                                </div>
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-muted-foreground">Adresse actuelle</p>
+                                <p className="font-medium">
+                                    {citizen.currentAddress.street}, {citizen.currentAddress.city}
+                                </p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-sm font-medium text-muted-foreground">Téléphone</p>
+                                    <p className="font-medium">{citizen.phone}</p>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-muted-foreground">Email</p>
+                                    <p className="font-medium truncate" title={citizen.email}>{citizen.email}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-primary/5 rounded-lg p-4 mt-2">
+                            <div className="flex justify-between items-center mb-2">
+                                <p className="text-sm font-medium">Dossier Municipal</p>
+                                <span className="text-xs font-mono bg-background px-2 py-0.5 rounded border">{citizen.municipalFile}</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                Votre dossier est actif auprès de {citizen.assignedMunicipality}.
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Quick Actions & Status */}
+                <Card>
+                    <div className="p-6 border-b flex items-center justify-between bg-muted/30">
+                        <h2 className="font-semibold text-lg flex items-center gap-2">
+                            <Clock className="h-5 w-5 text-orange-500" />
+                            Activités Récentes
+                        </h2>
+                        <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard/citizen/requests')}>Tout voir</Button>
+                    </div>
+                    <CardContent className="p-0">
+                        <div className="divide-y">
+                            {/* Empty state or placeholder for now until we fetch recent requests specifically */}
+                            <div className="p-8 text-center text-muted-foreground text-sm">
+                                {stats.total > 0 ? "Consultez 'Mes Demandes' pour voir le détail." : "Aucune activité récente à afficher."}
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
     );
 }
