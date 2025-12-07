@@ -821,51 +821,111 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
         }
     };
 
-    const handleToolCall = async (item: any) => {
-        const { name, arguments: argsString } = item;
-        const args = JSON.parse(argsString);
+    // Helper to send tool output back to OpenAI
+    const sendToolOutput = (callId: string, output: string) => {
+        if (!dataChannel.current || dataChannel.current.readyState !== 'open') return;
+        
+        // Send function call output
+        dataChannel.current.send(JSON.stringify({
+            type: 'conversation.item.create',
+            item: {
+                type: 'function_call_output',
+                call_id: callId,
+                output: output
+            }
+        }));
+        
+        // Trigger response to continue conversation
+        dataChannel.current.send(JSON.stringify({ type: 'response.create' }));
+        console.log(`📤 Sent tool output for ${callId}:`, output);
+    };
 
-        console.log(`🔧 Tool Call: ${name}`, args);
+    const handleToolCall = async (item: any) => {
+        const { name, arguments: argsString, call_id } = item;
+        let args = {};
+        try {
+            args = JSON.parse(argsString || '{}');
+        } catch (e) {
+            console.error('Failed to parse tool args:', argsString);
+        }
+
+        console.log(`🔧 Tool Call: ${name}`, args, 'call_id:', call_id);
+
+        let result = '';
 
         // ============= INTERRUPTION HANDLING =============
         if (name === 'interrupt_speech') {
             console.log('🛑 interrupt_speech tool called - interrupting immediately');
             cancelResponse();
+            result = 'Parole interrompue. J\'écoute.';
+            if (call_id) sendToolOutput(call_id, result);
             return;
         }
 
         if (name === 'evaluate_speech_target') {
-            const { is_addressed_to_me, confidence, reason } = args;
+            const { is_addressed_to_me, confidence, reason } = args as any;
             console.log(`🎯 Speech target evaluation: addressed=${is_addressed_to_me}, confidence=${confidence}, reason=${reason}`);
 
             if (!is_addressed_to_me) {
-                // Speech was not addressed to iAsted - stay silent
                 console.log('👂 Speech not addressed to iAsted - ignoring');
-                // Don't respond, just listen
-                return;
+                result = 'Parole non adressée à moi, j\'ignore.';
+            } else {
+                result = 'Parole adressée à moi, je réponds.';
             }
-            // If addressed to iAsted, continue with normal response flow
+            if (call_id) sendToolOutput(call_id, result);
             return;
         }
 
         if (name === 'stop_conversation') {
-            disconnect();
+            result = 'Conversation arrêtée. Au revoir!';
+            if (call_id) sendToolOutput(call_id, result);
+            setTimeout(() => disconnect(), 500);
             return;
         }
 
         if (name === 'change_voice') {
             const nextVoice = currentVoice === 'shimmer' ? 'ash' : 'shimmer';
             changeVoice(nextVoice);
-            // Send output to acknowledge?
+            result = `Voix changée pour ${nextVoice === 'shimmer' ? 'une voix féminine' : 'une voix masculine'}.`;
+            if (call_id) sendToolOutput(call_id, result);
+            return;
         }
 
+        if (name === 'navigate_app') {
+            const { path } = args as any;
+            if (path) {
+                navigate(path);
+                result = `Navigation vers ${path} effectuée.`;
+            } else {
+                result = 'Chemin non spécifié.';
+            }
+            if (call_id) sendToolOutput(call_id, result);
+            if (onToolCall) onToolCall(name, args);
+            return;
+        }
+
+        if (name === 'control_ui') {
+            const { action, rate } = args as any;
+            result = `Action UI ${action} exécutée.`;
+            
+            // Dispatch event for UI control
+            window.dispatchEvent(new CustomEvent('iasted', {
+                detail: { action: 'control_ui', controlAction: action, rate }
+            }));
+            
+            if (call_id) sendToolOutput(call_id, result);
+            if (onToolCall) onToolCall(name, args);
+            return;
+        }
+
+        // For all other tools, send to callback and return a generic response
         if (onToolCall) {
             onToolCall(name, args);
         }
 
-        // We should send tool output back to OpenAI if needed, 
-        // but for now we just execute the side effect.
-        // Ideally: send 'conversation.item.create' with type 'function_call_output'
+        // Send generic success response for other tools
+        result = `Outil ${name} exécuté avec succès.`;
+        if (call_id) sendToolOutput(call_id, result);
     };
 
     const sendMessage = (text: string) => {
