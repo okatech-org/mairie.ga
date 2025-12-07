@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDropzone } from "react-dropzone";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,12 +9,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { CheckCircle2, Upload, Loader2, FileText, User, Users, MapPin, Briefcase, Eye, Key, Copy, Check } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { CheckCircle2, Upload, Loader2, FileText, User, Users, MapPin, Briefcase, Eye, Key, Copy, Check, Sparkles, Brain, X, Image } from "lucide-react";
 import { formAssistantStore, useFormAssistant } from "@/stores/formAssistantStore";
 import { IAstedLabel, IAstedInput, IAstedSelectIndicator, getIAstedSelectClasses } from "@/components/ui/iasted-form-fields";
 import { registerUser, generatePinCode } from "@/services/authService";
 import { PinCodeInput } from "./PinCodeInput";
 import { toast } from "sonner";
+import { analyzeDocument, DocumentAnalysis, detectDocumentType } from "@/services/documentOCRService";
+
+// Types for OCR-enabled file uploads
+interface UploadedDocument {
+    id: string;
+    file: File;
+    type: 'photo' | 'passport' | 'birthCert' | 'proofOfAddress';
+    status: 'pending' | 'analyzing' | 'completed' | 'error';
+    progress: number;
+    analysis?: DocumentAnalysis;
+    error?: string;
+}
 
 export function GabonaisRegistrationForm() {
     const navigate = useNavigate();
@@ -52,16 +67,178 @@ export function GabonaisRegistrationForm() {
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [acceptPrivacy, setAcceptPrivacy] = useState(false);
 
-    // State pour les fichiers
+    // State pour les fichiers avec OCR
     const [files, setFiles] = useState<{
         photo?: File;
         passport?: File;
         birthCert?: File;
         proofOfAddress?: File;
     }>({});
+    
+    // State pour le suivi des documents OCR
+    const [uploadedDocs, setUploadedDocs] = useState<UploadedDocument[]>([]);
+    const [isOCRProcessing, setIsOCRProcessing] = useState(false);
 
     const handleFileChange = (key: string, file: File) => {
         setFiles(prev => ({ ...prev, [key]: file }));
+    };
+
+    // Mapping des données OCR vers les champs du formulaire
+    const mapOCRToFormFields = (analysis: DocumentAnalysis) => {
+        if (!analysis.extractedData) return;
+        
+        const data = analysis.extractedData;
+        const mappings: Record<string, string> = {};
+        const newFilledFields = new Set(filledByIasted);
+
+        // Mapper les champs extraits
+        if (data.firstName) { mappings.firstName = data.firstName; newFilledFields.add('firstName'); }
+        if (data.lastName) { mappings.lastName = data.lastName; newFilledFields.add('lastName'); }
+        if (data.dateOfBirth) { mappings.dateOfBirth = data.dateOfBirth; newFilledFields.add('dateOfBirth'); }
+        if (data.placeOfBirth) { mappings.placeOfBirth = data.placeOfBirth; newFilledFields.add('placeOfBirth'); }
+        if (data.fatherName) { mappings.fatherName = data.fatherName; newFilledFields.add('fatherName'); }
+        if (data.motherName) { mappings.motherName = data.motherName; newFilledFields.add('motherName'); }
+        if (data.address) { mappings.address = data.address; newFilledFields.add('address'); }
+        if (data.city) { mappings.city = data.city; newFilledFields.add('city'); }
+        if (data.nationality) { /* nationality is fixed for Gabonais */ }
+
+        if (Object.keys(mappings).length > 0) {
+            setFormData(prev => ({ ...prev, ...mappings }));
+            setFilledByIasted(newFilledFields);
+            
+            toast.success(`${Object.keys(mappings).length} champs pré-remplis par OCR`, {
+                description: "Vérifiez les informations extraites"
+            });
+        }
+    };
+
+    // Analyser un document avec OCR
+    const analyzeDocumentWithOCR = async (doc: UploadedDocument) => {
+        try {
+            // Update status to analyzing
+            setUploadedDocs(prev => prev.map(d => 
+                d.id === doc.id ? { ...d, status: 'analyzing', progress: 25 } : d
+            ));
+            
+            await new Promise(r => setTimeout(r, 300));
+            setUploadedDocs(prev => prev.map(d => 
+                d.id === doc.id ? { ...d, progress: 50 } : d
+            ));
+
+            // Perform OCR analysis
+            const suggestedType = detectDocumentType(doc.file.name);
+            const analysis = await analyzeDocument(doc.file, suggestedType);
+            
+            setUploadedDocs(prev => prev.map(d => 
+                d.id === doc.id ? { ...d, progress: 85 } : d
+            ));
+            
+            await new Promise(r => setTimeout(r, 200));
+
+            if (analysis.error) {
+                throw new Error(analysis.error);
+            }
+
+            // Update status to completed
+            setUploadedDocs(prev => prev.map(d => 
+                d.id === doc.id ? { ...d, status: 'completed', progress: 100, analysis } : d
+            ));
+
+            // Map extracted data to form
+            mapOCRToFormFields(analysis);
+
+            return analysis;
+        } catch (error: any) {
+            console.error('OCR Error:', error);
+            setUploadedDocs(prev => prev.map(d => 
+                d.id === doc.id ? { ...d, status: 'error', error: error.message } : d
+            ));
+            toast.error(`Erreur d'analyse: ${doc.file.name}`);
+        }
+    };
+
+    // Handle drop zone
+    const onDrop = useCallback(async (acceptedFiles: File[]) => {
+        setIsOCRProcessing(true);
+        
+        const newDocs: UploadedDocument[] = acceptedFiles.map(file => {
+            // Detect document type from file name
+            let docType: UploadedDocument['type'] = 'passport';
+            const lowerName = file.name.toLowerCase();
+            
+            if (lowerName.includes('photo') || lowerName.includes('identite') || lowerName.includes('portrait')) {
+                docType = 'photo';
+            } else if (lowerName.includes('passport') || lowerName.includes('passeport')) {
+                docType = 'passport';
+            } else if (lowerName.includes('naissance') || lowerName.includes('birth') || lowerName.includes('acte')) {
+                docType = 'birthCert';
+            } else if (lowerName.includes('domicile') || lowerName.includes('residence') || lowerName.includes('facture')) {
+                docType = 'proofOfAddress';
+            }
+            
+            return {
+                id: crypto.randomUUID(),
+                file,
+                type: docType,
+                status: 'pending' as const,
+                progress: 0
+            };
+        });
+
+        setUploadedDocs(prev => [...prev, ...newDocs]);
+
+        // Also update the files state
+        for (const doc of newDocs) {
+            setFiles(prev => ({ ...prev, [doc.type]: doc.file }));
+        }
+
+        // Analyze each document
+        for (const doc of newDocs) {
+            await analyzeDocumentWithOCR(doc);
+        }
+
+        setIsOCRProcessing(false);
+    }, [filledByIasted]);
+
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        onDrop,
+        accept: {
+            'application/pdf': ['.pdf'],
+            'image/jpeg': ['.jpg', '.jpeg'],
+            'image/png': ['.png'],
+            'image/webp': ['.webp']
+        },
+        multiple: true
+    });
+
+    const removeUploadedDoc = (id: string) => {
+        const doc = uploadedDocs.find(d => d.id === id);
+        if (doc) {
+            setFiles(prev => {
+                const newFiles = { ...prev };
+                delete newFiles[doc.type];
+                return newFiles;
+            });
+        }
+        setUploadedDocs(prev => prev.filter(d => d.id !== id));
+    };
+
+    const getFileIcon = (type: UploadedDocument['type']) => {
+        switch (type) {
+            case 'photo': return <Image className="w-5 h-5" />;
+            case 'passport': return <FileText className="w-5 h-5" />;
+            case 'birthCert': return <FileText className="w-5 h-5" />;
+            case 'proofOfAddress': return <FileText className="w-5 h-5" />;
+        }
+    };
+
+    const getDocTypeLabel = (type: UploadedDocument['type']) => {
+        switch (type) {
+            case 'photo': return "Photo d'identité";
+            case 'passport': return "Passeport";
+            case 'birthCert': return "Acte de naissance";
+            case 'proofOfAddress': return "Justificatif de domicile";
+        }
     };
 
     // Écouter les événements d'iAsted
@@ -244,86 +421,236 @@ export function GabonaisRegistrationForm() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                     {step === 1 && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-accent/50 transition-colors relative">
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={(e) => e.target.files?.[0] && handleFileChange('photo', e.target.files[0])}
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                />
-                                <div className="pointer-events-none">
-                                    {files.photo ? (
-                                        <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-600" />
-                                    ) : (
-                                        <Upload className="h-8 w-8 mx-auto mb-2 text-primary" />
-                                    )}
-                                    <p className="font-medium">Photo d'identité *</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        {files.photo ? files.photo.name : "JPG, PNG - Max 2MB"}
+                        <div className="space-y-6">
+                            {/* Zone de drag-and-drop principale avec OCR */}
+                            <div
+                                {...getRootProps()}
+                                className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-300 ${
+                                    isDragActive
+                                        ? 'border-primary bg-primary/5 scale-[1.02] shadow-lg'
+                                        : 'border-border hover:border-primary/50 hover:bg-muted/30'
+                                }`}
+                            >
+                                <input {...getInputProps()} />
+                                <motion.div
+                                    animate={isDragActive ? { scale: 1.1, y: -5 } : { scale: 1, y: 0 }}
+                                    transition={{ type: "spring", stiffness: 300 }}
+                                >
+                                    <div className="flex justify-center mb-4">
+                                        <div className={`p-4 rounded-full ${isDragActive ? 'bg-primary/20' : 'bg-muted'}`}>
+                                            <Upload className={`w-8 h-8 ${isDragActive ? 'text-primary animate-bounce' : 'text-muted-foreground'}`} />
+                                        </div>
+                                    </div>
+                                    <p className="text-lg font-semibold mb-1">
+                                        {isDragActive ? 'Déposez vos documents ici' : 'Glissez-déposez vos documents'}
                                     </p>
-                                </div>
+                                    <p className="text-sm text-muted-foreground mb-3">
+                                        Passeport, Acte de naissance, Justificatif de domicile
+                                    </p>
+                                    <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                                        <Brain className="w-4 h-4 text-primary" />
+                                        <span>OCR intelligent - pré-remplissage automatique du formulaire</span>
+                                    </div>
+                                </motion.div>
+                                <Button variant="outline" size="sm" className="mt-4" type="button">
+                                    Ou cliquez pour parcourir
+                                </Button>
                             </div>
 
-                            <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-accent/50 transition-colors relative">
-                                <input
-                                    type="file"
-                                    accept=".pdf,image/*"
-                                    onChange={(e) => e.target.files?.[0] && handleFileChange('passport', e.target.files[0])}
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                />
-                                <div className="pointer-events-none">
-                                    {files.passport ? (
-                                        <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-600" />
-                                    ) : (
-                                        <Upload className="h-8 w-8 mx-auto mb-2 text-primary" />
-                                    )}
-                                    <p className="font-medium">Passeport *</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        {files.passport ? files.passport.name : "PDF, JPG - Max 5MB"}
-                                    </p>
-                                </div>
-                            </div>
+                            {/* Liste des documents uploadés avec statut OCR */}
+                            <AnimatePresence>
+                                {uploadedDocs.length > 0 && (
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        className="space-y-3"
+                                    >
+                                        <h4 className="text-sm font-medium flex items-center gap-2">
+                                            <Sparkles className="w-4 h-4 text-primary" />
+                                            Documents analysés ({uploadedDocs.filter(d => d.status === 'completed').length}/{uploadedDocs.length})
+                                        </h4>
+                                        
+                                        {uploadedDocs.map((doc) => (
+                                            <motion.div
+                                                key={doc.id}
+                                                initial={{ opacity: 0, x: -20 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                exit={{ opacity: 0, x: 20 }}
+                                                className="bg-card border rounded-lg p-3"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    {/* Icon */}
+                                                    <div className={`p-2 rounded-lg ${
+                                                        doc.status === 'completed' ? 'bg-green-500/10 text-green-600' :
+                                                        doc.status === 'analyzing' ? 'bg-primary/10 text-primary' :
+                                                        doc.status === 'error' ? 'bg-destructive/10 text-destructive' :
+                                                        'bg-muted text-muted-foreground'
+                                                    }`}>
+                                                        {doc.status === 'completed' ? (
+                                                            <motion.div
+                                                                initial={{ scale: 0 }}
+                                                                animate={{ scale: 1 }}
+                                                                transition={{ type: "spring", stiffness: 500 }}
+                                                            >
+                                                                <CheckCircle2 className="w-5 h-5" />
+                                                            </motion.div>
+                                                        ) : doc.status === 'analyzing' ? (
+                                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                                        ) : (
+                                                            getFileIcon(doc.type)
+                                                        )}
+                                                    </div>
 
-                            <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-accent/50 transition-colors relative">
-                                <input
-                                    type="file"
-                                    accept=".pdf,image/*"
-                                    onChange={(e) => e.target.files?.[0] && handleFileChange('birthCert', e.target.files[0])}
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                />
-                                <div className="pointer-events-none">
-                                    {files.birthCert ? (
-                                        <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-600" />
-                                    ) : (
-                                        <Upload className="h-8 w-8 mx-auto mb-2 text-primary" />
-                                    )}
-                                    <p className="font-medium">Acte de Naissance *</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        {files.birthCert ? files.birthCert.name : "PDF, JPG - Max 5MB"}
-                                    </p>
-                                </div>
-                            </div>
+                                                    {/* Info */}
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-medium truncate">{doc.file.name}</p>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {getDocTypeLabel(doc.type)}
+                                                            {doc.status === 'analyzing' && (
+                                                                <span className="ml-2 text-primary">
+                                                                    Analyse IA en cours
+                                                                    <motion.span
+                                                                        animate={{ opacity: [0, 1, 0] }}
+                                                                        transition={{ duration: 1.5, repeat: Infinity }}
+                                                                    >...</motion.span>
+                                                                </span>
+                                                            )}
+                                                            {doc.status === 'completed' && doc.analysis?.extractedData && (
+                                                                <span className="ml-2 text-green-600">
+                                                                    • {Object.keys(doc.analysis.extractedData).length} champs extraits
+                                                                </span>
+                                                            )}
+                                                        </p>
+                                                        
+                                                        {/* Progress bar */}
+                                                        {(doc.status === 'pending' || doc.status === 'analyzing') && (
+                                                            <div className="mt-2 relative">
+                                                                <Progress value={doc.progress} className="h-1" />
+                                                                <motion.div
+                                                                    className="absolute inset-0 h-1 rounded-full overflow-hidden"
+                                                                    style={{
+                                                                        background: 'linear-gradient(90deg, transparent, hsl(var(--primary) / 0.4), transparent)',
+                                                                        backgroundSize: '200% 100%'
+                                                                    }}
+                                                                    animate={{
+                                                                        backgroundPosition: ['100% 0%', '-100% 0%']
+                                                                    }}
+                                                                    transition={{
+                                                                        duration: 1.5,
+                                                                        repeat: Infinity,
+                                                                        ease: 'linear'
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        )}
 
-                            <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-accent/50 transition-colors relative">
-                                <input
-                                    type="file"
-                                    accept=".pdf,image/*"
-                                    onChange={(e) => e.target.files?.[0] && handleFileChange('proofOfAddress', e.target.files[0])}
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                />
-                                <div className="pointer-events-none">
-                                    {files.proofOfAddress ? (
-                                        <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-600" />
-                                    ) : (
-                                        <Upload className="h-8 w-8 mx-auto mb-2 text-primary" />
-                                    )}
-                                    <p className="font-medium">Justificatif de Domicile *</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        {files.proofOfAddress ? files.proofOfAddress.name : "Moins de 3 mois"}
-                                    </p>
+                                                        {/* Error */}
+                                                        {doc.status === 'error' && (
+                                                            <p className="text-xs text-destructive mt-1">{doc.error}</p>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Remove button */}
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => removeUploadedDoc(doc.id)}
+                                                        className="text-muted-foreground hover:text-destructive"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
+                                            </motion.div>
+                                        ))}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
+                            {/* Zones d'upload individuelles (fallback) */}
+                            {uploadedDocs.length === 0 && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-accent/50 transition-colors relative">
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => e.target.files?.[0] && handleFileChange('photo', e.target.files[0])}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        />
+                                        <div className="pointer-events-none">
+                                            {files.photo ? (
+                                                <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                                            ) : (
+                                                <Upload className="h-8 w-8 mx-auto mb-2 text-primary" />
+                                            )}
+                                            <p className="font-medium">Photo d'identité *</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {files.photo ? files.photo.name : "JPG, PNG - Max 2MB"}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-accent/50 transition-colors relative">
+                                        <input
+                                            type="file"
+                                            accept=".pdf,image/*"
+                                            onChange={(e) => e.target.files?.[0] && handleFileChange('passport', e.target.files[0])}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        />
+                                        <div className="pointer-events-none">
+                                            {files.passport ? (
+                                                <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                                            ) : (
+                                                <Upload className="h-8 w-8 mx-auto mb-2 text-primary" />
+                                            )}
+                                            <p className="font-medium">Passeport *</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {files.passport ? files.passport.name : "PDF, JPG - Max 5MB"}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-accent/50 transition-colors relative">
+                                        <input
+                                            type="file"
+                                            accept=".pdf,image/*"
+                                            onChange={(e) => e.target.files?.[0] && handleFileChange('birthCert', e.target.files[0])}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        />
+                                        <div className="pointer-events-none">
+                                            {files.birthCert ? (
+                                                <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                                            ) : (
+                                                <Upload className="h-8 w-8 mx-auto mb-2 text-primary" />
+                                            )}
+                                            <p className="font-medium">Acte de Naissance *</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {files.birthCert ? files.birthCert.name : "PDF, JPG - Max 5MB"}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-accent/50 transition-colors relative">
+                                        <input
+                                            type="file"
+                                            accept=".pdf,image/*"
+                                            onChange={(e) => e.target.files?.[0] && handleFileChange('proofOfAddress', e.target.files[0])}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        />
+                                        <div className="pointer-events-none">
+                                            {files.proofOfAddress ? (
+                                                <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                                            ) : (
+                                                <Upload className="h-8 w-8 mx-auto mb-2 text-primary" />
+                                            )}
+                                            <p className="font-medium">Justificatif de Domicile *</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {files.proofOfAddress ? files.proofOfAddress.name : "Moins de 3 mois"}
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     )}
 
