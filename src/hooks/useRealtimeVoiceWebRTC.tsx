@@ -40,7 +40,6 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
     const animationFrame = useRef<number | null>(null);
     const audioElement = useRef<HTMLAudioElement | null>(null);
     const currentResponseId = useRef<string | null>(null);
-    const connectionTime = useRef<number>(0); // Timestamp when connection was established
     const { toast } = useToast();
     const location = useLocation();
     const navigate = useNavigate();
@@ -80,20 +79,13 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             // 1. Get Ephemeral Token from edge function (direct HTTP call to avoid mocked client)
             console.log('🔑 Requesting ephemeral token...');
             const FUNCTION_URL =
-                'https://ppduheroaoklcusdrlzt.supabase.co/functions/v1/get-realtime-token';
-
-            // Get current session for authorization (optional - allows anonymous access)
-            const { data: { session } } = await supabase.auth.getSession();
-            const headers: Record<string, string> = {
-                'Content-Type': 'application/json',
-            };
-            if (session?.access_token) {
-                headers['Authorization'] = `Bearer ${session.access_token}`;
-            }
+                'https://csmegxwehniyfvbbjqbz.functions.supabase.co/functions/v1/get-realtime-token';
 
             const tokenResponse = await fetch(FUNCTION_URL, {
                 method: 'POST',
-                headers,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
                 body: JSON.stringify({}),
             });
 
@@ -116,126 +108,15 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             // 2. Setup WebRTC
             const pc = new RTCPeerConnection();
             peerConnection.current = pc;
-            
-            // Add connection state monitoring
-            pc.onconnectionstatechange = () => {
-                console.log('🔗 Connection state:', pc.connectionState);
-            };
-            pc.oniceconnectionstatechange = () => {
-                console.log('🧊 ICE state:', pc.iceConnectionState);
-            };
-            pc.onicegatheringstatechange = () => {
-                console.log('🧊 ICE gathering state:', pc.iceGatheringState);
-            };
-            
-            // CRITICAL: Add transceiver to explicitly receive audio from OpenAI
-            // This ensures we're configured to receive the remote audio track
-            pc.addTransceiver('audio', { direction: 'sendrecv' });
-            console.log('🎧 Audio transceiver added for receiving');
 
             // Audio Element for output (stored in ref for interruption control)
-            // Remove any existing audio element first
-            if (audioElement.current) {
-                audioElement.current.pause();
-                audioElement.current.srcObject = null;
-                audioElement.current.remove();
-            }
-            
             const audioEl = document.createElement('audio');
-            audioEl.id = 'iasted-audio-output';
             audioEl.autoplay = true;
-            audioEl.setAttribute('playsinline', 'true');
-            audioEl.setAttribute('webkit-playsinline', 'true');
-            audioEl.muted = false;
-            audioEl.volume = 1.0;
-            // Append to DOM to ensure browser allows playback
-            audioEl.style.cssText = 'position:fixed;top:-9999px;left:-9999px;';
-            document.body.appendChild(audioEl);
             audioElement.current = audioEl;
-            
-            // Pre-warm the audio context with user gesture
-            try {
-                const tempContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-                await tempContext.resume();
-                console.log('🔊 Audio context pre-warmed');
-                tempContext.close();
-            } catch (e) {
-                console.log('⚠️ Audio context pre-warm skipped:', e);
-            }
-            
             pc.ontrack = (e) => {
                 console.log('🎧 WebRTC Track received:', e.track.kind, e.streams[0].id);
-                if (e.track.kind === 'audio') {
-                    console.log('🔊 Setting up audio stream...');
-                    
-                    // Debug: Log track state
-                    const track = e.track;
-                    console.log('🎵 Track state:', track.readyState, 'enabled:', track.enabled, 'muted:', track.muted);
-                    
-                    // Make sure track is enabled
-                    track.enabled = true;
-                    
-                    audioEl.srcObject = e.streams[0];
-                    
-                    // Ensure volume is up
-                    audioEl.volume = 1.0;
-                    audioEl.muted = false;
-                    
-                    // Debug: Monitor when audio actually plays
-                    audioEl.onplaying = () => console.log('🔊 Audio element is now PLAYING');
-                    audioEl.onpause = () => console.log('⏸️ Audio element PAUSED');
-                    audioEl.onerror = (err) => console.error('❌ Audio element error:', err);
-                    audioEl.onvolumechange = () => console.log('🔊 Volume changed to:', audioEl.volume, 'muted:', audioEl.muted);
-                    
-                    // Detect if running in iframe (sandbox environment)
-                    const isInIframe = window !== window.parent;
-                    
-                    // Force play with multiple fallback strategies
-                    const attemptPlay = async () => {
-                        try {
-                            // Strategy 1: Direct play
-                            console.log('🔊 Attempting direct play...');
-                            await audioEl.play();
-                            console.log('✅ Audio playback started successfully');
-                            console.log('📊 Audio state: volume=', audioEl.volume, 'muted=', audioEl.muted, 'paused=', audioEl.paused);
-                        } catch (err: any) {
-                            console.error('❌ Audio play error:', err.message);
-                            
-                            // Strategy 2: Try with Web Audio API (better for WebRTC streams)
-                            try {
-                                console.log('🔊 Trying Web Audio API fallback...');
-                                const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-                                console.log('🔊 AudioContext state:', audioCtx.state);
-                                await audioCtx.resume();
-                                console.log('🔊 AudioContext resumed, state:', audioCtx.state);
-                                const source = audioCtx.createMediaStreamSource(e.streams[0]);
-                                source.connect(audioCtx.destination);
-                                console.log('✅ Audio playback via Web Audio API');
-                            } catch (webAudioErr) {
-                                console.error('❌ Web Audio fallback failed:', webAudioErr);
-                                
-                                // If in iframe, show helpful message about sandbox
-                                if (isInIframe) {
-                                    toast({
-                                        title: "Audio bloqué par l'environnement",
-                                        description: "Ouvrez l'app dans un nouvel onglet (icône ↗️ en haut à droite) pour activer la voix iAsted",
-                                        variant: "destructive",
-                                        duration: 10000,
-                                    });
-                                    console.warn('⚠️ Audio blocked in iframe sandbox. Please open in new tab.');
-                                } else {
-                                    toast({
-                                        title: "Audio bloqué",
-                                        description: "Cliquez à nouveau sur iAsted pour activer l'audio",
-                                        variant: "destructive"
-                                    });
-                                }
-                            }
-                        }
-                    };
-                    
-                    attemptPlay();
-                }
+                audioEl.srcObject = e.streams[0];
+                audioEl.play().catch(err => console.error('❌ Audio play error:', err));
             };
 
             // Data Channel
@@ -244,7 +125,6 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
 
             dc.onopen = () => {
                 console.log('Data Channel Open');
-                connectionTime.current = Date.now(); // Start grace period for noise filtering
                 setVoiceState('listening');
                 updateSession(voice, systemPrompt); // Send initial config
 
@@ -778,15 +658,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                 setVoiceState('speaking');
                 break;
             case 'input_audio_buffer.speech_started':
-                // User started speaking - check if we should interrupt
-                const timeSinceConnection = Date.now() - connectionTime.current;
-                const isInGracePeriod = timeSinceConnection < 2500; // 2.5 second grace period after connection
-
-                if (isInGracePeriod) {
-                    console.log('🎤 Speech detected during grace period - ignoring (noise filter)');
-                    break;
-                }
-
+                // User started speaking - INTERRUPT immediately (barge-in)
                 console.log('🎤 User speech detected - interrupting AI');
                 if (voiceState === 'speaking') {
                     cancelResponse();
@@ -821,114 +693,51 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
         }
     };
 
-    // Helper to send tool output back to OpenAI
-    const sendToolOutput = (callId: string, output: string) => {
-        if (!dataChannel.current || dataChannel.current.readyState !== 'open') return;
-        
-        // Send function call output
-        dataChannel.current.send(JSON.stringify({
-            type: 'conversation.item.create',
-            item: {
-                type: 'function_call_output',
-                call_id: callId,
-                output: output
-            }
-        }));
-        
-        // Trigger response to continue conversation
-        dataChannel.current.send(JSON.stringify({ type: 'response.create' }));
-        console.log(`📤 Sent tool output for ${callId}:`, output);
-    };
-
     const handleToolCall = async (item: any) => {
-        // OpenAI Realtime API uses 'id' for function call items, not 'call_id'
-        const { name, arguments: argsString, id: callId, call_id } = item;
-        const actualCallId = callId || call_id || item.id;
-        
-        let args = {};
-        try {
-            args = JSON.parse(argsString || '{}');
-        } catch (e) {
-            console.error('Failed to parse tool args:', argsString);
-        }
+        const { name, arguments: argsString } = item;
+        const args = JSON.parse(argsString);
 
-        console.log(`🔧 Tool Call: ${name}`, args, 'callId:', actualCallId, 'item:', item);
-
-        let result = '';
+        console.log(`🔧 Tool Call: ${name}`, args);
 
         // ============= INTERRUPTION HANDLING =============
         if (name === 'interrupt_speech') {
             console.log('🛑 interrupt_speech tool called - interrupting immediately');
             cancelResponse();
-            result = 'Parole interrompue. J\'écoute.';
-            if (actualCallId) sendToolOutput(actualCallId, result);
             return;
         }
 
         if (name === 'evaluate_speech_target') {
-            const { is_addressed_to_me, confidence, reason } = args as any;
+            const { is_addressed_to_me, confidence, reason } = args;
             console.log(`🎯 Speech target evaluation: addressed=${is_addressed_to_me}, confidence=${confidence}, reason=${reason}`);
 
             if (!is_addressed_to_me) {
+                // Speech was not addressed to iAsted - stay silent
                 console.log('👂 Speech not addressed to iAsted - ignoring');
-                result = 'Parole non adressée à moi, j\'ignore.';
-            } else {
-                result = 'Parole adressée à moi, je réponds.';
+                // Don't respond, just listen
+                return;
             }
-            if (actualCallId) sendToolOutput(actualCallId, result);
+            // If addressed to iAsted, continue with normal response flow
             return;
         }
 
         if (name === 'stop_conversation') {
-            result = 'Conversation arrêtée. Au revoir!';
-            if (actualCallId) sendToolOutput(actualCallId, result);
-            setTimeout(() => disconnect(), 500);
+            disconnect();
             return;
         }
 
         if (name === 'change_voice') {
             const nextVoice = currentVoice === 'shimmer' ? 'ash' : 'shimmer';
             changeVoice(nextVoice);
-            result = `Voix changée pour ${nextVoice === 'shimmer' ? 'une voix féminine' : 'une voix masculine'}.`;
-            if (actualCallId) sendToolOutput(actualCallId, result);
-            return;
+            // Send output to acknowledge?
         }
 
-        if (name === 'navigate_app') {
-            const { path } = args as any;
-            if (path) {
-                navigate(path);
-                result = `Navigation vers ${path} effectuée.`;
-            } else {
-                result = 'Chemin non spécifié.';
-            }
-            if (actualCallId) sendToolOutput(actualCallId, result);
-            if (onToolCall) onToolCall(name, args);
-            return;
-        }
-
-        if (name === 'control_ui') {
-            const { action, rate } = args as any;
-            result = `Action UI ${action} exécutée.`;
-            
-            // Dispatch event for UI control
-            window.dispatchEvent(new CustomEvent('iasted', {
-                detail: { action: 'control_ui', controlAction: action, rate }
-            }));
-            
-            if (actualCallId) sendToolOutput(actualCallId, result);
-            if (onToolCall) onToolCall(name, args);
-            return;
-        }
-
-        // For all other tools, send to callback and return a generic response
         if (onToolCall) {
             onToolCall(name, args);
         }
 
-        // Send generic success response for other tools
-        result = `Outil ${name} exécuté avec succès.`;
-        if (actualCallId) sendToolOutput(actualCallId, result);
+        // We should send tool output back to OpenAI if needed, 
+        // but for now we just execute the side effect.
+        // Ideally: send 'conversation.item.create' with type 'function_call_output'
     };
 
     const sendMessage = (text: string) => {
@@ -947,13 +756,10 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
     };
 
     const disconnect = () => {
-        // Stop any ongoing audio and remove from DOM
+        // Stop any ongoing audio
         if (audioElement.current) {
             audioElement.current.pause();
             audioElement.current.srcObject = null;
-            if (audioElement.current.parentNode) {
-                audioElement.current.parentNode.removeChild(audioElement.current);
-            }
             audioElement.current = null;
         }
         if (peerConnection.current) {

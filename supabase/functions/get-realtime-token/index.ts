@@ -12,25 +12,33 @@ serve(async (req) => {
     }
 
     try {
-        // Check for authentication (optional - allows anonymous access for demo)
+        // Verify user authentication
         const authHeader = req.headers.get('Authorization')
-        let userId = 'anonymous'
-        
-        if (authHeader) {
-            const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-            const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
-            
-            const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-                global: { headers: { Authorization: authHeader } }
+        if (!authHeader) {
+            console.error('No authorization header provided')
+            return new Response(JSON.stringify({ error: 'Unauthorized - No token provided' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             })
-
-            const { data: { user } } = await supabase.auth.getUser()
-            if (user) {
-                userId = user.id
-            }
         }
 
-        console.log(`User requesting realtime token: ${userId}`)
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
+        
+        const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+            global: { headers: { Authorization: authHeader } }
+        })
+
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+        if (authError || !user) {
+            console.error('Authentication failed:', authError?.message)
+            return new Response(JSON.stringify({ error: 'Unauthorized - Invalid token' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            })
+        }
+
+        console.log(`Authenticated user requesting realtime token: ${user.id}`)
 
         const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')
         if (!OPENAI_API_KEY) {
