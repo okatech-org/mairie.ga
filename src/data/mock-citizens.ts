@@ -23,7 +23,7 @@ export const MOCK_GABONAIS_CITIZENS: GabonaisCitizen[] = [
         email: 'jean.mba@example.com',
         preferredLanguage: 'FR',
         preferredContact: 'EMAIL',
-        assignedConsulate: 'fr-consulat-paris',
+        assignedMunicipality: 'Libreville',
         registrationStatus: RegistrationStatus.APPROVED,
         registrationDate: new Date('2024-01-01'),
         approvalDate: new Date('2024-01-01'),

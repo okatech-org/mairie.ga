@@ -207,6 +207,7 @@ export type Database = {
         Row: {
           category: string | null
           created_at: string
+          expiration_date: string | null
           file_path: string
           file_size: number | null
           file_type: string | null
@@ -219,6 +220,7 @@ export type Database = {
         Insert: {
           category?: string | null
           created_at?: string
+          expiration_date?: string | null
           file_path: string
           file_size?: number | null
           file_type?: string | null
@@ -231,6 +233,7 @@ export type Database = {
         Update: {
           category?: string | null
           created_at?: string
+          expiration_date?: string | null
           file_path?: string
           file_size?: number | null
           file_type?: string | null
