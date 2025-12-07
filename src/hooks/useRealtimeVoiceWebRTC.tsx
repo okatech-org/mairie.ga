@@ -122,29 +122,17 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                 setVoiceState('listening');
                 updateSession(voice, systemPrompt); // Send initial config
                 
-                // Trigger iAsted to speak immediately with a personalized greeting
+                // Trigger iAsted to speak IMMEDIATELY with a personalized greeting
+                // Reduced delay for faster response
                 setTimeout(() => {
                     if (dc.readyState === 'open') {
                         console.log('🎙️ Triggering auto-greeting...');
                         
                         // Determine time of day for personalized greeting
                         const hour = new Date().getHours();
-                        let timeOfDay: string;
-                        let greetingStyle: string;
-                        
-                        if (hour >= 5 && hour < 12) {
-                            timeOfDay = 'matin';
-                            greetingStyle = 'Bonjour, bonne matinée, ou une variation chaleureuse du matin';
-                        } else if (hour >= 12 && hour < 18) {
-                            timeOfDay = 'après-midi';
-                            greetingStyle = 'Bon après-midi, bonjour, ou une variation adaptée à l\'après-midi';
-                        } else if (hour >= 18 && hour < 22) {
-                            timeOfDay = 'soir';
-                            greetingStyle = 'Bonsoir, bonne soirée, ou une variation chaleureuse du soir';
-                        } else {
-                            timeOfDay = 'nuit';
-                            greetingStyle = 'Bonsoir, bonne nuit, ou une salutation douce adaptée aux heures tardives';
-                        }
+                        const timeOfDay = hour >= 5 && hour < 12 ? 'matin' 
+                            : hour >= 12 && hour < 18 ? 'après-midi' 
+                            : hour >= 18 && hour < 22 ? 'soir' : 'nuit';
                         
                         // Send a hidden user message to trigger the greeting
                         const greetingTrigger = {
@@ -154,18 +142,16 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                                 role: 'user',
                                 content: [{
                                     type: 'input_text',
-                                    text: `[ACTIVATION - ${timeOfDay.toUpperCase()}] Il est actuellement ${hour}h. L'utilisateur vient d'activer iAsted. Salue-le avec une formule adaptée au ${timeOfDay} (${greetingStyle}). Sois naturel, chaleureux et varie tes salutations. Indique ensuite que tu es disponible pour l'aider.`
+                                    text: `[SALUTATION RAPIDE - ${timeOfDay.toUpperCase()}] Salue brièvement l'utilisateur (max 10 mots) adapté au ${timeOfDay}. Sois disponible.`
                                 }]
                             }
                         };
                         dc.send(JSON.stringify(greetingTrigger));
                         
-                        // Request AI response
-                        setTimeout(() => {
-                            dc.send(JSON.stringify({ type: 'response.create' }));
-                        }, 100);
+                        // Request AI response immediately
+                        dc.send(JSON.stringify({ type: 'response.create' }));
                     }
-                }, 600);
+                }, 50);
             };
 
             dc.onmessage = (e) => {
