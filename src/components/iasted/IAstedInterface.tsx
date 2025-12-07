@@ -9,6 +9,7 @@ import { useTheme } from 'next-themes';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { resolveRoute } from '@/utils/route-mapping';
 import { formAssistantStore } from '@/stores/formAssistantStore';
+import { usePresentationSafe } from '@/contexts/PresentationContext';
 
 interface IAstedInterfaceProps {
     userRole?: string;
@@ -47,21 +48,28 @@ export default function IAstedInterface({
     const [selectedVoice, setSelectedVoice] = useState<'echo' | 'ash' | 'shimmer'>('ash');
     const [pendingDocument, setPendingDocument] = useState<any>(null);
     const [questionsRemaining, setQuestionsRemaining] = useState(3);
-    const [isPresentationMode, setIsPresentationMode] = useState(false);
+    const [internalPresentationMode, setInternalPresentationMode] = useState(false);
     const { setTheme, theme } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
+    
+    // Connect to global presentation context
+    const { showPresentation: contextPresentationMode, stopPresentation: contextStopPresentation } = usePresentationSafe();
+    
+    // Combine all sources of presentation mode
+    const isPresentationMode = internalPresentationMode || externalPresentationMode || contextPresentationMode;
 
     // Sync external presentation mode with internal state
     useEffect(() => {
         if (externalPresentationMode) {
-            setIsPresentationMode(true);
+            setInternalPresentationMode(true);
         }
     }, [externalPresentationMode]);
 
     // Handle presentation close
     const handlePresentationClose = () => {
-        setIsPresentationMode(false);
+        setInternalPresentationMode(false);
+        contextStopPresentation();
         onExternalPresentationClose?.();
     };
 
@@ -277,7 +285,7 @@ export default function IAstedInterface({
         
         if (toolName === 'start_presentation') {
             console.log('🎬 [IAstedInterface] Démarrage mode présentation');
-            setIsPresentationMode(true);
+            setInternalPresentationMode(true);
             toast.success('Mode présentation activé !');
             return { 
                 success: true, 
@@ -287,7 +295,8 @@ export default function IAstedInterface({
 
         if (toolName === 'stop_presentation') {
             console.log('🎬 [IAstedInterface] Arrêt mode présentation');
-            setIsPresentationMode(false);
+            setInternalPresentationMode(false);
+            contextStopPresentation();
             return { success: true, message: 'Mode présentation arrêté.' };
         }
 
