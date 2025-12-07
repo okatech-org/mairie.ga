@@ -82,18 +82,18 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             const FUNCTION_URL =
                 'https://ppduheroaoklcusdrlzt.supabase.co/functions/v1/get-realtime-token';
 
-            // Get current session for authorization
+            // Get current session for authorization (optional - allows anonymous access)
             const { data: { session } } = await supabase.auth.getSession();
-            if (!session?.access_token) {
-                throw new Error('Vous devez être connecté pour utiliser iAsted');
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+            };
+            if (session?.access_token) {
+                headers['Authorization'] = `Bearer ${session.access_token}`;
             }
 
             const tokenResponse = await fetch(FUNCTION_URL, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session.access_token}`,
-                },
+                headers,
                 body: JSON.stringify({}),
             });
 

@@ -12,33 +12,25 @@ serve(async (req) => {
     }
 
     try {
-        // Verify user authentication
+        // Check for authentication (optional - allows public access for visitor assistance)
         const authHeader = req.headers.get('Authorization')
-        if (!authHeader) {
-            console.error('No authorization header provided')
-            return new Response(JSON.stringify({ error: 'Unauthorized - No token provided' }), {
-                status: 401,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        let userId = 'anonymous'
+
+        if (authHeader) {
+            const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+            const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
+
+            const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+                global: { headers: { Authorization: authHeader } }
             })
+
+            const { data: { user }, error: authError } = await supabase.auth.getUser()
+            if (!authError && user) {
+                userId = user.id
+            }
         }
 
-        const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
-        
-        const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-            global: { headers: { Authorization: authHeader } }
-        })
-
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
-        if (authError || !user) {
-            console.error('Authentication failed:', authError?.message)
-            return new Response(JSON.stringify({ error: 'Unauthorized - Invalid token' }), {
-                status: 401,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            })
-        }
-
-        console.log(`Authenticated user requesting realtime token: ${user.id}`)
+        console.log(`User requesting realtime token: ${userId}`)
 
         const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')
         if (!OPENAI_API_KEY) {
