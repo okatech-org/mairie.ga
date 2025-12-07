@@ -41,8 +41,9 @@ serve(async (req) => {
         }
 
         // Build email payload
+        // Note: Using Resend's test domain. For production, verify your domain at https://resend.com/domains
         const emailPayload: Record<string, any> = {
-            from: 'Mairie de Libreville <noreply@mairie.ga>',
+            from: 'Mairie de Libreville <onboarding@resend.dev>',
             to: [to],
             subject: subject,
             html: `
