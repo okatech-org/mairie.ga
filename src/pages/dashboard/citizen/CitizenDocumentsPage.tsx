@@ -6,13 +6,24 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { FileText, Upload, Trash2, Eye, Loader2, FileIcon } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 
 export default function CitizenDocumentsPage() {
     const [documents, setDocuments] = useState<Document[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [isUploading, setIsUploading] = useState(false);
+    const [uploadingCount, setUploadingCount] = useState(0);
     const [selectedType, setSelectedType] = useState<DocumentType>('OTHER');
+    const [deleteTarget, setDeleteTarget] = useState<Document | null>(null);
 
     useEffect(() => {
         fetchDocuments();
@@ -30,28 +41,50 @@ export default function CitizenDocumentsPage() {
         }
     };
 
-    const handleUpload = async (file: File) => {
-        if (file.size > 5 * 1024 * 1024) {
-            toast.error("Le fichier est trop volumineux (max 5MB)");
-            return;
+    const handleUpload = async (files: File[]) => {
+        const validFiles = files.filter(file => {
+            if (file.size > 5 * 1024 * 1024) {
+                toast.error(`${file.name} est trop volumineux (max 5MB)`);
+                return false;
+            }
+            return true;
+        });
+
+        if (validFiles.length === 0) return;
+
+        setUploadingCount(validFiles.length);
+        
+        const results = await Promise.allSettled(
+            validFiles.map(file => documentService.uploadDocument(file, selectedType))
+        );
+
+        const successful: Document[] = [];
+        let failedCount = 0;
+
+        results.forEach((result, index) => {
+            if (result.status === 'fulfilled') {
+                successful.push(result.value);
+            } else {
+                failedCount++;
+                console.error(`Upload failed for ${validFiles[index].name}:`, result.reason);
+            }
+        });
+
+        if (successful.length > 0) {
+            setDocuments(prev => [...successful, ...prev]);
+            toast.success(`${successful.length} document${successful.length > 1 ? 's' : ''} ajouté${successful.length > 1 ? 's' : ''}`);
         }
 
-        setIsUploading(true);
-        try {
-            const newDoc = await documentService.uploadDocument(file, selectedType);
-            setDocuments(prev => [newDoc, ...prev]);
-            toast.success("Document ajouté avec succès");
-        } catch (error: any) {
-            console.error("Upload failed", error);
-            toast.error(error.message || "Erreur lors de l'envoi du document");
-        } finally {
-            setIsUploading(false);
+        if (failedCount > 0) {
+            toast.error(`${failedCount} document${failedCount > 1 ? 's' : ''} n'ont pas pu être envoyés`);
         }
+
+        setUploadingCount(0);
     };
 
     const onDrop = useCallback((acceptedFiles: File[]) => {
         if (acceptedFiles.length > 0) {
-            handleUpload(acceptedFiles[0]);
+            handleUpload(acceptedFiles);
         }
     }, [selectedType]);
 
@@ -63,17 +96,20 @@ export default function CitizenDocumentsPage() {
             'image/png': ['.png'],
             'image/webp': ['.webp']
         },
-        maxFiles: 1,
-        disabled: isUploading
+        disabled: uploadingCount > 0
     });
 
-    const handleDelete = async (id: string) => {
+    const confirmDelete = async () => {
+        if (!deleteTarget) return;
+        
         try {
-            await documentService.deleteDocument(id);
+            await documentService.deleteDocument(deleteTarget.id);
             toast.success("Document supprimé");
-            setDocuments(prev => prev.filter(d => d.id !== id));
+            setDocuments(prev => prev.filter(d => d.id !== deleteTarget.id));
         } catch (error) {
             toast.error("Erreur lors de la suppression");
+        } finally {
+            setDeleteTarget(null);
         }
     };
 
@@ -134,6 +170,8 @@ export default function CitizenDocumentsPage() {
         );
     };
 
+    const isUploading = uploadingCount > 0;
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -184,14 +222,14 @@ export default function CitizenDocumentsPage() {
                     <div>
                         <p className="font-semibold">
                             {isUploading 
-                                ? "Envoi en cours..." 
+                                ? `Envoi de ${uploadingCount} document${uploadingCount > 1 ? 's' : ''}...` 
                                 : isDragActive 
-                                    ? "Déposez le fichier ici" 
-                                    : "Glissez-déposez un document ici"
+                                    ? "Déposez les fichiers ici" 
+                                    : "Glissez-déposez vos documents ici"
                             }
                         </p>
                         <p className="text-sm text-muted-foreground mt-1">
-                            {!isUploading && "ou cliquez pour sélectionner • PDF, JPG, PNG (max 5MB)"}
+                            {!isUploading && "ou cliquez pour sélectionner • Plusieurs fichiers acceptés • PDF, JPG, PNG (max 5MB)"}
                         </p>
                     </div>
                 </div>
@@ -249,7 +287,7 @@ export default function CitizenDocumentsPage() {
                                     variant="ghost" 
                                     size="sm" 
                                     className="gap-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10" 
-                                    onClick={() => handleDelete(doc.id)}
+                                    onClick={() => setDeleteTarget(doc)}
                                 >
                                     <Trash2 className="w-3.5 h-3.5" />
                                 </Button>
@@ -258,6 +296,27 @@ export default function CitizenDocumentsPage() {
                     ))}
                 </div>
             )}
+
+            {/* Delete Confirmation Modal */}
+            <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Supprimer ce document ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Êtes-vous sûr de vouloir supprimer "{deleteTarget?.title}" ? Cette action est irréversible.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={confirmDelete}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            Supprimer
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
