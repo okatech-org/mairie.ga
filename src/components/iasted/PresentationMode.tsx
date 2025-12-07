@@ -204,6 +204,12 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
   const [showPointer, setShowPointer] = useState(false);
   const [pointerPosition, setPointerPosition] = useState({ x: 0, y: 0 });
   const actionTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
+  const onButtonPositionChangeRef = useRef(onButtonPositionChange);
+
+  // Keep callback ref up to date
+  useEffect(() => {
+    onButtonPositionChangeRef.current = onButtonPositionChange;
+  }, [onButtonPositionChange]);
 
   const currentStep = PRESENTATION_SCRIPT[currentStepIndex];
   const totalSteps = PRESENTATION_SCRIPT.length;
@@ -214,12 +220,11 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
     presentationState.isActive = true;
     presentationState.buttonX = buttonPosition.x;
     presentationState.buttonY = buttonPosition.y;
-    onButtonPositionChange?.(buttonPosition.x, buttonPosition.y);
     
     return () => {
       presentationState.isActive = false;
     };
-  }, [buttonPosition, onButtonPositionChange]);
+  }, [buttonPosition]);
 
   // Text-to-speech
   const speak = useCallback((text: string) => {
@@ -267,10 +272,13 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
       case 'move':
         if (action.position) {
           console.log('🎯 Moving button to:', action.position);
-          const newPosition = { x: action.position.x, y: action.position.y };
-          setButtonPosition(newPosition);
-          // Immediately notify parent of position change
-          onButtonPositionChange?.(newPosition.x, newPosition.y);
+          const newX = action.position.x;
+          const newY = action.position.y;
+          setButtonPosition({ x: newX, y: newY });
+          // Use ref to call callback to avoid stale closure
+          if (onButtonPositionChangeRef.current) {
+            onButtonPositionChangeRef.current(newX, newY);
+          }
         }
         break;
 
@@ -309,34 +317,43 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
         setTimeout(() => setShowPointer(false), 500);
         break;
     }
-  }, [onButtonPositionChange]);
+  }, []);
 
   // Execute all actions for a step
   const executeStepActions = useCallback((actions: PresentationAction[]) => {
+    console.log('🎬 Executing step actions:', actions.length, 'actions');
     clearActionTimeouts();
     setHighlightedElement(null);
     setShowPointer(false);
 
-    actions.forEach((action) => {
+    actions.forEach((action, index) => {
       const delay = action.delay || 0;
-      const timeout = setTimeout(() => executeAction(action), delay);
+      console.log(`⏱️ Scheduling action ${index + 1}/${actions.length}: ${action.type} with delay ${delay}ms`);
+      const timeout = setTimeout(() => {
+        console.log(`▶️ Executing action: ${action.type}`);
+        executeAction(action);
+      }, delay);
       actionTimeoutsRef.current.push(timeout);
     });
   }, [executeAction, clearActionTimeouts]);
 
   // Navigate and execute step
   useEffect(() => {
+    console.log('🎥 Presentation step effect - isPlaying:', isPlaying, 'stepIndex:', currentStepIndex);
     if (!isPlaying) return;
 
     const step = PRESENTATION_SCRIPT[currentStepIndex];
+    console.log('📋 Current step:', step.id, step.title);
     
     // Navigate if needed
     if (location.pathname !== step.route) {
+      console.log('🧭 Navigating to:', step.route);
       navigate(step.route);
     }
 
     // Wait for navigation then execute actions
     const navTimeout = setTimeout(() => {
+      console.log('✅ Executing actions for step:', step.id);
       executeStepActions(step.actions);
       speak(step.narration);
     }, location.pathname !== step.route ? 600 : 100);
