@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.auth-pin-login]
 verify_jwt = false
+
+[functions.send-official-correspondence]
+verify_jwt = false
