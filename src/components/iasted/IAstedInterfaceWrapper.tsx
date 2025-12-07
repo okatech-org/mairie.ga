@@ -12,9 +12,10 @@ export default function IAstedInterfaceWrapper() {
   const { currentUser: demoUser } = useDemo();
   const { user: authUser, loading: authLoading } = useAuth();
   const [userRole, setUserRole] = useState<string | undefined>(undefined);
+  const [userFirstName, setUserFirstName] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    const detectUserRole = async () => {
+    const detectUserAndRole = async () => {
       // Priorité 1: Utilisateur Supabase authentifié
       if (authUser) {
         console.log('🔐 [IAstedWrapper] Utilisateur connecté:', authUser.email);
@@ -29,11 +30,21 @@ export default function IAstedInterfaceWrapper() {
         if (roleData?.role) {
           console.log('🔐 [IAstedWrapper] Rôle détecté:', roleData.role);
           setUserRole(roleData.role);
-          return;
+        } else {
+          setUserRole('citizen');
         }
 
-        // Pas de rôle spécifique = citoyen par défaut
-        setUserRole('citizen');
+        // Récupérer le prénom depuis profiles
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('first_name')
+          .eq('user_id', authUser.id)
+          .single();
+
+        if (profileData?.first_name) {
+          console.log('🔐 [IAstedWrapper] Prénom détecté:', profileData.first_name);
+          setUserFirstName(profileData.first_name);
+        }
         return;
       }
 
@@ -41,15 +52,17 @@ export default function IAstedInterfaceWrapper() {
       if (demoUser?.role) {
         console.log('🎭 [IAstedWrapper] Mode démo:', demoUser.role);
         setUserRole(demoUser.role);
+        setUserFirstName(demoUser.name?.split(' ')[0]);
         return;
       }
 
       // Pas d'utilisateur = inconnu
       setUserRole('unknown');
+      setUserFirstName(undefined);
     };
 
     if (!authLoading) {
-      detectUserRole();
+      detectUserAndRole();
     }
   }, [authUser, authLoading, demoUser]);
 
@@ -111,5 +124,5 @@ export default function IAstedInterfaceWrapper() {
 
   const mappedRole = mapUserRole(userRole);
 
-  return <IAstedInterface userRole={mappedRole} />;
+  return <IAstedInterface userRole={mappedRole} userFirstName={userFirstName} />;
 }
