@@ -40,6 +40,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
     const animationFrame = useRef<number | null>(null);
     const audioElement = useRef<HTMLAudioElement | null>(null);
     const currentResponseId = useRef<string | null>(null);
+    const connectionTime = useRef<number>(0); // Timestamp when connection was established
     const { toast } = useToast();
     const location = useLocation();
     const navigate = useNavigate();
@@ -125,6 +126,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
 
             dc.onopen = () => {
                 console.log('Data Channel Open');
+                connectionTime.current = Date.now(); // Start grace period for noise filtering
                 setVoiceState('listening');
                 updateSession(voice, systemPrompt); // Send initial config
 
@@ -658,7 +660,15 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                 setVoiceState('speaking');
                 break;
             case 'input_audio_buffer.speech_started':
-                // User started speaking - INTERRUPT immediately (barge-in)
+                // User started speaking - check if we should interrupt
+                const timeSinceConnection = Date.now() - connectionTime.current;
+                const isInGracePeriod = timeSinceConnection < 2500; // 2.5 second grace period after connection
+
+                if (isInGracePeriod) {
+                    console.log('🎤 Speech detected during grace period - ignoring (noise filter)');
+                    break;
+                }
+
                 console.log('🎤 User speech detected - interrupting AI');
                 if (voiceState === 'speaking') {
                     cancelResponse();
