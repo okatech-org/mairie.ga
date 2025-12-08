@@ -346,13 +346,40 @@ export const useGeminiLive = (onToolCall?: (name: string, args: any) => void): U
 
   const handleServerMessage = async (event: MessageEvent) => {
     try {
-      const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+      let data: any;
       
-      console.log('📥 [GeminiLive] Server message:', data);
+      // Handle both Blob and string data
+      if (event.data instanceof Blob) {
+        const text = await event.data.text();
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          console.warn('⚠️ [GeminiLive] Non-JSON blob data received');
+          return;
+        }
+      } else if (typeof event.data === 'string') {
+        try {
+          data = JSON.parse(event.data);
+        } catch (e) {
+          console.warn('⚠️ [GeminiLive] Non-JSON string data received');
+          return;
+        }
+      } else {
+        console.warn('⚠️ [GeminiLive] Unknown data type:', typeof event.data);
+        return;
+      }
+
+      // Skip empty messages
+      if (!data || Object.keys(data).length === 0) {
+        return;
+      }
+      
+      console.log('📥 [GeminiLive] Server message:', JSON.stringify(data).substring(0, 200));
 
       // Handle setup complete
       if (data.setupComplete) {
         console.log('✅ [GeminiLive] Setup complete');
+        setVoiceState('listening');
         return;
       }
 
@@ -364,6 +391,7 @@ export const useGeminiLive = (onToolCall?: (name: string, args: any) => void): U
           for (const part of modelTurn.parts) {
             // Audio response
             if (part.inlineData?.mimeType?.startsWith('audio/')) {
+              console.log('🔊 [GeminiLive] Audio chunk received, mime:', part.inlineData.mimeType);
               setVoiceState('speaking');
               audioPlayerRef.current?.addToQueue(part.inlineData.data);
             }
@@ -371,7 +399,12 @@ export const useGeminiLive = (onToolCall?: (name: string, args: any) => void): U
             // Text response (for logging)
             if (part.text) {
               console.log('💬 [GeminiLive] Text:', part.text);
-              setMessages(prev => [...prev, { role: 'assistant', content: part.text }]);
+              setMessages(prev => [...prev, { 
+                id: crypto.randomUUID(),
+                role: 'assistant', 
+                content: part.text,
+                timestamp: new Date().toISOString()
+              }]);
             }
           }
         }
