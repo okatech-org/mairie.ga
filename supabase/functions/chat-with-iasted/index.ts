@@ -42,7 +42,7 @@ serve(async (req) => {
 
         const { message, conversationHistory, systemPrompt } = await req.json()
         
-        // Use Lovable AI Gateway with flash-lite model (cheapest option)
+        // Use Lovable AI Gateway with gemini-2.5-pro (premium quality)
         const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY')
         if (!LOVABLE_API_KEY) {
             throw new Error('LOVABLE_API_KEY is not set')
@@ -54,7 +54,7 @@ serve(async (req) => {
             { role: 'user', content: message }
         ]
 
-        console.log(`[chat-with-iasted] Sending request to Lovable AI (gemini-2.5-flash-lite)`)
+        console.log(`[chat-with-iasted] Sending request to Lovable AI (gemini-2.5-pro)`)
 
         const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
             method: 'POST',
@@ -63,10 +63,10 @@ serve(async (req) => {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                model: 'google/gemini-2.5-flash-lite',
+                model: 'google/gemini-2.5-pro',
                 messages: messages,
                 temperature: 0.7,
-                max_tokens: 1000
+                max_tokens: 2000
             }),
         })
 
