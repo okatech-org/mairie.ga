@@ -16,12 +16,18 @@ export class AudioRecorder {
   private processor: ScriptProcessorNode | null = null;
   private source: MediaStreamAudioSourceNode | null = null;
   private onAudioData: (audioData: string) => void;
+  private isRecording = false;
 
   constructor(onAudioData: (base64Audio: string) => void) {
     this.onAudioData = onAudioData;
   }
 
   async start(): Promise<void> {
+    if (this.isRecording) {
+      console.log('⚠️ [AudioRecorder] Already recording');
+      return;
+    }
+
     try {
       console.log('🎙️ [AudioRecorder] Requesting microphone access...');
       this.stream = await navigator.mediaDevices.getUserMedia({
@@ -34,14 +40,24 @@ export class AudioRecorder {
         }
       });
 
+      // Create AudioContext - may need to be resumed after user interaction
       this.audioContext = new AudioContext({
         sampleRate: RECORDING_SAMPLE_RATE,
       });
 
+      // Resume if suspended (browser security feature)
+      if (this.audioContext.state === 'suspended') {
+        await this.audioContext.resume();
+        console.log('✅ [AudioRecorder] AudioContext resumed');
+      }
+
       this.source = this.audioContext.createMediaStreamSource(this.stream);
-      this.processor = this.audioContext.createScriptProcessor(4096, 1, 1);
+      
+      // Use larger buffer for stability
+      this.processor = this.audioContext.createScriptProcessor(2048, 1, 1);
 
       this.processor.onaudioprocess = (e) => {
+        if (!this.isRecording) return;
         const inputData = e.inputBuffer.getChannelData(0);
         const base64Audio = this.encodeAudioToPCM16Base64(inputData);
         this.onAudioData(base64Audio);
@@ -49,6 +65,7 @@ export class AudioRecorder {
 
       this.source.connect(this.processor);
       this.processor.connect(this.audioContext.destination);
+      this.isRecording = true;
       console.log('✅ [AudioRecorder] Recording started at 16kHz');
     } catch (error) {
       console.error('❌ [AudioRecorder] Error accessing microphone:', error);
@@ -57,12 +74,18 @@ export class AudioRecorder {
   }
 
   stop(): void {
+    this.isRecording = false;
+    
     if (this.source) {
-      this.source.disconnect();
+      try {
+        this.source.disconnect();
+      } catch (e) { /* ignore */ }
       this.source = null;
     }
     if (this.processor) {
-      this.processor.disconnect();
+      try {
+        this.processor.disconnect();
+      } catch (e) { /* ignore */ }
       this.processor = null;
     }
     if (this.stream) {
@@ -70,7 +93,7 @@ export class AudioRecorder {
       this.stream = null;
     }
     if (this.audioContext) {
-      this.audioContext.close();
+      this.audioContext.close().catch(() => {});
       this.audioContext = null;
     }
     console.log('🛑 [AudioRecorder] Recording stopped');
@@ -110,6 +133,7 @@ export class AudioPlayer {
   private currentSource: AudioBufferSourceNode | null = null;
   private onPlaybackStart?: () => void;
   private onPlaybackEnd?: () => void;
+  private gainNode: GainNode | null = null;
 
   constructor(onPlaybackStart?: () => void, onPlaybackEnd?: () => void) {
     this.onPlaybackStart = onPlaybackStart;
@@ -121,7 +145,19 @@ export class AudioPlayer {
       this.audioContext = new AudioContext({
         sampleRate: PLAYBACK_SAMPLE_RATE
       });
+      
+      // Create gain node for volume control
+      this.gainNode = this.audioContext.createGain();
+      this.gainNode.gain.value = 1.0;
+      this.gainNode.connect(this.audioContext.destination);
+      
       console.log('✅ [AudioPlayer] Initialized at 24kHz');
+    }
+    
+    // Resume if suspended (browser security feature)
+    if (this.audioContext.state === 'suspended') {
+      await this.audioContext.resume();
+      console.log('✅ [AudioPlayer] AudioContext resumed');
     }
   }
 
@@ -133,10 +169,22 @@ export class AudioPlayer {
       await this.init();
     }
 
+    // Ensure context is running
+    if (this.audioContext?.state === 'suspended') {
+      await this.audioContext.resume();
+    }
+
     try {
       const pcmData = this.decodeBase64ToPCM16(base64Audio);
-      const audioBuffer = await this.createAudioBuffer(pcmData);
+      
+      if (pcmData.length === 0) {
+        console.warn('⚠️ [AudioPlayer] Empty audio data received');
+        return;
+      }
+      
+      const audioBuffer = this.createAudioBuffer(pcmData);
       this.queue.push(audioBuffer);
+      console.log(`📥 [AudioPlayer] Added to queue, length: ${this.queue.length}`);
 
       if (!this.isPlaying) {
         this.playNext();
@@ -146,24 +194,32 @@ export class AudioPlayer {
     }
   }
 
-  private async playNext(): Promise<void> {
+  private playNext(): void {
     if (this.queue.length === 0) {
       this.isPlaying = false;
+      console.log('✅ [AudioPlayer] Queue empty, playback ended');
       this.onPlaybackEnd?.();
       return;
     }
 
     this.isPlaying = true;
-    if (this.queue.length === 1) {
+    
+    // Notify on first buffer
+    if (!this.currentSource) {
       this.onPlaybackStart?.();
     }
 
     const audioBuffer = this.queue.shift()!;
 
     try {
-      const source = this.audioContext!.createBufferSource();
+      if (!this.audioContext || !this.gainNode) {
+        console.error('❌ [AudioPlayer] AudioContext not initialized');
+        return;
+      }
+
+      const source = this.audioContext.createBufferSource();
       source.buffer = audioBuffer;
-      source.connect(this.audioContext!.destination);
+      source.connect(this.gainNode);
 
       this.currentSource = source;
 
@@ -173,9 +229,20 @@ export class AudioPlayer {
       };
 
       source.start(0);
+      console.log(`🔊 [AudioPlayer] Playing buffer, duration: ${audioBuffer.duration.toFixed(2)}s`);
     } catch (error) {
       console.error('❌ [AudioPlayer] Error playing audio:', error);
+      this.currentSource = null;
       this.playNext(); // Continue with next segment
+    }
+  }
+
+  /**
+   * Set playback volume (0-1)
+   */
+  setVolume(volume: number): void {
+    if (this.gainNode) {
+      this.gainNode.gain.value = Math.max(0, Math.min(1, volume));
     }
   }
 
@@ -193,6 +260,7 @@ export class AudioPlayer {
       this.currentSource = null;
     }
     this.isPlaying = false;
+    console.log('🛑 [AudioPlayer] Playback stopped');
     this.onPlaybackEnd?.();
   }
 
@@ -200,22 +268,31 @@ export class AudioPlayer {
    * Decode base64 to Uint8Array
    */
   private decodeBase64ToPCM16(base64: string): Uint8Array {
-    const binaryString = atob(base64);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
+    try {
+      const binaryString = atob(base64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      return bytes;
+    } catch (error) {
+      console.error('❌ [AudioPlayer] Error decoding base64:', error);
+      return new Uint8Array(0);
     }
-    return bytes;
   }
 
   /**
    * Create AudioBuffer from PCM16 data
    */
-  private async createAudioBuffer(pcmData: Uint8Array): Promise<AudioBuffer> {
+  private createAudioBuffer(pcmData: Uint8Array): AudioBuffer {
     // Convert bytes to 16-bit samples (little endian)
-    const int16Data = new Int16Array(pcmData.length / 2);
-    for (let i = 0; i < pcmData.length; i += 2) {
-      int16Data[i / 2] = (pcmData[i + 1] << 8) | pcmData[i];
+    const sampleCount = Math.floor(pcmData.length / 2);
+    const int16Data = new Int16Array(sampleCount);
+    
+    for (let i = 0; i < sampleCount; i++) {
+      const byteIndex = i * 2;
+      // Little endian: low byte first, then high byte
+      int16Data[i] = (pcmData[byteIndex + 1] << 8) | pcmData[byteIndex];
     }
 
     // Create audio buffer
@@ -225,7 +302,7 @@ export class AudioPlayer {
       PLAYBACK_SAMPLE_RATE
     );
 
-    // Convert Int16 to Float32
+    // Convert Int16 to Float32 (-1.0 to 1.0)
     const float32Data = audioBuffer.getChannelData(0);
     for (let i = 0; i < int16Data.length; i++) {
       float32Data[i] = int16Data[i] / 32768.0;
@@ -236,10 +313,17 @@ export class AudioPlayer {
 
   close(): void {
     this.stop();
+    if (this.gainNode) {
+      try {
+        this.gainNode.disconnect();
+      } catch (e) { /* ignore */ }
+      this.gainNode = null;
+    }
     if (this.audioContext) {
-      this.audioContext.close();
+      this.audioContext.close().catch(() => {});
       this.audioContext = null;
     }
+    console.log('🛑 [AudioPlayer] Closed');
   }
 }
 
@@ -256,11 +340,18 @@ export class AudioLevelAnalyzer {
     this.onLevelChange = onLevelChange;
   }
 
-  start(stream: MediaStream): void {
+  async start(stream: MediaStream): Promise<void> {
     this.audioContext = new AudioContext();
+    
+    // Resume if suspended
+    if (this.audioContext.state === 'suspended') {
+      await this.audioContext.resume();
+    }
+    
     const source = this.audioContext.createMediaStreamSource(stream);
     this.analyser = this.audioContext.createAnalyser();
     this.analyser.fftSize = 256;
+    this.analyser.smoothingTimeConstant = 0.8;
     source.connect(this.analyser);
     this.analyze();
   }
@@ -287,7 +378,7 @@ export class AudioLevelAnalyzer {
       this.animationFrame = null;
     }
     if (this.audioContext) {
-      this.audioContext.close();
+      this.audioContext.close().catch(() => {});
       this.audioContext = null;
     }
     this.analyser = null;
