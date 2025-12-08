@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import IAstedButtonFull from './IAstedButtonFull';
-import PresentationMode, { presentationState } from './PresentationMode';
+import PresentationMode from './PresentationMode';
 
 interface TrailPoint {
   id: number;
@@ -28,38 +28,47 @@ export default function IAstedPresentationWrapper({
   voiceSpeaking = false,
   voiceProcessing = false
 }: IAstedPresentationWrapperProps) {
-  const [buttonPosition, setButtonPosition] = useState({ x: 90, y: 85 });
-  const [targetPosition, setTargetPosition] = useState<{ x: number; y: number } | null>(null);
+  // Position in percentage of viewport
+  const [buttonX, setButtonX] = useState(90);
+  const [buttonY, setButtonY] = useState(85);
+  const [targetX, setTargetX] = useState<number | null>(null);
+  const [targetY, setTargetY] = useState<number | null>(null);
   const [isPresentationActive, setIsPresentationActive] = useState(false);
   const [trail, setTrail] = useState<TrailPoint[]>([]);
   const trailIdRef = useRef(0);
-  const lastPositionRef = useRef({ x: 90, y: 85 });
+  const lastPosRef = useRef({ x: 90, y: 85 });
 
+  // Activate presentation mode
   useEffect(() => {
     if (showPresentation) {
-      console.log('🎬 Presentation started - activating');
+      console.log('🎬 [Wrapper] Presentation activated');
       setIsPresentationActive(true);
+      // Reset position at start
+      setButtonX(90);
+      setButtonY(85);
+      lastPosRef.current = { x: 90, y: 85 };
     }
   }, [showPresentation]);
 
-  const handlePositionChange = (x: number, y: number) => {
-    console.log('📍 Position change received:', { x, y, current: buttonPosition });
+  // Handle position change from PresentationMode
+  const handlePositionChange = useCallback((x: number, y: number) => {
+    console.log('📍 [Wrapper] Position change:', { x, y });
     
-    // Show target indicator
-    setTargetPosition({ x, y });
+    // Show target indicator immediately
+    setTargetX(x);
+    setTargetY(y);
     
-    // Only add trail points when position actually changes significantly
-    const dx = Math.abs(x - lastPositionRef.current.x);
-    const dy = Math.abs(y - lastPositionRef.current.y);
+    // Add trail points
+    const dx = Math.abs(x - lastPosRef.current.x);
+    const dy = Math.abs(y - lastPosRef.current.y);
     
-    if (isPresentationActive && showPresentation && (dx > 2 || dy > 2)) {
-      // Add multiple trail points for smoother trail
+    if (dx > 2 || dy > 2) {
       const steps = Math.max(3, Math.floor(Math.sqrt(dx * dx + dy * dy) / 5));
       
       for (let i = 0; i < steps; i++) {
         const progress = i / steps;
-        const interpX = lastPositionRef.current.x + (x - lastPositionRef.current.x) * progress;
-        const interpY = lastPositionRef.current.y + (y - lastPositionRef.current.y) * progress;
+        const interpX = lastPosRef.current.x + (x - lastPosRef.current.x) * progress;
+        const interpY = lastPosRef.current.y + (y - lastPosRef.current.y) * progress;
         
         setTimeout(() => {
           trailIdRef.current += 1;
@@ -72,14 +81,17 @@ export default function IAstedPresentationWrapper({
       }
     }
     
-    lastPositionRef.current = { x, y };
-    setButtonPosition({ x, y });
+    // Update position - this is the key update!
+    lastPosRef.current = { x, y };
+    setButtonX(x);
+    setButtonY(y);
     
-    // Hide target after animation
+    // Hide target after animation completes
     setTimeout(() => {
-      setTargetPosition(null);
+      setTargetX(null);
+      setTargetY(null);
     }, 800);
-  };
+  }, []);
 
   // Clean up old trail points
   useEffect(() => {
@@ -91,27 +103,33 @@ export default function IAstedPresentationWrapper({
     }
   }, [trail]);
 
-  const handleClosePresentation = () => {
-    console.log('🛑 Closing presentation');
+  const handleClosePresentation = useCallback(() => {
+    console.log('🛑 [Wrapper] Closing presentation');
     setIsPresentationActive(false);
-    setButtonPosition({ x: 90, y: 85 });
-    setTargetPosition(null);
+    setButtonX(90);
+    setButtonY(85);
+    setTargetX(null);
+    setTargetY(null);
     setTrail([]);
+    lastPosRef.current = { x: 90, y: 85 };
     onClosePresentation();
+  }, [onClosePresentation]);
+
+  // Calculate pixel position for fixed elements
+  const getPixelPosition = (xPercent: number, yPercent: number) => {
+    return {
+      left: `${xPercent}vw`,
+      top: `${yPercent}vh`
+    };
   };
 
-  // Debug: log position updates
-  useEffect(() => {
-    if (isPresentationActive && showPresentation) {
-      console.log('🔄 Button position updated:', buttonPosition);
-    }
-  }, [buttonPosition, isPresentationActive, showPresentation]);
+  const isActive = isPresentationActive && showPresentation;
 
   return (
     <>
       {/* Target position indicator */}
       <AnimatePresence>
-        {isPresentationActive && showPresentation && targetPosition && (
+        {isActive && targetX !== null && targetY !== null && (
           <motion.div
             key="target-indicator"
             initial={{ opacity: 0, scale: 0 }}
@@ -119,8 +137,7 @@ export default function IAstedPresentationWrapper({
             exit={{ opacity: 0, scale: 0 }}
             className="fixed pointer-events-none z-[9997]"
             style={{
-              left: `${targetPosition.x}%`,
-              top: `${targetPosition.y}%`,
+              ...getPixelPosition(targetX, targetY),
               transform: 'translate(-50%, -50%)'
             }}
           >
@@ -137,7 +154,7 @@ export default function IAstedPresentationWrapper({
               }}
               className="w-16 h-16 rounded-full border-2 border-dashed border-primary"
               style={{
-                boxShadow: '0 0 20px rgba(139, 92, 246, 0.5)'
+                boxShadow: '0 0 20px hsl(var(--primary) / 0.5)'
               }}
             />
             {/* Center dot */}
@@ -152,7 +169,7 @@ export default function IAstedPresentationWrapper({
 
       {/* Trail effect */}
       <AnimatePresence>
-        {isPresentationActive && showPresentation && trail.map((point, index) => (
+        {isActive && trail.map((point, index) => (
           <motion.div
             key={point.id}
             initial={{ opacity: 0.8, scale: 1 }}
@@ -161,8 +178,7 @@ export default function IAstedPresentationWrapper({
             transition={{ duration: 0.6, ease: "easeOut" }}
             className="fixed pointer-events-none z-[9998]"
             style={{
-              left: `${point.x}%`,
-              top: `${point.y}%`,
+              ...getPixelPosition(point.x, point.y),
               transform: 'translate(-50%, -50%)'
             }}
           >
@@ -172,11 +188,10 @@ export default function IAstedPresentationWrapper({
                 width: `${24 - index * 1.2}px`,
                 height: `${24 - index * 1.2}px`,
                 background: `radial-gradient(circle, 
-                  rgba(139, 92, 246, ${0.6 - index * 0.03}) 0%, 
-                  rgba(99, 102, 241, ${0.4 - index * 0.02}) 50%, 
+                  hsl(var(--primary) / ${0.6 - index * 0.03}) 0%, 
+                  hsl(var(--primary) / ${0.4 - index * 0.02}) 50%, 
                   transparent 100%)`,
-                boxShadow: `0 0 ${20 - index}px rgba(139, 92, 246, ${0.5 - index * 0.03}), 
-                           0 0 ${40 - index * 2}px rgba(99, 102, 241, ${0.3 - index * 0.02})`,
+                boxShadow: `0 0 ${20 - index}px hsl(var(--primary) / ${0.5 - index * 0.03})`,
                 filter: `blur(${index * 0.5}px)`
               }}
             />
@@ -185,12 +200,12 @@ export default function IAstedPresentationWrapper({
       </AnimatePresence>
 
       {/* Glow ring around button during movement */}
-      {isPresentationActive && showPresentation && (
+      {isActive && (
         <motion.div
           className="fixed pointer-events-none z-[9998]"
           animate={{
-            left: `${buttonPosition.x}%`,
-            top: `${buttonPosition.y}%`
+            left: `${buttonX}vw`,
+            top: `${buttonY}vh`
           }}
           transition={{
             type: "spring",
@@ -211,34 +226,42 @@ export default function IAstedPresentationWrapper({
             }}
             className="w-20 h-20 rounded-full"
             style={{
-              background: 'radial-gradient(circle, transparent 40%, rgba(139, 92, 246, 0.2) 60%, transparent 80%)',
-              boxShadow: '0 0 40px rgba(139, 92, 246, 0.3), 0 0 80px rgba(99, 102, 241, 0.2)'
+              background: 'radial-gradient(circle, transparent 40%, hsl(var(--primary) / 0.2) 60%, transparent 80%)',
+              boxShadow: '0 0 40px hsl(var(--primary) / 0.3)'
             }}
           />
         </motion.div>
       )}
 
-      {/* Animated iAsted Button - using pure CSS for reliable positioning */}
-      <div
+      {/* iAsted Button with animation */}
+      <motion.div
         className="fixed z-[9999]"
-        style={
-          isPresentationActive && showPresentation
-            ? {
-                left: `${buttonPosition.x}%`,
-                top: `${buttonPosition.y}%`,
-                transform: 'translate(-50%, -50%)',
-                transition: 'left 0.6s ease-out, top 0.6s ease-out',
-              }
-            : {
-                right: '24px',
-                bottom: '24px',
-              }
-        }
+        animate={isActive ? {
+          left: `${buttonX}vw`,
+          top: `${buttonY}vh`,
+          right: 'auto',
+          bottom: 'auto',
+          x: '-50%',
+          y: '-50%'
+        } : {
+          right: 24,
+          bottom: 24,
+          left: 'auto',
+          top: 'auto',
+          x: 0,
+          y: 0
+        }}
+        transition={{
+          type: "spring",
+          stiffness: 100,
+          damping: 20,
+          mass: 1
+        }}
       >
         <div className="relative">
           {/* Speaking indicator during presentation */}
           <AnimatePresence>
-            {isPresentationActive && showPresentation && (
+            {isActive && (
               <motion.div
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
@@ -264,11 +287,11 @@ export default function IAstedPresentationWrapper({
             onSingleClick={onOpenInterface}
             isInterfaceOpen={isInterfaceOpen}
             voiceListening={voiceListening}
-            voiceSpeaking={isPresentationActive && showPresentation}
+            voiceSpeaking={isActive}
             voiceProcessing={voiceProcessing}
           />
         </div>
-      </div>
+      </motion.div>
 
       {/* Presentation Mode */}
       <AnimatePresence>
