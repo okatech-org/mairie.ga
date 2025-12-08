@@ -258,11 +258,14 @@ export const useGeminiLive = (onToolCall?: (name: string, args: any) => void): U
               prebuiltVoiceConfig: {
                 voiceName: voice
               }
-            }
+            },
+            languageCode: 'fr-FR' // French (France) language
           }
         },
         systemInstruction: {
-          parts: [{ text: fullPrompt }]
+          parts: [{ 
+            text: fullPrompt + '\n\nIMPORTANT: Tu DOIS parler en français de France avec un accent français standard. Utilise une prononciation claire et naturelle.'
+          }]
         },
         tools: [
           {
