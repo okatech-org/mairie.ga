@@ -60,6 +60,8 @@ interface IAstedChatModalProps {
     onClearPendingDocument?: () => void;
     currentVoice?: GeminiVoice;
     systemPrompt?: string;
+    onMessageSent?: (message: string) => void;
+    onAssistantMessage?: (message: string) => void;
 }
 
 const MessageBubble: React.FC<{
@@ -440,7 +442,9 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
     pendingDocument,
     onClearPendingDocument,
     currentVoice,
-    systemPrompt
+    systemPrompt,
+    onMessageSent,
+    onAssistantMessage
 }) => {
     const [inputText, setInputText] = useState('');
     const [messages, setMessages] = useState<Message[]>([]);
@@ -1099,6 +1103,11 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
         setMessages(prev => [...prev, userMessage]);
         if (sessionId) await saveMessage(sessionId, userMessage);
 
+        // Analyser l'émotion du message utilisateur
+        if (onMessageSent) {
+            onMessageSent(userContent);
+        }
+
         // 2. Envoyer à l'API (via Edge Function pour streaming ou standard)
         // Pour l'instant, on utilise une simple simulation ou appel standard si pas en mode vocal
         // Si on est en mode vocal, on devrait peut-être utiliser le canal de données ?
@@ -1133,6 +1142,11 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
 
             setMessages(prev => [...prev, assistantMessage]);
             if (sessionId) await saveMessage(sessionId, assistantMessage);
+
+            // Analyser l'émotion de la réponse de l'assistant
+            if (onAssistantMessage) {
+                onAssistantMessage(data.answer);
+            }
 
             // Vérifier les tool calls
             if (data.tool_calls) {
