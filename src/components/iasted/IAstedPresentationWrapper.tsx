@@ -19,6 +19,8 @@ interface IAstedPresentationWrapperProps {
   voiceProcessing?: boolean;
   audioLevel?: number;
   onDoubleClick?: () => void;
+  currentEmotion?: 'joy' | 'sadness' | 'anger' | 'fear' | 'surprise' | 'disgust' | 'trust' | 'neutral';
+  emotionIntensity?: number;
 }
 
 export default function IAstedPresentationWrapper({
@@ -30,7 +32,9 @@ export default function IAstedPresentationWrapper({
   voiceSpeaking = false,
   voiceProcessing = false,
   audioLevel = 0,
-  onDoubleClick
+  onDoubleClick,
+  currentEmotion = 'neutral',
+  emotionIntensity = 0.5
 }: IAstedPresentationWrapperProps) {
   // Position in percentage of viewport
   const [buttonX, setButtonX] = useState(90);
@@ -295,6 +299,8 @@ export default function IAstedPresentationWrapper({
             voiceProcessing={voiceProcessing}
             audioLevel={audioLevel}
             onDoubleClick={onDoubleClick}
+            currentEmotion={currentEmotion}
+            emotionIntensity={emotionIntensity}
           />
         </div>
       </motion.div>

@@ -1,18 +1,21 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Mic, MessageCircle, Brain } from 'lucide-react';
+import { EmotionType, EMOTION_COLORS } from '@/hooks/useEmotionDetection';
 
 interface IAstedButtonProps {
   voiceListening?: boolean;
   voiceSpeaking?: boolean;
   voiceProcessing?: boolean;
-  pulsing?: boolean; // Visual feedback for sound events
+  pulsing?: boolean;
   onClick?: () => void;
   onSingleClick?: () => void;
   onDoubleClick?: () => void;
   className?: string;
-  audioLevel?: number; // 0 to 1
-  size?: 'sm' | 'md' | 'lg'; // Button size variant
+  audioLevel?: number;
+  size?: 'sm' | 'md' | 'lg';
   isInterfaceOpen?: boolean;
+  currentEmotion?: EmotionType;
+  emotionIntensity?: number;
 }
 
 interface Shockwave {
@@ -200,6 +203,65 @@ const styles = `
 @keyframes gentle-pulse-feedback {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.08); }
+}
+
+/* =========================================
+   GRADIENT DYNAMIQUE BASÉ SUR L'ÉMOTION
+   ========================================= */
+
+/* Couche de gradient émotionnel */
+.emotion-gradient-layer {
+  position: absolute;
+  inset: -10%;
+  border-radius: 50%;
+  pointer-events: none;
+  transition: all 2s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: emotion-pulse 3s ease-in-out infinite;
+  mix-blend-mode: overlay;
+}
+
+@keyframes emotion-pulse {
+  0%, 100% { 
+    transform: scale(1); 
+    opacity: var(--emotion-intensity, 0.5);
+  }
+  50% { 
+    transform: scale(1.1); 
+    opacity: calc(var(--emotion-intensity, 0.5) * 1.2);
+  }
+}
+
+/* États émotionnels avec couleurs dynamiques */
+.thick-matter-button.emotion-joy {
+  filter: brightness(1.1) saturate(1.3);
+}
+
+.thick-matter-button.emotion-sadness {
+  filter: brightness(0.9) saturate(0.8);
+}
+
+.thick-matter-button.emotion-anger {
+  filter: brightness(1.05) saturate(1.4) hue-rotate(-10deg);
+}
+
+.thick-matter-button.emotion-fear {
+  filter: brightness(0.95) saturate(1.1);
+}
+
+.thick-matter-button.emotion-surprise {
+  filter: brightness(1.15) saturate(1.2);
+}
+
+.thick-matter-button.emotion-disgust {
+  filter: brightness(0.85) saturate(0.9) hue-rotate(20deg);
+}
+
+.thick-matter-button.emotion-trust {
+  filter: brightness(1.05) saturate(1.15);
+}
+
+.thick-matter-button.emotion-neutral {
+  filter: brightness(1) saturate(1);
 }
 
 /* Couche de profondeur pour effet 3D */
@@ -1015,8 +1077,10 @@ export const IAstedButtonFull: React.FC<IAstedButtonProps> = ({
   voiceProcessing = false,
   pulsing = false,
   audioLevel = 0,
-  size = 'md', // Default size
-  isInterfaceOpen = false
+  size = 'md',
+  isInterfaceOpen = false,
+  currentEmotion = 'neutral',
+  emotionIntensity = 0.5
 }) => {
   const [shockwaves, setShockwaves] = useState<Shockwave[]>([]);
   const [isClicked, setIsClicked] = useState(false);
@@ -1024,6 +1088,22 @@ export const IAstedButtonFull: React.FC<IAstedButtonProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [position, setPosition] = useState<Position>({ x: 0, y: 0 });
+
+  // Calculer les couleurs dynamiques basées sur l'émotion
+  const emotionColors = useMemo(() => {
+    return EMOTION_COLORS[currentEmotion] || EMOTION_COLORS.neutral;
+  }, [currentEmotion]);
+
+  // Générer le style dynamique pour les couleurs d'émotion
+  const emotionGradientStyle = useMemo(() => {
+    const intensity = Math.max(0.3, emotionIntensity);
+    return {
+      '--emotion-primary': emotionColors.primary,
+      '--emotion-secondary': emotionColors.secondary,
+      '--emotion-glow': emotionColors.glow,
+      '--emotion-intensity': intensity,
+    } as React.CSSProperties;
+  }, [emotionColors, emotionIntensity]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const dragStartPos = useRef<Position>({ x: 0, y: 0 });
@@ -1199,12 +1279,22 @@ export const IAstedButtonFull: React.FC<IAstedButtonProps> = ({
             onMouseDown={handleMouseDown}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseLeave}
-            className={`thick-matter-button living-matter ${size} ${isClicked ? 'color-shift' : ''} ${isActive ? 'active' : ''} ${isProcessing ? 'processing' : ''} ${isDragging ? 'grabbing' : ''} ${pulsing ? 'pulsing' : ''} ${heartbeatClass} relative cursor-grab focus:outline-none overflow-hidden border-0 ${className}`}
+            className={`thick-matter-button living-matter ${size} ${isClicked ? 'color-shift' : ''} ${isActive ? 'active' : ''} ${isProcessing ? 'processing' : ''} ${isDragging ? 'grabbing' : ''} ${pulsing ? 'pulsing' : ''} ${heartbeatClass} emotion-${currentEmotion} relative cursor-grab focus:outline-none overflow-hidden border-0 ${className}`}
             style={{
               '--iasted-icon-size': size === 'sm' ? 'clamp(24px, 5vw, 32px)' : size === 'lg' ? 'clamp(48px, 10vw, 64px)' : 'clamp(36px, 7vw, 48px)',
               '--iasted-text-size': size === 'sm' ? 'clamp(12px, 2.5vw, 14px)' : size === 'lg' ? 'clamp(20px, 4vw, 28px)' : 'clamp(16px, 3vw, 20px)',
+              ...emotionGradientStyle
             } as React.CSSProperties}
           >
+            {/* Gradient dynamique basé sur l'émotion */}
+            <div 
+              className="emotion-gradient-layer"
+              style={{
+                background: `radial-gradient(circle at 50% 50%, ${emotionColors.primary} 0%, ${emotionColors.secondary} 50%, transparent 80%)`,
+                opacity: emotionIntensity * 0.6
+              }}
+            />
+
             {/* Couche de profondeur */}
             <div className="depth-layer"></div>
 

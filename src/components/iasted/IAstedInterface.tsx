@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { IAstedChatModal } from '@/components/iasted/IAstedChatModal';
 import IAstedPresentationWrapper from "@/components/iasted/IAstedPresentationWrapper";
 import { useGeminiLive, GeminiVoice } from '@/hooks/useGeminiLive';
@@ -10,6 +10,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { resolveRoute } from '@/utils/route-mapping';
 import { formAssistantStore } from '@/stores/formAssistantStore';
 import { usePresentationSafe } from '@/contexts/PresentationContext';
+import { useEmotionDetection, EmotionType } from '@/hooks/useEmotionDetection';
 
 interface IAstedInterfaceProps {
     userRole?: string;
@@ -52,6 +53,9 @@ export default function IAstedInterface({
     const { setTheme, theme } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
+
+    // Détection d'émotion
+    const { currentEmotion, analyzeEmotion, resetEmotion } = useEmotionDetection();
 
     // Connect to global presentation context
     const { showPresentation: contextPresentationMode, stopPresentation: contextStopPresentation } = usePresentationSafe();
@@ -1253,16 +1257,23 @@ export default function IAstedInterface({
                 voiceProcessing={geminiLive.voiceState === 'connecting' || geminiLive.voiceState === 'thinking'}
                 audioLevel={geminiLive.audioLevel}
                 onDoubleClick={() => setIsOpen(true)}
+                currentEmotion={currentEmotion.emotion}
+                emotionIntensity={currentEmotion.intensity}
             />
 
             <IAstedChatModal
                 isOpen={isOpen}
-                onClose={() => setIsOpen(false)}
+                onClose={() => {
+                    setIsOpen(false);
+                    resetEmotion(); // Reset emotion when chat closes
+                }}
                 geminiLive={geminiLive}
                 currentVoice={selectedVoice}
                 systemPrompt={formattedSystemPrompt}
                 pendingDocument={pendingDocument}
                 onClearPendingDocument={() => setPendingDocument(null)}
+                onMessageSent={analyzeEmotion}
+                onAssistantMessage={analyzeEmotion}
             />
         </>
     );
