@@ -1,7 +1,7 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { IAstedChatModal } from '@/components/iasted/IAstedChatModal';
-import IAstedPresentationWrapper from "@/components/iasted/IAstedPresentationWrapper";
-import { useGeminiLive, GeminiVoice } from '@/hooks/useGeminiLive';
+import IAstedButtonFull from "@/components/iasted/IAstedButtonFull";
+import { useRealtimeVoiceWebRTC } from '@/hooks/useRealtimeVoiceWebRTC';
 import { IASTED_SYSTEM_PROMPT } from '@/config/iasted-config';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,18 +9,13 @@ import { useTheme } from 'next-themes';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { resolveRoute } from '@/utils/route-mapping';
 import { formAssistantStore } from '@/stores/formAssistantStore';
-import { usePresentationSafe } from '@/contexts/PresentationContext';
-import { useEmotionDetection, EmotionType } from '@/hooks/useEmotionDetection';
 
 interface IAstedInterfaceProps {
     userRole?: string;
-    userFirstName?: string;
     defaultOpen?: boolean;
     isOpen?: boolean; // Allow external control
     onClose?: () => void; // Allow external control
     onToolCall?: (toolName: string, args: any) => void;
-    externalPresentationMode?: boolean; // External control of presentation mode
-    onExternalPresentationClose?: () => void; // Callback when presentation closes
 }
 
 /**
@@ -28,16 +23,7 @@ interface IAstedInterfaceProps {
  * Includes the floating button and the chat modal.
  * Manages its own connection and visibility state.
  */
-export default function IAstedInterface({
-    userRole = 'user',
-    userFirstName,
-    defaultOpen = false,
-    isOpen: controlledIsOpen,
-    onClose: controlledOnClose,
-    onToolCall,
-    externalPresentationMode = false,
-    onExternalPresentationClose
-}: IAstedInterfaceProps) {
+export default function IAstedInterface({ userRole = 'user', defaultOpen = false, isOpen: controlledIsOpen, onClose: controlledOnClose, onToolCall }: IAstedInterfaceProps) {
     const [internalIsOpen, setInternalIsOpen] = useState(defaultOpen);
 
     // Use controlled state if provided, otherwise use internal state
@@ -46,54 +32,17 @@ export default function IAstedInterface({
         if (!value) controlledOnClose();
     } : setInternalIsOpen;
 
-    const [selectedVoice, setSelectedVoice] = useState<GeminiVoice>('Puck');
+    const [selectedVoice, setSelectedVoice] = useState<'echo' | 'ash' | 'shimmer'>('ash');
     const [pendingDocument, setPendingDocument] = useState<any>(null);
     const [questionsRemaining, setQuestionsRemaining] = useState(3);
-    const [internalPresentationMode, setInternalPresentationMode] = useState(false);
     const { setTheme, theme } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Détection d'émotion
-    const { currentEmotion, analyzeEmotion, resetEmotion } = useEmotionDetection();
-
-    // Connect to global presentation context
-    const { showPresentation: contextPresentationMode, stopPresentation: contextStopPresentation } = usePresentationSafe();
-
-    // Combine all sources of presentation mode
-    const isPresentationMode = internalPresentationMode || externalPresentationMode || contextPresentationMode;
-
-    // Debug: Log presentation mode state
-    useEffect(() => {
-        console.log('🎬 [IAstedInterface] Presentation state:', {
-            internalPresentationMode,
-            externalPresentationMode,
-            contextPresentationMode,
-            isPresentationMode
-        });
-    }, [internalPresentationMode, externalPresentationMode, contextPresentationMode, isPresentationMode]);
-
-    // Sync external presentation mode with internal state
-    useEffect(() => {
-        if (externalPresentationMode) {
-            console.log('🎬 [IAstedInterface] External presentation triggered, setting internal');
-            setInternalPresentationMode(true);
-        }
-    }, [externalPresentationMode]);
-
-    // Handle presentation close
-    const handlePresentationClose = () => {
-        setInternalPresentationMode(false);
-        contextStopPresentation();
-        onExternalPresentationClose?.();
-    };
-
     // Initialize voice from localStorage and reset question counter on new session
     useEffect(() => {
-        const savedVoice = localStorage.getItem('iasted-voice-selection') as GeminiVoice;
-        if (savedVoice && ['Puck', 'Charon', 'Kore', 'Fenrir', 'Aoede'].includes(savedVoice)) {
-            setSelectedVoice(savedVoice);
-        }
+        const savedVoice = localStorage.getItem('iasted-voice-selection') as 'echo' | 'ash' | 'shimmer';
+        if (savedVoice) setSelectedVoice(savedVoice);
 
         // Check if user is not identified (anonymous mode)
         const isAnonymous = !userRole || userRole === 'user' || userRole === 'unknown';
@@ -113,52 +62,49 @@ export default function IAstedInterface({
 
     // Map user role to appropriate title (contexte municipal)
     const userTitle = useMemo(() => {
-        // Si on a le prénom, on l'utilise pour personnaliser
-        const firstName = userFirstName;
-
         switch (userRole) {
             // Personnel municipal
             case 'MAIRE':
             case 'maire':
-                return firstName ? `Monsieur le Maire ${firstName}` : 'Monsieur le Maire';
+                return 'Monsieur le Maire';
             case 'MAIRE_ADJOINT':
             case 'maire_adjoint':
-                return firstName ? `Monsieur l'Adjoint ${firstName}` : 'Monsieur le Maire Adjoint';
+                return 'Monsieur le Maire Adjoint';
             case 'SECRETAIRE_GENERAL':
             case 'secretaire_general':
-                return firstName ? `Monsieur ${firstName}` : 'Monsieur le Secrétaire Général';
+                return 'Monsieur le Secrétaire Général';
             case 'CHEF_SERVICE':
             case 'chef_service':
-                return firstName ? `Monsieur ${firstName}` : 'Monsieur le Chef de Service';
+                return 'Monsieur le Chef de Service';
             case 'AGENT':
             case 'agent':
-                return firstName ? `Cher ${firstName}` : 'Cher collègue';
+                return 'Cher collègue'; // Agent municipal
             case 'super_admin':
             case 'SUPER_ADMIN':
-                return firstName ? `Monsieur ${firstName}` : 'Monsieur l\'Administrateur';
+                return 'Monsieur l\'Administrateur';
             case 'admin':
             case 'ADMIN':
-                return firstName ? `Monsieur ${firstName}` : 'Monsieur le Directeur';
+                return 'Monsieur le Directeur';
             // Usagers - Citoyens
             case 'citizen':
             case 'CITIZEN':
             case 'resident':
-                return firstName ? `Cher ${firstName}` : 'Cher administré';
+                return 'Cher administré';
             case 'citizen_other':
             case 'autre_commune':
-                return firstName ? `Cher ${firstName}` : 'Cher visiteur';
+                return 'Cher visiteur';
             case 'foreigner':
             case 'etranger':
-                return firstName ? `Cher ${firstName}` : 'Cher résident';
+                return 'Cher résident';
             case 'company':
             case 'entreprise':
             case 'association':
-                return firstName ? `Cher ${firstName}` : 'Cher partenaire';
+                return 'Cher partenaire';
             // Non identifié (page d'accueil)
             default:
                 return 'Bonjour';
         }
-    }, [userRole, userFirstName]);
+    }, [userRole]);
 
     // Détermine si on est sur une page de formulaire d'inscription
     const isOnRegistrationPage = location.pathname.startsWith('/register');
@@ -204,23 +150,31 @@ export default function IAstedInterface({
             + pageContext;
     }, [timeOfDay, userTitle, userRole, questionsRemaining, isOnRegistrationPage, isOnHomePage, registrationFormType, location.pathname]);
 
-    // Initialize Gemini Live with tool call handler (migrated from OpenAI Realtime)
-    const geminiLive = useGeminiLive(async (toolName, args) => {
+    // Initialize OpenAI RTC with tool call handler
+    const openaiRTC = useRealtimeVoiceWebRTC(async (toolName, args) => {
         console.log(`🔧 [IAstedInterface] Tool call: ${toolName}`, args);
 
         // 1. Internal Handlers
         if (toolName === 'change_voice') {
             console.log('🎙️ [IAstedInterface] Changement de voix demandé');
-            
-            // Gemini voices: Puck, Charon, Kore, Fenrir, Aoede
-            const geminiVoices: GeminiVoice[] = ['Puck', 'Charon', 'Kore', 'Fenrir', 'Aoede'];
-            const currentIndex = geminiVoices.indexOf(selectedVoice);
-            const nextVoice = geminiVoices[(currentIndex + 1) % geminiVoices.length];
-            
-            setSelectedVoice(nextVoice);
-            toast.success(`Voix changée : ${nextVoice}`);
 
-            return { success: true, message: `Voix modifiée vers ${nextVoice}` };
+            // Si voice_id spécifique fourni, l'utiliser
+            if (args.voice_id) {
+                setSelectedVoice(args.voice_id as any);
+                toast.success(`Voix modifiée : ${args.voice_id === 'ash' ? 'Homme (Ash)' : args.voice_id === 'shimmer' ? 'Femme (Shimmer)' : 'Standard (Echo)'}`);
+            }
+            // Sinon, alterner homme↔femme selon voix actuelle
+            else {
+                const currentVoice = selectedVoice;
+                const isCurrentlyMale = currentVoice === 'ash' || currentVoice === 'echo';
+                const newVoice = isCurrentlyMale ? 'shimmer' : 'ash';
+
+                console.log(`🎙️ [IAstedInterface] Alternance voix: ${currentVoice} (${isCurrentlyMale ? 'homme' : 'femme'}) -> ${newVoice} (${isCurrentlyMale ? 'femme' : 'homme'})`);
+                setSelectedVoice(newVoice);
+                toast.success(`Voix changée : ${newVoice === 'shimmer' ? 'Femme (Shimmer)' : 'Homme (Ash)'}`);
+            }
+
+            return { success: true, message: `Voix modifiée` };
         }
 
         if (toolName === 'logout_user') {
@@ -288,25 +242,6 @@ export default function IAstedInterface({
         if (toolName === 'close_chat') {
             setIsOpen(false);
             return { success: true, message: 'Chat fermé' };
-        }
-
-        // ========== MODE PRÉSENTATION ==========
-
-        if (toolName === 'start_presentation') {
-            console.log('🎬 [IAstedInterface] Démarrage mode présentation');
-            setInternalPresentationMode(true);
-            toast.success('Mode présentation activé !');
-            return {
-                success: true,
-                message: 'Mode présentation démarré. Je vais vous faire découvrir MAIRIE.GA en moins de 2 minutes.'
-            };
-        }
-
-        if (toolName === 'stop_presentation') {
-            console.log('🎬 [IAstedInterface] Arrêt mode présentation');
-            setInternalPresentationMode(false);
-            contextStopPresentation();
-            return { success: true, message: 'Mode présentation arrêté.' };
         }
 
         // ========== COMMUNICATION & COLLABORATION ==========
@@ -632,7 +567,7 @@ export default function IAstedInterface({
         if (toolName === 'stop_conversation') {
             console.log('🛑 [IAstedInterface] Arrêt de la conversation');
 
-            geminiLive.disconnect();
+            openaiRTC.disconnect();
             toast.info('Conversation terminée');
 
             return { success: true, message: 'Conversation arrêtée' };
@@ -690,10 +625,22 @@ export default function IAstedInterface({
             }
 
             if (args.action === 'set_speech_rate') {
-                // Note: Gemini doesn't support dynamic speech rate adjustment
-                console.log('⚠️ [IAstedInterface] Speech rate adjustment not supported in Gemini Live');
-                toast.info('L\'ajustement de la vitesse n\'est pas disponible avec Gemini');
-                return { success: false, message: 'Fonctionnalité non disponible' };
+                // Ajuster la vitesse de parole (0.5 à 2.0)
+                const rate = parseFloat(args.value || '1.0');
+                const clampedRate = Math.max(0.5, Math.min(2.0, rate));
+
+                console.log(`🎚️ [IAstedInterface] Ajustement vitesse: ${rate} -> ${clampedRate}`);
+                openaiRTC.setSpeechRate(clampedRate);
+
+                const speedDescription = clampedRate < 0.8 ? 'ralenti'
+                    : clampedRate > 1.2 ? 'accéléré'
+                        : 'normal';
+
+                setTimeout(() => {
+                    toast.success(`Vitesse de parole ajustée (${speedDescription}: ${clampedRate}x)`);
+                }, 100);
+
+                return { success: true, message: `Vitesse ajustée à ${clampedRate}x` };
             }
         }
 
@@ -1238,42 +1185,32 @@ export default function IAstedInterface({
     });
 
     const handleButtonClick = async () => {
-        if (geminiLive.isConnected) {
-            geminiLive.disconnect();
+        if (openaiRTC.isConnected) {
+            openaiRTC.disconnect();
         } else {
-            await geminiLive.connect(selectedVoice, formattedSystemPrompt);
+            await openaiRTC.connect(selectedVoice, formattedSystemPrompt);
         }
     };
 
     return (
         <>
-            <IAstedPresentationWrapper
-                showPresentation={isPresentationMode}
-                onClosePresentation={handlePresentationClose}
-                onOpenInterface={handleButtonClick}
-                isInterfaceOpen={isOpen}
-                voiceListening={geminiLive.voiceState === 'listening'}
-                voiceSpeaking={geminiLive.voiceState === 'speaking'}
-                voiceProcessing={geminiLive.voiceState === 'connecting' || geminiLive.voiceState === 'thinking'}
-                audioLevel={geminiLive.audioLevel}
+            <IAstedButtonFull
+                voiceListening={openaiRTC.voiceState === 'listening'}
+                voiceSpeaking={openaiRTC.voiceState === 'speaking'}
+                voiceProcessing={openaiRTC.voiceState === 'connecting' || openaiRTC.voiceState === 'thinking'}
+                audioLevel={openaiRTC.audioLevel}
+                onClick={handleButtonClick}
                 onDoubleClick={() => setIsOpen(true)}
-                currentEmotion={currentEmotion.emotion}
-                emotionIntensity={currentEmotion.intensity}
             />
 
             <IAstedChatModal
                 isOpen={isOpen}
-                onClose={() => {
-                    setIsOpen(false);
-                    resetEmotion(); // Reset emotion when chat closes
-                }}
-                geminiLive={geminiLive}
+                onClose={() => setIsOpen(false)}
+                openaiRTC={openaiRTC}
                 currentVoice={selectedVoice}
                 systemPrompt={formattedSystemPrompt}
                 pendingDocument={pendingDocument}
                 onClearPendingDocument={() => setPendingDocument(null)}
-                onMessageSent={analyzeEmotion}
-                onAssistantMessage={analyzeEmotion}
             />
         </>
     );

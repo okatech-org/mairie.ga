@@ -8,7 +8,6 @@ import { DemoProvider } from "@/contexts/DemoContext";
 import { ThemeProvider } from "@/components/theme-provider";
 import { CallProvider } from "@/contexts/CallContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
-import { PresentationProvider } from "@/contexts/PresentationContext";
 import Home from "./pages/Home";
 import Actualites from "./pages/Actualites";
 import Login from "./pages/Login";
@@ -84,7 +83,6 @@ const App = () => (
         <TooltipProvider>
           <DemoProvider>
             <CallProvider>
-              <PresentationProvider>
               <Toaster />
               <Sonner />
               <BrowserRouter>
@@ -186,7 +184,6 @@ const App = () => (
                 </Routes>
                 <IAstedInterfaceWrapper />
               </BrowserRouter>
-              </PresentationProvider>
             </CallProvider>
           </DemoProvider>
         </TooltipProvider>

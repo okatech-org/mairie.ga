@@ -26,15 +26,12 @@ import {
   MessageSquare,
   Calendar,
   Navigation,
-  Headphones,
-  Play
+  Headphones
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { IAstedDemoButton } from "@/components/iasted/IAstedDemoButton";
 import { IAstedGuideInline } from "@/components/iasted/IAstedGuideInline";
 import { GabonMairiesSection } from "@/components/home/GabonMairiesSection";
-import WelcomePrompt from "@/components/iasted/WelcomePrompt";
-import { usePresentationSafe } from "@/contexts/PresentationContext";
 import heroImage from "@/assets/mairie-accueil.jpg";
 import serviceImage from "@/assets/service-municipal.jpg";
 import familleImage from "@/assets/famille-acte-naissance.jpg";
@@ -45,7 +42,6 @@ const GabonMairiesMap = lazy(() => import("@/components/home/GabonMairiesMap"));
 
 export default function Home() {
   const [scrollY, setScrollY] = useState(0);
-  const { startPresentation } = usePresentationSafe();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -215,6 +211,12 @@ export default function Home() {
                     <Button size="lg" variant="outline" className="w-full sm:w-auto min-w-[180px] gap-2 h-12 text-base bg-white/10 dark:bg-white/5 border-white/30 dark:border-white/20 text-white hover:bg-white/20 dark:hover:bg-white/10 backdrop-blur-sm dark:backdrop-blur-none">
                       <FileText className="h-5 w-5" />
                       Nos Services
+                    </Button>
+                  </Link>
+                  <Link to="/iasted-guide">
+                    <Button size="lg" variant="outline" className="w-full sm:w-auto min-w-[180px] gap-2 h-12 text-base bg-violet-500/20 border-violet-400/40 text-white hover:bg-violet-500/30 backdrop-blur-sm animate-pulse hover:animate-none">
+                      <Mic className="h-5 w-5" />
+                      Découvrir iAsted
                     </Button>
                   </Link>
                 </div>
@@ -593,11 +595,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      {/* Presentation Mode is now handled by IAstedInterface globally */}
-
-      {/* Welcome prompt for new visitors */}
-      <WelcomePrompt onStartPresentation={startPresentation} />
     </div>
   );
 }

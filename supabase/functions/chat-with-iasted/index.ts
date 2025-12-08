@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import "https://deno.land/x/xhr@0.1.0/mod.ts"
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -38,61 +39,42 @@ serve(async (req) => {
             })
         }
 
-        console.log(`[chat-with-iasted] Authenticated user: ${user.id}`)
+        console.log(`Authenticated user: ${user.id}`)
 
         const { message, conversationHistory, systemPrompt } = await req.json()
-        
-        // Use Lovable AI Gateway with gemini-2.5-pro (premium quality)
-        const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY')
-        if (!LOVABLE_API_KEY) {
-            throw new Error('LOVABLE_API_KEY is not set')
+        const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')
+
+        if (!OPENAI_API_KEY) {
+            throw new Error('OPENAI_API_KEY is not set')
         }
 
         const messages = [
-            { role: 'system', content: systemPrompt || 'Tu es iAsted, assistant municipal intelligent.' },
+            { role: 'system', content: systemPrompt || 'You are iAsted, a helpful assistant.' },
             ...(conversationHistory || []),
             { role: 'user', content: message }
         ]
 
-        console.log(`[chat-with-iasted] Sending request to Lovable AI (gemini-2.5-pro)`)
-
-        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+                'Authorization': `Bearer ${OPENAI_API_KEY}`,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                model: 'google/gemini-2.5-pro',
+                model: 'gpt-4o',
                 messages: messages,
                 temperature: 0.7,
-                max_tokens: 2000
             }),
         })
 
-        if (!response.ok) {
-            const errorText = await response.text()
-            console.error('[chat-with-iasted] Lovable AI error:', response.status, errorText)
-            
-            if (response.status === 429) {
-                throw new Error('Limite de requêtes atteinte, réessayez plus tard')
-            }
-            if (response.status === 402) {
-                throw new Error('Crédits insuffisants')
-            }
-            throw new Error(`Erreur API: ${response.status}`)
-        }
-
         const data = await response.json()
         const answer = data.choices[0].message.content
-
-        console.log(`[chat-with-iasted] Response received successfully`)
 
         return new Response(JSON.stringify({ answer }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
     } catch (error) {
-        console.error('[chat-with-iasted] Error:', error)
+        console.error('Error in chat-with-iasted:', error)
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
         return new Response(JSON.stringify({ error: errorMessage }), {
             status: 400,

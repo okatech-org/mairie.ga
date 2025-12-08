@@ -1,77 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useDemo } from '@/contexts/DemoContext';
-import { useAuth } from '@/hooks/useAuth';
-import { usePresentationSafe } from '@/contexts/PresentationContext';
-import { supabase } from '@/integrations/supabase/client';
 import IAstedInterface from './IAstedInterface';
 
 /**
  * Wrapper qui injecte le rôle de l'utilisateur actuel dans IAstedInterface
- * Priorise l'utilisateur Supabase connecté, puis le mode démo
+ * Adapte les rôles du système consulaire aux rôles attendus par iAsted
  */
 export default function IAstedInterfaceWrapper() {
-  const { currentUser: demoUser } = useDemo();
-  const { user: authUser, loading: authLoading } = useAuth();
-  const { showPresentation, startPresentation, stopPresentation } = usePresentationSafe();
-  const [userRole, setUserRole] = useState<string | undefined>(undefined);
-  const [userFirstName, setUserFirstName] = useState<string | undefined>(undefined);
-
-  // Debug: Log presentation state changes
-  useEffect(() => {
-    console.log('🎭 [IAstedInterfaceWrapper] showPresentation changed:', showPresentation);
-  }, [showPresentation]);
-
-  useEffect(() => {
-    const detectUserAndRole = async () => {
-      // Priorité 1: Utilisateur Supabase authentifié
-      if (authUser) {
-        console.log('🔐 [IAstedWrapper] Utilisateur connecté:', authUser.email);
-        
-        // Récupérer le rôle depuis user_roles
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', authUser.id)
-          .single();
-
-        if (roleData?.role) {
-          console.log('🔐 [IAstedWrapper] Rôle détecté:', roleData.role);
-          setUserRole(roleData.role);
-        } else {
-          setUserRole('citizen');
-        }
-
-        // Récupérer le prénom depuis profiles
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('first_name')
-          .eq('user_id', authUser.id)
-          .single();
-
-        if (profileData?.first_name) {
-          console.log('🔐 [IAstedWrapper] Prénom détecté:', profileData.first_name);
-          setUserFirstName(profileData.first_name);
-        }
-        return;
-      }
-
-      // Priorité 2: Mode démo
-      if (demoUser?.role) {
-        console.log('🎭 [IAstedWrapper] Mode démo:', demoUser.role);
-        setUserRole(demoUser.role);
-        setUserFirstName(demoUser.name?.split(' ')[0]);
-        return;
-      }
-
-      // Pas d'utilisateur = inconnu
-      setUserRole('unknown');
-      setUserFirstName(undefined);
-    };
-
-    if (!authLoading) {
-      detectUserAndRole();
-    }
-  }, [authUser, authLoading, demoUser]);
+  const { currentUser } = useDemo();
 
   // Mapper les rôles du système municipal vers les rôles iAsted
   const mapUserRole = (role?: string): string => {
@@ -129,14 +65,7 @@ export default function IAstedInterfaceWrapper() {
     }
   };
 
-  const mappedRole = mapUserRole(userRole);
+  const mappedRole = mapUserRole(currentUser?.role);
 
-  return (
-    <IAstedInterface 
-      userRole={mappedRole} 
-      userFirstName={userFirstName}
-      externalPresentationMode={showPresentation}
-      onExternalPresentationClose={stopPresentation}
-    />
-  );
+  return <IAstedInterface userRole={mappedRole} />;
 }

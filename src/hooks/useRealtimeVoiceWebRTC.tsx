@@ -3,12 +3,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { IASTED_SYSTEM_PROMPT } from '@/config/iasted-config';
-import { IASTED_VOICE_PROMPT_LITE } from '@/config/iasted-prompt-lite';
 import { getRouteKnowledgePrompt, resolveRoute } from '@/utils/route-mapping';
 import { useLocation, useNavigate } from 'react-router-dom';
-
-// Flag pour utiliser le prompt économique (réduire les coûts de ~80%)
-const USE_LITE_PROMPT = true;
 
 export type VoiceState = 'idle' | 'connecting' | 'listening' | 'thinking' | 'speaking';
 
@@ -34,9 +30,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
     const [messages, setMessages] = useState<any[]>([]);
     const [audioLevel, setAudioLevel] = useState(0);
     const [currentVoice, setCurrentVoice] = useState<'echo' | 'ash' | 'shimmer'>('echo');
-    const [currentSystemPrompt, setCurrentSystemPrompt] = useState<string>(
-        USE_LITE_PROMPT ? IASTED_VOICE_PROMPT_LITE : IASTED_SYSTEM_PROMPT
-    );
+    const [currentSystemPrompt, setCurrentSystemPrompt] = useState<string>(IASTED_SYSTEM_PROMPT);
 
     const peerConnection = useRef<RTCPeerConnection | null>(null);
     const dataChannel = useRef<RTCDataChannel | null>(null);
@@ -72,7 +66,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
         animationFrame.current = requestAnimationFrame(analyzeAudio);
     };
 
-    const connect = async (voice: 'echo' | 'ash' | 'shimmer' = 'echo', systemPrompt: string = USE_LITE_PROMPT ? IASTED_VOICE_PROMPT_LITE : IASTED_SYSTEM_PROMPT) => {
+    const connect = async (voice: 'echo' | 'ash' | 'shimmer' = 'echo', systemPrompt: string = IASTED_SYSTEM_PROMPT) => {
         try {
             if (voice) setCurrentVoice(voice);
             if (systemPrompt) setCurrentSystemPrompt(systemPrompt);
@@ -234,18 +228,6 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                             },
                             required: ['path']
                         }
-                    },
-                    {
-                        type: 'function',
-                        name: 'start_presentation',
-                        description: 'Démarrer une présentation guidée interactive de l\'application (mode visite guidée). Utilise cette fonction quand l\'utilisateur demande "présente-moi l\'application", "fais-moi une visite", ou "comment ça marche ?".',
-                        parameters: { type: 'object', properties: {} }
-                    },
-                    {
-                        type: 'function',
-                        name: 'stop_presentation',
-                        description: 'Arrêter la présentation guidée en cours.',
-                        parameters: { type: 'object', properties: {} }
                     },
                     {
                         type: 'function',
@@ -543,10 +525,10 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                         parameters: {
                             type: 'object',
                             properties: {
-                                document_ids: {
-                                    type: 'array',
+                                document_ids: { 
+                                    type: 'array', 
                                     items: { type: 'string' },
-                                    description: 'IDs des documents à analyser. Si vide, analyse tous les documents de l\'utilisateur.'
+                                    description: 'IDs des documents à analyser. Si vide, analyse tous les documents de l\'utilisateur.' 
                                 },
                                 document_types: {
                                     type: 'array',
