@@ -1,13 +1,104 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useDemo } from '@/contexts/DemoContext';
+import { useAuth } from '@/hooks/useAuth';
+import { usePresentationSafe } from '@/contexts/PresentationContext';
+import { supabase } from '@/integrations/supabase/client';
 import IAstedInterface from './IAstedInterface';
 
 /**
  * Wrapper qui injecte le rôle de l'utilisateur actuel dans IAstedInterface
- * Adapte les rôles du système consulaire aux rôles attendus par iAsted
+ * Priorise l'utilisateur Supabase connecté, puis le mode démo
+ * Gère également le déclenchement automatique de la présentation pour les nouveaux visiteurs
  */
 export default function IAstedInterfaceWrapper() {
-  const { currentUser } = useDemo();
+  const { currentUser: demoUser } = useDemo();
+  const { user: authUser, loading: authLoading } = useAuth();
+  const { showPresentation, startPresentation, stopPresentation } = usePresentationSafe();
+  const [userRole, setUserRole] = useState<string | undefined>(undefined);
+  const [userFirstName, setUserFirstName] = useState<string | undefined>(undefined);
+  const location = useLocation();
+
+  // Debug: Log presentation state changes
+  useEffect(() => {
+    console.log('🎭 [IAstedInterfaceWrapper] showPresentation changed:', showPresentation);
+  }, [showPresentation]);
+
+  // Auto-trigger presentation for new visitors
+  useEffect(() => {
+    // Only trigger on home page
+    if (location.pathname === '/') {
+      // Check localStorage
+      const hasSeenPresentation = localStorage.getItem('hasSeenIAstedPresentation');
+
+      if (!hasSeenPresentation) {
+        console.log('🆕 [IAstedInterfaceWrapper] New visitor detected on Home, scheduling presentation...');
+
+        // Delay start to let the page load and user settle
+        const timer = setTimeout(() => {
+          if (!localStorage.getItem('hasSeenIAstedPresentation')) { // Double check
+            console.log('🎬 [IAstedInterfaceWrapper] Auto-starting presentation!');
+            startPresentation();
+            localStorage.setItem('hasSeenIAstedPresentation', 'true');
+          }
+        }, 3000); // 3 seconds delay
+
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [location.pathname, startPresentation]);
+
+  useEffect(() => {
+    const detectUserAndRole = async () => {
+      // Priorité 1: Utilisateur Supabase authentifié
+      if (authUser) {
+        console.log('🔐 [IAstedWrapper] Utilisateur connecté:', authUser.email);
+
+        // Récupérer le rôle depuis user_roles
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', authUser.id)
+          .single();
+
+        if (roleData?.role) {
+          console.log('🔐 [IAstedWrapper] Rôle détecté:', roleData.role);
+          setUserRole(roleData.role);
+        } else {
+          setUserRole('citizen');
+        }
+
+        // Récupérer le prénom depuis profiles
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('first_name')
+          .eq('user_id', authUser.id)
+          .single();
+
+        if (profileData?.first_name) {
+          console.log('🔐 [IAstedWrapper] Prénom détecté:', profileData.first_name);
+          setUserFirstName(profileData.first_name);
+        }
+        return;
+      }
+
+      // Priorité 2: Mode démo
+      if (demoUser?.role) {
+        console.log('🎭 [IAstedWrapper] Mode démo:', demoUser.role);
+        setUserRole(demoUser.role);
+        setUserFirstName(demoUser.name?.split(' ')[0]);
+        return;
+      }
+
+      // Pas d'utilisateur = inconnu
+      setUserRole('unknown');
+      setUserFirstName(undefined);
+    };
+
+    if (!authLoading) {
+      detectUserAndRole();
+    }
+  }, [authUser, authLoading, demoUser]);
 
   // Mapper les rôles du système municipal vers les rôles iAsted
   const mapUserRole = (role?: string): string => {
@@ -20,7 +111,7 @@ export default function IAstedInterfaceWrapper() {
       case 'MAIRE_ADJOINT':
       case 'ADJOINT':
         return 'maire_adjoint';
-      
+
       // Personnel municipal - Administration
       case 'SECRETAIRE_GENERAL':
       case 'SG':
@@ -34,12 +125,12 @@ export default function IAstedInterfaceWrapper() {
       case 'OFFICIER_ETAT_CIVIL':
       case 'AGENT_ACCUEIL':
         return 'agent';
-      
+
       // Super Administration
       case 'SUPER_ADMIN':
       case 'ADMIN':
         return 'super_admin';
-      
+
       // Usagers - Citoyens
       case 'CITIZEN':
       case 'CITOYEN':
@@ -51,7 +142,7 @@ export default function IAstedInterfaceWrapper() {
       case 'ETRANGER':
       case 'ETRANGER_RESIDENT':
         return 'foreigner';
-      
+
       // Usagers - Entités morales
       case 'COMPANY':
       case 'ENTREPRISE':
@@ -59,13 +150,20 @@ export default function IAstedInterfaceWrapper() {
         return 'company';
       case 'ASSOCIATION':
         return 'association';
-      
+
       default:
         return 'unknown'; // Retour inconnu pour salutation neutre
     }
   };
 
-  const mappedRole = mapUserRole(currentUser?.role);
+  const mappedRole = mapUserRole(userRole);
 
-  return <IAstedInterface userRole={mappedRole} />;
+  return (
+    <IAstedInterface
+      userRole={mappedRole}
+      userFirstName={userFirstName}
+      externalPresentationMode={showPresentation}
+      onExternalPresentationClose={stopPresentation}
+    />
+  );
 }
