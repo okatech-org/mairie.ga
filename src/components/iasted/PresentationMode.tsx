@@ -348,15 +348,29 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
   // Execute all actions for a step
   const executeStepActions = useCallback((actions: PresentationAction[]) => {
     console.log('🎬 [PresentationMode] executeStepActions called with', actions.length, 'actions');
+    console.log('🎬 [PresentationMode] Actions detail:', JSON.stringify(actions.map(a => ({ type: a.type, delay: a.delay, position: a.position }))));
     clearActionTimeouts();
     setHighlightedElement(null);
     setShowPointer(false);
+
+    // Execute first move immediately if exists
+    const firstMoveAction = actions.find(a => a.type === 'move');
+    if (firstMoveAction && firstMoveAction.position) {
+      console.log('🚀 [PresentationMode] IMMEDIATE move action:', firstMoveAction.position);
+      const newX = firstMoveAction.position.x;
+      const newY = firstMoveAction.position.y;
+      setButtonPosition({ x: newX, y: newY });
+      if (onButtonPositionChangeRef.current) {
+        onButtonPositionChangeRef.current(newX, newY);
+      }
+    }
 
     actions.forEach((action, index) => {
       const delay = action.delay || 0;
       console.log(`⏱️ [PresentationMode] Scheduling action ${index + 1}/${actions.length}: ${action.type} delay=${delay}ms`);
       
       const timeout = setTimeout(() => {
+        console.log(`🔄 [PresentationMode] Executing scheduled action: ${action.type}`);
         if (isMountedRef.current) {
           executeAction(action);
         }
