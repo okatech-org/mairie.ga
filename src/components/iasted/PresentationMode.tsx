@@ -205,6 +205,18 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
   const [pointerPosition, setPointerPosition] = useState({ x: 0, y: 0 });
   const actionTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
   const onButtonPositionChangeRef = useRef(onButtonPositionChange);
+  const isMountedRef = useRef(true);
+
+  // Log mount
+  useEffect(() => {
+    console.log('🎬 [PresentationMode] Component MOUNTED, autoStart:', autoStart);
+    isMountedRef.current = true;
+    
+    return () => {
+      console.log('🎬 [PresentationMode] Component UNMOUNTING');
+      isMountedRef.current = false;
+    };
+  }, [autoStart]);
 
   // Keep callback ref up to date
   useEffect(() => {
@@ -255,14 +267,23 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
     actionTimeoutsRef.current = [];
   }, []);
 
-  // Execute a single action
-  const executeAction = useCallback((action: PresentationAction) => {
+  // Execute a single action - DIRECT function, no useCallback to avoid stale closures
+  const executeAction = (action: PresentationAction) => {
+    console.log('▶️ [PresentationMode] executeAction called:', action.type, action);
+    
+    if (!isMountedRef.current) {
+      console.log('⚠️ [PresentationMode] Component unmounted, skipping action');
+      return;
+    }
+
     switch (action.type) {
       case 'scroll':
+        console.log('📜 [PresentationMode] Executing scroll:', action.selector);
         if (action.selector === 'top') {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         } else if (action.selector) {
           const scrollTarget = document.querySelector(action.selector);
+          console.log('📜 [PresentationMode] Scroll target found:', !!scrollTarget);
           if (scrollTarget) {
             scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
@@ -271,18 +292,22 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
 
       case 'move':
         if (action.position) {
-          console.log('🎯 Moving button to:', action.position);
+          console.log('🚀 [PresentationMode] Moving button to:', action.position);
           const newX = action.position.x;
           const newY = action.position.y;
           setButtonPosition({ x: newX, y: newY });
-          // Use ref to call callback to avoid stale closure
+          // Call callback immediately
           if (onButtonPositionChangeRef.current) {
+            console.log('📡 [PresentationMode] Calling onButtonPositionChange');
             onButtonPositionChangeRef.current(newX, newY);
+          } else {
+            console.log('⚠️ [PresentationMode] No onButtonPositionChange callback!');
           }
         }
         break;
 
       case 'point':
+        console.log('👆 [PresentationMode] Executing point:', action.selector);
         if (action.selector) {
           const pointTarget = document.querySelector(action.selector);
           if (pointTarget) {
@@ -298,12 +323,13 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
         break;
 
       case 'highlight':
+        console.log('✨ [PresentationMode] Executing highlight:', action.selector);
         if (action.selector) {
-          // Remove previous highlight
           setHighlightedElement(null);
           
           setTimeout(() => {
             const highlightTarget = document.querySelector(action.selector!);
+            console.log('✨ [PresentationMode] Highlight target found:', !!highlightTarget);
             if (highlightTarget) {
               setHighlightedElement(highlightTarget);
             }
@@ -312,51 +338,61 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
         break;
 
       case 'click':
-        // Visual feedback only - no actual click
+        console.log('🖱️ [PresentationMode] Executing click visual');
         setShowPointer(true);
         setTimeout(() => setShowPointer(false), 500);
         break;
     }
-  }, []);
+  };
 
   // Execute all actions for a step
   const executeStepActions = useCallback((actions: PresentationAction[]) => {
-    console.log('🎬 Executing step actions:', actions.length, 'actions');
+    console.log('🎬 [PresentationMode] executeStepActions called with', actions.length, 'actions');
     clearActionTimeouts();
     setHighlightedElement(null);
     setShowPointer(false);
 
     actions.forEach((action, index) => {
       const delay = action.delay || 0;
-      console.log(`⏱️ Scheduling action ${index + 1}/${actions.length}: ${action.type} with delay ${delay}ms`);
+      console.log(`⏱️ [PresentationMode] Scheduling action ${index + 1}/${actions.length}: ${action.type} delay=${delay}ms`);
+      
       const timeout = setTimeout(() => {
-        console.log(`▶️ Executing action: ${action.type}`);
-        executeAction(action);
+        if (isMountedRef.current) {
+          executeAction(action);
+        }
       }, delay);
       actionTimeoutsRef.current.push(timeout);
     });
-  }, [executeAction, clearActionTimeouts]);
+  }, [clearActionTimeouts]);
 
-  // Navigate and execute step
+  // Main presentation effect - Navigate and execute step
   useEffect(() => {
-    console.log('🎥 Presentation step effect - isPlaying:', isPlaying, 'stepIndex:', currentStepIndex);
-    if (!isPlaying) return;
+    console.log('🎥 [PresentationMode] Main effect triggered - isPlaying:', isPlaying, 'stepIndex:', currentStepIndex);
+    
+    if (!isPlaying) {
+      console.log('⏸️ [PresentationMode] Not playing, skipping');
+      return;
+    }
 
     const step = PRESENTATION_SCRIPT[currentStepIndex];
-    console.log('📋 Current step:', step.id, step.title);
+    console.log('📋 [PresentationMode] Current step:', step.id, '-', step.title, 'route:', step.route);
     
     // Navigate if needed
-    if (location.pathname !== step.route) {
-      console.log('🧭 Navigating to:', step.route);
+    const needsNavigation = location.pathname !== step.route;
+    if (needsNavigation) {
+      console.log('🧭 [PresentationMode] Navigating from', location.pathname, 'to', step.route);
       navigate(step.route);
     }
 
     // Wait for navigation then execute actions
+    const navDelay = needsNavigation ? 800 : 200;
+    console.log('⏳ [PresentationMode] Waiting', navDelay, 'ms before executing actions');
+    
     const navTimeout = setTimeout(() => {
-      console.log('✅ Executing actions for step:', step.id);
+      console.log('✅ [PresentationMode] Now executing actions for step:', step.id);
       executeStepActions(step.actions);
       speak(step.narration);
-    }, location.pathname !== step.route ? 600 : 100);
+    }, navDelay);
 
     // Progress timer
     const stepDuration = step.duration * 1000;
@@ -370,12 +406,16 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
       if (elapsed >= stepDuration) {
         clearInterval(progressTimer);
         if (currentStepIndex < totalSteps - 1) {
+          console.log('➡️ [PresentationMode] Moving to next step');
           setCurrentStepIndex(prev => prev + 1);
           setProgress(0);
         } else {
+          console.log('🏁 [PresentationMode] Presentation complete');
           setIsPlaying(false);
-          // Return to center at end
           setButtonPosition({ x: 90, y: 85 });
+          if (onButtonPositionChangeRef.current) {
+            onButtonPositionChangeRef.current(90, 85);
+          }
         }
       }
     }, interval);
