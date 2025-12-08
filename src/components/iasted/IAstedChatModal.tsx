@@ -552,7 +552,7 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
     const handleClearConversation = async () => {
         if (window.confirm('Êtes-vous sûr de vouloir supprimer toute la conversation ?')) {
             setMessages([]);
-            openaiRTC.clearSession(); // Clear WebRTC session history
+            geminiLive.clearSession(); // Clear Gemini session history
             if (sessionId) {
                 // Supprimer tous les messages de la session
                 const { error: deleteError } = await supabase
@@ -876,7 +876,7 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
 
                         // Télécharger automatiquement le PDF au lieu de l'ouvrir (évite ERR_BLOCKED_BY_CLIENT)
                         // Si on est en mode vocal (connecté), on télécharge auto
-                        if (openaiRTC.isConnected) {
+                        if (geminiLive.isConnected) {
                             console.log('🔊 [generatePDF] Téléchargement automatique (demande vocale)');
                             setTimeout(() => {
                                 const link = document.createElement('a');
@@ -985,7 +985,7 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                         });
 
                         // Auto-download if voice mode
-                        if (openaiRTC.isConnected) {
+                        if (geminiLive.isConnected) {
                             setTimeout(() => {
                                 const link = document.createElement('a');
                                 link.href = result.localUrl;
@@ -1163,17 +1163,17 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
     // Clean up voice connections on unmount
     useEffect(() => {
         return () => {
-            if (openaiRTC.isConnected) {
-                openaiRTC.disconnect();
+            if (geminiLive.isConnected) {
+                geminiLive.disconnect();
             }
         };
-    }, [openaiRTC.isConnected]);
+    }, [geminiLive.isConnected]);
 
     const handleConnect = async () => {
-        if (openaiRTC.isConnected) {
-            openaiRTC.disconnect();
+        if (geminiLive.isConnected) {
+            geminiLive.disconnect();
         } else {
-            await openaiRTC.connect(selectedVoice, systemPrompt);
+            await geminiLive.connect(selectedVoice, systemPrompt);
         }
     };
 
@@ -1222,14 +1222,14 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                             <div className="flex items-center gap-2 bg-background/50 rounded-lg p-1 border border-border/50">
                                 <button
                                     onClick={async () => {
-                                        setSelectedVoice('ash');
-                                        localStorage.setItem('iasted-voice-selection', 'ash');
-                                        if (openaiRTC.isConnected) {
-                                            await openaiRTC.disconnect();
-                                            await openaiRTC.connect('ash');
+                                        setSelectedVoice('Charon');
+                                        localStorage.setItem('iasted-voice-selection', 'Charon');
+                                        if (geminiLive.isConnected) {
+                                            await geminiLive.disconnect();
+                                            await geminiLive.connect('Charon');
                                         }
                                     }}
-                                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${selectedVoice === 'ash'
+                                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${selectedVoice === 'Charon'
                                         ? 'bg-primary text-primary-foreground shadow-sm'
                                         : 'text-muted-foreground hover:bg-background/80'
                                         }`}
@@ -1238,14 +1238,14 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                                 </button>
                                 <button
                                     onClick={async () => {
-                                        setSelectedVoice('shimmer');
-                                        localStorage.setItem('iasted-voice-selection', 'shimmer');
-                                        if (openaiRTC.isConnected) {
-                                            await openaiRTC.disconnect();
-                                            await openaiRTC.connect('shimmer');
+                                        setSelectedVoice('Kore');
+                                        localStorage.setItem('iasted-voice-selection', 'Kore');
+                                        if (geminiLive.isConnected) {
+                                            await geminiLive.disconnect();
+                                            await geminiLive.connect('Kore');
                                         }
                                     }}
-                                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${selectedVoice === 'shimmer'
+                                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${selectedVoice === 'Kore'
                                         ? 'bg-primary text-primary-foreground shadow-sm'
                                         : 'text-muted-foreground hover:bg-background/80'
                                         }`}
@@ -1316,12 +1316,12 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                             {/* Input Area */}
                             <div className="p-4 border-t border-border bg-background/50 backdrop-blur-md flex items-end gap-2">
                                 <button
-                                    onClick={() => openaiRTC.toggleConversation(selectedVoice)}
-                                    className={`neu-raised p-4 rounded-xl hover:shadow-neo-lg transition-all ${openaiRTC.isConnected ? 'bg-primary text-primary-foreground' : ''
+                                    onClick={() => geminiLive.toggleConversation(selectedVoice)}
+                                    className={`neu-raised p-4 rounded-xl hover:shadow-neo-lg transition-all ${geminiLive.isConnected ? 'bg-primary text-primary-foreground' : ''
                                         }`}
-                                    title={openaiRTC.isConnected ? 'Arrêter le mode vocal' : 'Activer le mode vocal'}
+                                    title={geminiLive.isConnected ? 'Arrêter le mode vocal' : 'Activer le mode vocal'}
                                 >
-                                    {openaiRTC.isConnected ? (
+                                    {geminiLive.isConnected ? (
                                         <MicOff className="w-6 h-6" />
                                     ) : (
                                         <Mic className="w-6 h-6 text-primary" />
@@ -1334,16 +1334,16 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                                         onChange={(e) => setInputText(e.target.value)}
                                         onKeyDown={handleKeyPress}
                                         placeholder={
-                                            openaiRTC.isConnected ? `🎙️ Mode vocal actif (${selectedVoice === 'echo' ? 'Standard' : 'Africain'})` :
+                                            geminiLive.isConnected ? `🎙️ Mode vocal actif (${selectedVoice === 'Puck' ? 'Standard' : selectedVoice})` :
                                                 "Posez votre question à iAsted..."
                                         }
                                         className="w-full neu-inset rounded-xl p-4 pr-12 bg-transparent resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 min-h-[60px] max-h-[120px]"
                                         rows={1}
-                                        disabled={isProcessing || openaiRTC.isConnected}
+                                        disabled={isProcessing || geminiLive.isConnected}
                                     />
                                     <button
                                         onClick={handleSendMessage}
-                                        disabled={!inputText.trim() || isProcessing || openaiRTC.isConnected}
+                                        disabled={!inputText.trim() || isProcessing || geminiLive.isConnected}
                                         className="absolute right-2 bottom-2 p-2 rounded-lg hover:bg-primary/10 text-primary disabled:opacity-50 transition-colors"
                                     >
                                         {isProcessing ? (
@@ -1356,7 +1356,7 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                             </div>
                             <div className="text-center text-sm text-muted-foreground pb-2">
                                 {isProcessing ? '🧠 iAsted analyse...' :
-                                    openaiRTC.isConnected ? `🎙️ Mode vocal actif (${selectedVoice === 'echo' ? 'Standard' : 'Africain'})` :
+                                    geminiLive.isConnected ? `🎙️ Mode vocal actif (${selectedVoice})` :
                                         '💬 Conversation stratégique'}
                             </div>
                         </TabsContent>
