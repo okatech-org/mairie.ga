@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { IAstedChatModal } from '@/components/iasted/IAstedChatModal';
 import IAstedPresentationWrapper from "@/components/iasted/IAstedPresentationWrapper";
-import { useRealtimeVoiceWebRTC } from '@/hooks/useRealtimeVoiceWebRTC';
+import { useGeminiLive, GeminiVoice } from '@/hooks/useGeminiLive';
 import { IASTED_SYSTEM_PROMPT } from '@/config/iasted-config';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -45,7 +45,7 @@ export default function IAstedInterface({
         if (!value) controlledOnClose();
     } : setInternalIsOpen;
 
-    const [selectedVoice, setSelectedVoice] = useState<'echo' | 'ash' | 'shimmer'>('ash');
+    const [selectedVoice, setSelectedVoice] = useState<GeminiVoice>('Puck');
     const [pendingDocument, setPendingDocument] = useState<any>(null);
     const [questionsRemaining, setQuestionsRemaining] = useState(3);
     const [internalPresentationMode, setInternalPresentationMode] = useState(false);
@@ -86,8 +86,10 @@ export default function IAstedInterface({
 
     // Initialize voice from localStorage and reset question counter on new session
     useEffect(() => {
-        const savedVoice = localStorage.getItem('iasted-voice-selection') as 'echo' | 'ash' | 'shimmer';
-        if (savedVoice) setSelectedVoice(savedVoice);
+        const savedVoice = localStorage.getItem('iasted-voice-selection') as GeminiVoice;
+        if (savedVoice && ['Puck', 'Charon', 'Kore', 'Fenrir', 'Aoede'].includes(savedVoice)) {
+            setSelectedVoice(savedVoice);
+        }
 
         // Check if user is not identified (anonymous mode)
         const isAnonymous = !userRole || userRole === 'user' || userRole === 'unknown';
@@ -198,31 +200,23 @@ export default function IAstedInterface({
             + pageContext;
     }, [timeOfDay, userTitle, userRole, questionsRemaining, isOnRegistrationPage, isOnHomePage, registrationFormType, location.pathname]);
 
-    // Initialize OpenAI RTC with tool call handler
-    const openaiRTC = useRealtimeVoiceWebRTC(async (toolName, args) => {
+    // Initialize Gemini Live with tool call handler (migrated from OpenAI Realtime)
+    const geminiLive = useGeminiLive(async (toolName, args) => {
         console.log(`🔧 [IAstedInterface] Tool call: ${toolName}`, args);
 
         // 1. Internal Handlers
         if (toolName === 'change_voice') {
             console.log('🎙️ [IAstedInterface] Changement de voix demandé');
+            
+            // Gemini voices: Puck, Charon, Kore, Fenrir, Aoede
+            const geminiVoices: GeminiVoice[] = ['Puck', 'Charon', 'Kore', 'Fenrir', 'Aoede'];
+            const currentIndex = geminiVoices.indexOf(selectedVoice);
+            const nextVoice = geminiVoices[(currentIndex + 1) % geminiVoices.length];
+            
+            setSelectedVoice(nextVoice);
+            toast.success(`Voix changée : ${nextVoice}`);
 
-            // Si voice_id spécifique fourni, l'utiliser
-            if (args.voice_id) {
-                setSelectedVoice(args.voice_id as any);
-                toast.success(`Voix modifiée : ${args.voice_id === 'ash' ? 'Homme (Ash)' : args.voice_id === 'shimmer' ? 'Femme (Shimmer)' : 'Standard (Echo)'}`);
-            }
-            // Sinon, alterner homme↔femme selon voix actuelle
-            else {
-                const currentVoice = selectedVoice;
-                const isCurrentlyMale = currentVoice === 'ash' || currentVoice === 'echo';
-                const newVoice = isCurrentlyMale ? 'shimmer' : 'ash';
-
-                console.log(`🎙️ [IAstedInterface] Alternance voix: ${currentVoice} (${isCurrentlyMale ? 'homme' : 'femme'}) -> ${newVoice} (${isCurrentlyMale ? 'femme' : 'homme'})`);
-                setSelectedVoice(newVoice);
-                toast.success(`Voix changée : ${newVoice === 'shimmer' ? 'Femme (Shimmer)' : 'Homme (Ash)'}`);
-            }
-
-            return { success: true, message: `Voix modifiée` };
+            return { success: true, message: `Voix modifiée vers ${nextVoice}` };
         }
 
         if (toolName === 'logout_user') {
@@ -634,7 +628,7 @@ export default function IAstedInterface({
         if (toolName === 'stop_conversation') {
             console.log('🛑 [IAstedInterface] Arrêt de la conversation');
 
-            openaiRTC.disconnect();
+            geminiLive.disconnect();
             toast.info('Conversation terminée');
 
             return { success: true, message: 'Conversation arrêtée' };
@@ -692,22 +686,10 @@ export default function IAstedInterface({
             }
 
             if (args.action === 'set_speech_rate') {
-                // Ajuster la vitesse de parole (0.5 à 2.0)
-                const rate = parseFloat(args.value || '1.0');
-                const clampedRate = Math.max(0.5, Math.min(2.0, rate));
-
-                console.log(`🎚️ [IAstedInterface] Ajustement vitesse: ${rate} -> ${clampedRate}`);
-                openaiRTC.setSpeechRate(clampedRate);
-
-                const speedDescription = clampedRate < 0.8 ? 'ralenti'
-                    : clampedRate > 1.2 ? 'accéléré'
-                        : 'normal';
-
-                setTimeout(() => {
-                    toast.success(`Vitesse de parole ajustée (${speedDescription}: ${clampedRate}x)`);
-                }, 100);
-
-                return { success: true, message: `Vitesse ajustée à ${clampedRate}x` };
+                // Note: Gemini doesn't support dynamic speech rate adjustment
+                console.log('⚠️ [IAstedInterface] Speech rate adjustment not supported in Gemini Live');
+                toast.info('L\'ajustement de la vitesse n\'est pas disponible avec Gemini');
+                return { success: false, message: 'Fonctionnalité non disponible' };
             }
         }
 
@@ -1252,10 +1234,10 @@ export default function IAstedInterface({
     });
 
     const handleButtonClick = async () => {
-        if (openaiRTC.isConnected) {
-            openaiRTC.disconnect();
+        if (geminiLive.isConnected) {
+            geminiLive.disconnect();
         } else {
-            await openaiRTC.connect(selectedVoice, formattedSystemPrompt);
+            await geminiLive.connect(selectedVoice, formattedSystemPrompt);
         }
     };
 
@@ -1266,17 +1248,17 @@ export default function IAstedInterface({
                 onClosePresentation={handlePresentationClose}
                 onOpenInterface={handleButtonClick}
                 isInterfaceOpen={isOpen}
-                voiceListening={openaiRTC.voiceState === 'listening'}
-                voiceSpeaking={openaiRTC.voiceState === 'speaking'}
-                voiceProcessing={openaiRTC.voiceState === 'connecting' || openaiRTC.voiceState === 'thinking'}
-                audioLevel={openaiRTC.audioLevel}
+                voiceListening={geminiLive.voiceState === 'listening'}
+                voiceSpeaking={geminiLive.voiceState === 'speaking'}
+                voiceProcessing={geminiLive.voiceState === 'connecting' || geminiLive.voiceState === 'thinking'}
+                audioLevel={geminiLive.audioLevel}
                 onDoubleClick={() => setIsOpen(true)}
             />
 
             <IAstedChatModal
                 isOpen={isOpen}
                 onClose={() => setIsOpen(false)}
-                openaiRTC={openaiRTC}
+                geminiLive={geminiLive}
                 currentVoice={selectedVoice}
                 systemPrompt={formattedSystemPrompt}
                 pendingDocument={pendingDocument}
