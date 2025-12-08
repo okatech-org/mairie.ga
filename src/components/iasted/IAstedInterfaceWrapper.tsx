@@ -16,6 +16,11 @@ export default function IAstedInterfaceWrapper() {
   const [userRole, setUserRole] = useState<string | undefined>(undefined);
   const [userFirstName, setUserFirstName] = useState<string | undefined>(undefined);
 
+  // Debug: Log presentation state changes
+  useEffect(() => {
+    console.log('🎭 [IAstedInterfaceWrapper] showPresentation changed:', showPresentation);
+  }, [showPresentation]);
+
   useEffect(() => {
     const detectUserAndRole = async () => {
       // Priorité 1: Utilisateur Supabase authentifié

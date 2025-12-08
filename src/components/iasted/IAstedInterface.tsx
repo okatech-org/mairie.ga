@@ -59,9 +59,20 @@ export default function IAstedInterface({
     // Combine all sources of presentation mode
     const isPresentationMode = internalPresentationMode || externalPresentationMode || contextPresentationMode;
 
+    // Debug: Log presentation mode state
+    useEffect(() => {
+        console.log('🎬 [IAstedInterface] Presentation state:', {
+            internalPresentationMode,
+            externalPresentationMode,
+            contextPresentationMode,
+            isPresentationMode
+        });
+    }, [internalPresentationMode, externalPresentationMode, contextPresentationMode, isPresentationMode]);
+
     // Sync external presentation mode with internal state
     useEffect(() => {
         if (externalPresentationMode) {
+            console.log('🎬 [IAstedInterface] External presentation triggered, setting internal');
             setInternalPresentationMode(true);
         }
     }, [externalPresentationMode]);
