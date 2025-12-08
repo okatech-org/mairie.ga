@@ -12,7 +12,7 @@ import IAstedInterface from './IAstedInterface';
 export default function IAstedInterfaceWrapper() {
   const { currentUser: demoUser } = useDemo();
   const { user: authUser, loading: authLoading } = useAuth();
-  const { showPresentation, stopPresentation } = usePresentationSafe();
+  const { showPresentation, startPresentation, stopPresentation } = usePresentationSafe();
   const [userRole, setUserRole] = useState<string | undefined>(undefined);
   const [userFirstName, setUserFirstName] = useState<string | undefined>(undefined);
 
@@ -131,12 +131,28 @@ export default function IAstedInterfaceWrapper() {
 
   const mappedRole = mapUserRole(userRole);
 
+  // Debug: Manual trigger for presentation
+  const handleDebugStartPresentation = () => {
+    console.log('🔧 [DEBUG] Manual presentation trigger');
+    startPresentation();
+  };
+
   return (
-    <IAstedInterface 
-      userRole={mappedRole} 
-      userFirstName={userFirstName}
-      externalPresentationMode={showPresentation}
-      onExternalPresentationClose={stopPresentation}
-    />
+    <>
+      {/* Debug button - remove in production */}
+      <button
+        onClick={handleDebugStartPresentation}
+        className="fixed top-4 left-4 z-[99999] bg-primary text-primary-foreground px-3 py-1.5 rounded-lg text-xs font-medium shadow-lg hover:opacity-90"
+      >
+        🎬 Test Présentation
+      </button>
+
+      <IAstedInterface 
+        userRole={mappedRole} 
+        userFirstName={userFirstName}
+        externalPresentationMode={showPresentation}
+        onExternalPresentationClose={stopPresentation}
+      />
+    </>
   );
 }
