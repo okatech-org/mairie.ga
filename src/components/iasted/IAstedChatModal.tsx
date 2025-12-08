@@ -33,7 +33,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AudioVideoInterface } from './AudioVideoInterface';
 import { MeetingInterface } from './MeetingInterface';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRealtimeVoiceWebRTC, UseRealtimeVoiceWebRTC } from '@/hooks/useRealtimeVoiceWebRTC';
+import { UseGeminiLive, GeminiVoice } from '@/hooks/useGeminiLive';
 import { DocumentUploadZone } from '@/components/iasted/DocumentUploadZone';
 
 interface Message {
@@ -55,10 +55,10 @@ interface Message {
 interface IAstedChatModalProps {
     isOpen: boolean;
     onClose: () => void;
-    openaiRTC: UseRealtimeVoiceWebRTC;
+    geminiLive: UseGeminiLive;
     pendingDocument?: any;
     onClearPendingDocument?: () => void;
-    currentVoice?: 'echo' | 'ash' | 'shimmer';
+    currentVoice?: GeminiVoice;
     systemPrompt?: string;
 }
 
@@ -436,7 +436,7 @@ const MessageBubble: React.FC<{
 export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
     isOpen,
     onClose,
-    openaiRTC,
+    geminiLive,
     pendingDocument,
     onClearPendingDocument,
     currentVoice,
@@ -446,8 +446,9 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
     const [messages, setMessages] = useState<Message[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [sessionId, setSessionId] = useState<string | null>(null);
-    const [selectedVoice, setSelectedVoice] = useState<'echo' | 'ash' | 'shimmer'>(() => {
-        return currentVoice || (localStorage.getItem('iasted-voice-selection') as 'echo' | 'ash' | 'shimmer') || 'ash';
+    const [selectedVoice, setSelectedVoice] = useState<GeminiVoice>(() => {
+        const saved = localStorage.getItem('iasted-voice-selection') as GeminiVoice;
+        return currentVoice || (saved && ['Puck', 'Charon', 'Kore', 'Fenrir', 'Aoede'].includes(saved) ? saved : 'Puck');
     });
 
     // Sync internal state with prop if it changes (e.g. via voice command)
@@ -467,18 +468,18 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
         if (isOpen) {
             // Petit délai pour laisser l'UI se monter
             const timer = setTimeout(() => {
-                if (!openaiRTC.isConnected) {
-                    openaiRTC.connect(selectedVoice);
+                if (!geminiLive.isConnected) {
+                    geminiLive.connect(selectedVoice);
                 }
             }, 500);
             return () => clearTimeout(timer);
         }
-    }, [isOpen, selectedVoice]); // Reconnect if voice changes while open? Maybe not automatically, let user decide.
+    }, [isOpen, selectedVoice]);
 
-    // Sync messages from OpenAI WebRTC
+    // Sync messages from Gemini Live
     useEffect(() => {
-        if (openaiRTC.messages.length > 0) {
-            const lastMsg = openaiRTC.messages[openaiRTC.messages.length - 1];
+        if (geminiLive.messages.length > 0) {
+            const lastMsg = geminiLive.messages[geminiLive.messages.length - 1];
             setMessages(prev => {
                 const existing = prev.find(m => m.id === lastMsg.id);
                 if (!existing) {
@@ -487,7 +488,7 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                 return prev.map(m => m.id === lastMsg.id ? lastMsg : m);
             });
         }
-    }, [openaiRTC.messages]);
+    }, [geminiLive.messages]);
 
     // === Fonctions de gestion de messages ===
 

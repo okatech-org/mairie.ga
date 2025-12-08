@@ -17,3 +17,6 @@ verify_jwt = true
 
 [functions.document-ocr]
 verify_jwt = true
+
+[functions.get-gemini-token]
+verify_jwt = false
