@@ -25,7 +25,7 @@ interface Position {
 }
 
 const styles = `
-/* Styling de base avec perspective améliorée */
+/* Styling de base avec perspective */
 .perspective-container {
   perspective: 1500px;
   position: fixed;
@@ -46,110 +46,163 @@ const styles = `
   transform-style: preserve-3d;
 }
 
-/* Style pour le bouton avec matière épaisse et battement de cœur global AMÉLIORÉ */
+/* ===========================================
+   ANIMATIONS BATTEMENT DE COEUR DOUCES
+   Fréquences:
+   - 60 BPM = 1s par cycle (actif + chat ouvert)
+   - 70 BPM = 0.857s par cycle (écoute)
+   - 80 BPM = 0.75s par cycle (réflexion)
+   - 90 BPM = 0.667s par cycle (parole)
+   =========================================== */
+
+/* État par défaut - 60 BPM (repos avec interface ouverte) */
 .thick-matter-button {
   transform-style: preserve-3d;
   border-radius: 50%;
-  will-change: transform, box-shadow, border-radius, filter;
-  transition: all 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
-  animation: 
-    global-heartbeat 2.8s cubic-bezier(0.68, -0.2, 0.265, 1.55) infinite,
-    shadow-pulse 2.8s cubic-bezier(0.68, -0.2, 0.265, 1.55) infinite,
-    rhythm-variation 15s ease-in-out infinite,
-    micro-breathing 4s ease-in-out infinite,
-    subtle-rotation 20s linear infinite;
+  will-change: transform;
+  transition: all 0.4s ease-out;
+  animation: heartbeat-60bpm 1s ease-in-out infinite;
 }
 
-/* Micro respiration pour effet plus organique */
-@keyframes micro-breathing {
-  0%, 100% { transform: scale(1) translateZ(0); }
-  25% { transform: scale(1.02) translateZ(2px); }
-  50% { transform: scale(0.98) translateZ(-2px); }
-  75% { transform: scale(1.01) translateZ(1px); }
+/* Pulsation douce 60 BPM - Chat ouvert, repos */
+@keyframes heartbeat-60bpm {
+  0%, 100% { 
+    transform: scale(1); 
+  }
+  15% { 
+    transform: scale(1.04); 
+  }
+  30% { 
+    transform: scale(1); 
+  }
+  45% { 
+    transform: scale(1.02); 
+  }
+  60% { 
+    transform: scale(1); 
+  }
 }
 
-/* Rotation subtile continue */
-@keyframes subtle-rotation {
-  from { transform: rotateY(0deg) rotateX(0deg); }
-  to { transform: rotateY(360deg) rotateX(10deg); }
+/* Pulsation 70 BPM - Écoute (micro) */
+@keyframes heartbeat-70bpm {
+  0%, 100% { 
+    transform: scale(1); 
+  }
+  15% { 
+    transform: scale(1.05); 
+  }
+  30% { 
+    transform: scale(1); 
+  }
+  45% { 
+    transform: scale(1.025); 
+  }
+  60% { 
+    transform: scale(1); 
+  }
 }
 
-/* État hover - intensification MAXIMALE des battements */
+/* Pulsation 80 BPM - Réflexion (cerveau) */
+@keyframes heartbeat-80bpm {
+  0%, 100% { 
+    transform: scale(1); 
+  }
+  15% { 
+    transform: scale(1.06); 
+  }
+  30% { 
+    transform: scale(1); 
+  }
+  45% { 
+    transform: scale(1.03); 
+  }
+  60% { 
+    transform: scale(1); 
+  }
+}
+
+/* Pulsation 90 BPM - Parole (texte iAsted) */
+@keyframes heartbeat-90bpm {
+  0%, 100% { 
+    transform: scale(1); 
+  }
+  15% { 
+    transform: scale(1.07); 
+  }
+  30% { 
+    transform: scale(1); 
+  }
+  45% { 
+    transform: scale(1.035); 
+  }
+  60% { 
+    transform: scale(1); 
+  }
+}
+
+/* État hover - légère intensification */
 .thick-matter-button:hover {
-  animation: 
-    global-heartbeat-intense 1.4s cubic-bezier(0.68, -0.2, 0.265, 1.55) infinite,
-    shadow-pulse-intense 1.4s cubic-bezier(0.68, -0.2, 0.265, 1.55) infinite,
-    rhythm-variation 15s ease-in-out infinite,
-    hover-glow 1.4s ease-in-out infinite,
-    hover-expansion 2s ease-in-out infinite;
+  animation: heartbeat-hover 0.9s ease-in-out infinite;
 }
 
-/* Expansion au survol */
-@keyframes hover-expansion {
-  0%, 100% { transform: scale(1) translateZ(0); }
-  50% { transform: scale(1.05) translateZ(10px); }
+@keyframes heartbeat-hover {
+  0%, 100% { 
+    transform: scale(1); 
+  }
+  15% { 
+    transform: scale(1.06); 
+  }
+  30% { 
+    transform: scale(1); 
+  }
+  45% { 
+    transform: scale(1.03); 
+  }
+  60% { 
+    transform: scale(1); 
+  }
 }
 
-/* État actif - contraction musculaire ORGANIQUE ET FLUIDE */
+/* État actif - compression douce */
 .thick-matter-button:active {
-  animation: muscle-contraction-organic 1.2s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+  animation: none;
+  transform: scale(0.95);
+  transition: transform 0.15s ease-out;
 }
 
-@keyframes muscle-contraction-organic {
-  0% { transform: scale3d(1, 1, 1); filter: brightness(1) saturate(1.7); border-radius: 50%; }
-  15% { transform: scale3d(0.94, 0.92, 0.96) rotateX(2deg) rotateY(-1deg); filter: brightness(0.88) saturate(2) hue-rotate(5deg); border-radius: 54% 46% 47% 53% / 46% 54% 45% 55%; }
-  35% { transform: scale3d(0.82, 0.78, 0.86) rotateX(4deg) rotateY(-3deg); filter: brightness(0.78) saturate(2.5) hue-rotate(12deg); border-radius: 62% 38% 41% 59% / 40% 60% 39% 61%; }
-  65% { transform: scale3d(0.95, 0.94, 0.96) rotateX(1deg) rotateY(0deg); filter: brightness(0.98) saturate(2.3) hue-rotate(5deg); border-radius: 54% 46% 47% 53% / 46% 54% 45% 55%; }
-  100% { transform: scale3d(1, 1, 1); filter: brightness(1) saturate(1.7); border-radius: 50%; }
+/* États vocaux avec fréquences spécifiques */
+
+/* Écoute - 70 BPM (0.857s) */
+.thick-matter-button.voice-listening {
+  animation: heartbeat-70bpm 0.857s ease-in-out infinite;
 }
 
-@keyframes rhythm-variation {
-  0%, 100% { animation-timing-function: cubic-bezier(0.68, -0.2, 0.265, 1.55); }
-  15% { animation-timing-function: cubic-bezier(0.58, -0.1, 0.365, 1.45); }
-  30% { animation-timing-function: cubic-bezier(0.78, -0.3, 0.165, 1.65); }
-  45% { animation-timing-function: cubic-bezier(0.48, -0.15, 0.465, 1.35); }
-  60% { animation-timing-function: cubic-bezier(0.88, -0.35, 0.065, 1.75); }
-  75% { animation-timing-function: cubic-bezier(0.38, -0.05, 0.565, 1.25); }
-  90% { animation-timing-function: cubic-bezier(0.98, -0.4, 0.265, 1.85); }
+/* Parole - 90 BPM (0.667s) */
+.thick-matter-button.voice-speaking {
+  animation: heartbeat-90bpm 0.667s ease-in-out infinite;
 }
 
-@keyframes hover-glow {
-  0%, 100% { box-shadow: 0 0 40px rgba(0, 170, 255, 0.5), 0 0 80px rgba(0, 170, 255, 0.3), 0 0 120px rgba(0, 170, 255, 0.2), 0 0 160px rgba(0, 170, 255, 0.1), 0 8px 16px rgba(0, 102, 255, 0.2), 0 4px 8px rgba(0, 170, 255, 0.15), inset 0 -5px 15px rgba(0, 102, 255, 0.2), inset 0 5px 15px rgba(255, 255, 255, 0.3); }
-  50% { box-shadow: 0 0 60px rgba(0, 170, 255, 0.7), 0 0 120px rgba(0, 170, 255, 0.5), 0 0 180px rgba(0, 170, 255, 0.3), 0 0 240px rgba(0, 170, 255, 0.2), 0 12px 24px rgba(0, 102, 255, 0.3), 0 6px 12px rgba(0, 170, 255, 0.2), inset 0 -8px 20px rgba(0, 102, 255, 0.25), inset 0 8px 20px rgba(255, 255, 255, 0.4); }
+/* Réflexion/Processing - 80 BPM (0.75s) */
+.thick-matter-button.voice-processing {
+  animation: heartbeat-80bpm 0.75s ease-in-out infinite;
 }
 
-@keyframes global-heartbeat-intense {
-  0% { transform: scale3d(1, 1, 1) rotate(0deg); border-radius: 50%; filter: brightness(1) saturate(1.7) hue-rotate(0deg); }
-  3% { transform: scale3d(1.08, 1.1, 1.06) rotate(2deg); border-radius: 40% 60% 57% 43% / 44% 56% 44% 56%; filter: brightness(1.2) saturate(2.1) hue-rotate(5deg); }
-  6% { transform: scale3d(1.22, 1.18, 1.26) rotate(-3deg); border-radius: 35% 65% 62% 38% / 58% 42% 60% 40%; filter: brightness(1.4) saturate(2.5) hue-rotate(10deg); }
-  9% { transform: scale3d(1.3, 1.25, 1.35) rotate(1deg); border-radius: 32% 68% 65% 35% / 62% 38% 64% 36%; filter: brightness(1.5) saturate(2.8) hue-rotate(15deg); }
-  12% { transform: scale3d(1.15, 1.12, 1.18) rotate(-1deg); border-radius: 38% 62% 58% 42% / 54% 46% 56% 44%; filter: brightness(1.3) saturate(2.3) hue-rotate(5deg); }
-  15% { transform: scale3d(0.88, 0.91, 0.85) rotate(0deg); border-radius: 58% 42% 45% 55% / 42% 58% 44% 56%; filter: brightness(0.85) saturate(1.4) hue-rotate(-5deg); }
-  18% { transform: scale3d(0.8, 0.84, 0.76) rotate(0.5deg); border-radius: 62% 38% 42% 58% / 38% 62% 40% 60%; filter: brightness(0.8) saturate(1.3) hue-rotate(-10deg); }
-  25% { transform: scale3d(1.12, 1.08, 1.16) rotate(-0.5deg); border-radius: 41% 59% 56% 44% / 58% 42% 57% 43%; filter: brightness(1.2) saturate(2.2) hue-rotate(3deg); }
-  100% { transform: scale3d(1, 1, 1) rotate(0deg); border-radius: 50%; filter: brightness(1) saturate(1.7) hue-rotate(0deg); }
+/* Chat ouvert (repos actif) - 60 BPM (1s) */
+.thick-matter-button.interface-open {
+  animation: heartbeat-60bpm 1s ease-in-out infinite;
 }
 
-@keyframes shadow-pulse-intense {
-  0%, 100% { box-shadow: 0 0 40px rgba(0, 170, 255, 0.4), 0 0 80px rgba(0, 170, 255, 0.3), 0 8px 16px rgba(0, 102, 255, 0.2), 0 4px 8px rgba(0, 170, 255, 0.15), inset 0 -5px 15px rgba(0, 102, 255, 0.2), inset 0 5px 15px rgba(255, 255, 255, 0.3); }
-  6% { box-shadow: 0 0 60px rgba(0, 170, 255, 0.6), 0 0 120px rgba(0, 170, 255, 0.4), 0 16px 32px rgba(0, 102, 255, 0.3), 0 8px 16px rgba(0, 170, 255, 0.2), inset 0 -8px 20px rgba(0, 102, 255, 0.25), inset 0 8px 20px rgba(255, 255, 255, 0.4); }
-  12% { box-shadow: 0 0 80px rgba(0, 170, 255, 0.8), 0 0 160px rgba(0, 170, 255, 0.6), 0 20px 40px rgba(0, 102, 255, 0.4), 0 10px 20px rgba(0, 170, 255, 0.3), inset 0 -10px 25px rgba(0, 102, 255, 0.3), inset 0 10px 25px rgba(255, 255, 255, 0.5); }
+/* Pulsation feedback sonore */
+.thick-matter-button.pulsing {
+  animation: gentle-pulse-feedback 0.8s ease-in-out 3;
 }
 
-@keyframes global-heartbeat {
-  0% { transform: scale3d(1, 1, 1) rotate(0deg); border-radius: 50%; filter: brightness(1); }
-  3% { transform: scale3d(1.05, 1.07, 1.03) rotate(1.5deg); border-radius: 42% 58% 55% 45% / 46% 54% 46% 54%; filter: brightness(1.08); }
-  6% { transform: scale3d(1.14, 1.1, 1.18) rotate(-1.5deg); border-radius: 38% 62% 58% 42% / 55% 45% 58% 42%; filter: brightness(1.15); }
-  9% { transform: scale3d(1.2, 1.16, 1.24) rotate(0.8deg); border-radius: 35% 65% 62% 38% / 58% 42% 60% 40%; filter: brightness(1.2); }
-  12% { transform: scale3d(1.1, 1.07, 1.13) rotate(-0.8deg); border-radius: 40% 60% 55% 45% / 52% 48% 54% 46%; filter: brightness(1.1); }
-  15% { transform: scale3d(0.93, 0.96, 0.9) rotate(0deg); border-radius: 55% 45% 48% 52% / 45% 55% 47% 53%; filter: brightness(0.92); }
-  18% { transform: scale3d(0.86, 0.9, 0.82) rotate(0.4deg); border-radius: 58% 42% 45% 55% / 42% 58% 44% 56%; filter: brightness(0.86); }
-  25% { transform: scale3d(1.07, 1.04, 1.1) rotate(-0.3deg); border-radius: 43% 57% 54% 46% / 56% 44% 55% 45%; filter: brightness(1.07); }
-  30% { transform: scale3d(1.12, 1.09, 1.15) rotate(0.6deg); border-radius: 40% 60% 58% 42% / 59% 41% 57% 43%; filter: brightness(1.11); }
-  100% { transform: scale3d(1, 1, 1) rotate(0deg); border-radius: 50%; filter: brightness(1); }
+@keyframes gentle-pulse-feedback {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
 }
 
-/* Couche de profondeur pour effet 3D épais */
+/* Couche de profondeur pour effet 3D */
 .depth-layer {
   position: absolute;
   top: 5%; left: 5%;
@@ -161,7 +214,7 @@ const styles = `
   transform: translateZ(-10px);
 }
 
-/* Couche de brillance et reflets pour effet 3D avec pulsation */
+/* Couche de brillance */
 .highlight-layer {
   position: absolute;
   top: 0; left: 0;
@@ -169,224 +222,44 @@ const styles = `
   border-radius: 50%;
   background: linear-gradient(135deg, transparent 30%, rgba(255, 255, 255, 0.1) 45%, rgba(255, 255, 255, 0.2) 50%, rgba(255, 255, 255, 0.1) 55%, transparent 70%);
   transform: translateZ(15px) rotate(45deg);
-  opacity: 0.4;
+  opacity: 0.3;
   filter: blur(2px);
   mix-blend-mode: overlay;
   pointer-events: none;
-  animation: highlight-pulse 2.8s cubic-bezier(0.68, -0.2, 0.265, 1.55) infinite;
-}
-
-@keyframes highlight-pulse {
-  0%, 100% { opacity: 0.4; transform: translateZ(15px) rotate(45deg) scale(1); }
-  6% { opacity: 0.7; transform: translateZ(20px) rotate(45deg) scale(1.08); }
-  12% { opacity: 0.85; transform: translateZ(25px) rotate(45deg) scale(1.12); }
-  18% { opacity: 0.25; transform: translateZ(10px) rotate(45deg) scale(0.92); }
-}
-
-.satellite-particle {
-  width: 8px; height: 8px;
-  top: 15px; left: 50%; margin-left: -4px;
-  border-radius: 50%;
-  background: rgba(0, 170, 255, 0.8);
-  box-shadow: 0 0 4px rgba(0, 170, 255, 0.6), 0 0 8px rgba(0, 170, 255, 0.3), inset 0 -1px 2px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.5);
-  z-index: 20; position: absolute;
-  animation: orbit-close 4s linear infinite;
-  transform-style: preserve-3d;
-  transform: translateZ(20px);
-}
-
-@keyframes orbit-close {
-  0% { transform: translateZ(20px) rotate(0deg) translateX(30px) rotate(0deg); }
-  100% { transform: translateZ(20px) rotate(360deg) translateX(30px) rotate(-360deg); }
-}
-
-/* Animations intensifiées pour l'écoute */
-.thick-matter-button.voice-listening .organic-membrane {
-  animation: membrane-palpitation-listening 0.6s cubic-bezier(0.68, -0.2, 0.265, 1.55) infinite;
-}
-
-.thick-matter-button.voice-listening .organic-membrane-secondary {
-  animation: membrane-palpitation-listening-secondary 0.6s cubic-bezier(0.68, -0.2, 0.265, 1.55) infinite;
-  animation-delay: 0.1s;
-}
-
-.thick-matter-button.voice-listening .wave-emission {
-  animation: wave-emission-listening 1s cubic-bezier(0.215, 0.61, 0.355, 1) infinite !important;
-}
-
-@keyframes membrane-palpitation-listening {
-  0%, 100% { opacity: 0.8; transform: scale(1.2) translateZ(15px); filter: blur(2px); }
-  50% { opacity: 1; transform: scale(1.5) translateZ(30px); filter: blur(5px); }
-}
-
-@keyframes membrane-palpitation-listening-secondary {
-  0%, 100% { opacity: 0.6; transform: scale(1.3) translateZ(20px) rotate(0deg); filter: blur(3px); }
-  50% { opacity: 0.9; transform: scale(1.6) translateZ(35px) rotate(10deg); filter: blur(6px); }
-}
-
-@keyframes wave-emission-listening {
-  0% { transform: scale3d(0.9, 0.9, 1) translateZ(0px); opacity: 0.8; filter: blur(0px); }
-  100% { transform: scale3d(2.5, 2.5, 1.5) translateZ(20px); opacity: 0; filter: blur(15px); }
-}
-
-/* Animations intensifiées pour la parole */
-.thick-matter-button.voice-speaking .organic-membrane {
-  animation: membrane-palpitation-speaking 0.4s cubic-bezier(0.68, -0.2, 0.265, 1.55) infinite;
-}
-
-.thick-matter-button.voice-speaking .organic-membrane-secondary {
-  animation: membrane-palpitation-speaking-secondary 0.4s cubic-bezier(0.68, -0.2, 0.265, 1.55) infinite;
-  animation-delay: 0.05s;
-}
-
-.thick-matter-button.voice-speaking .wave-emission {
-  animation: wave-emission-speaking 0.8s cubic-bezier(0.215, 0.61, 0.355, 1) infinite !important;
-}
-
-@keyframes membrane-palpitation-speaking {
-  0%, 100% { opacity: 0.9; transform: scale(1.1) translateZ(10px); filter: blur(1px); }
-  25% { opacity: 1; transform: scale(1.35) translateZ(25px); filter: blur(4px); }
-  50% { opacity: 0.95; transform: scale(1.25) translateZ(20px); filter: blur(3px); }
-  75% { opacity: 1; transform: scale(1.4) translateZ(28px); filter: blur(5px); }
-}
-
-@keyframes membrane-palpitation-speaking-secondary {
-  0%, 100% { opacity: 0.7; transform: scale(1.2) translateZ(15px) rotate(0deg); filter: blur(2px); }
-  25% { opacity: 0.95; transform: scale(1.45) translateZ(30px) rotate(8deg); filter: blur(5px); }
-  50% { opacity: 0.85; transform: scale(1.35) translateZ(25px) rotate(-5deg); filter: blur(4px); }
-  75% { opacity: 1; transform: scale(1.5) translateZ(32px) rotate(12deg); filter: blur(6px); }
-}
-
-@keyframes wave-emission-speaking {
-  0% { transform: scale3d(1, 1, 1) translateZ(0px); opacity: 0.7; filter: blur(0px); }
-  100% { transform: scale3d(2.2, 2.2, 1.4) translateZ(15px); opacity: 0; filter: blur(12px); }
-}
-
-/* Intensification du heartbeat pendant l'écoute */
-.thick-matter-button.voice-listening {
-  animation: 
-    global-heartbeat-listening 0.8s cubic-bezier(0.68, -0.2, 0.265, 1.55) infinite,
-    shadow-pulse-intense 0.8s cubic-bezier(0.68, -0.2, 0.265, 1.55) infinite;
-}
-
-@keyframes global-heartbeat-listening {
-  0%, 100% { transform: scale3d(1, 1, 1) rotate(0deg); border-radius: 50%; filter: brightness(1.2) saturate(2); }
-  25% { transform: scale3d(1.15, 1.18, 1.12) rotate(3deg); border-radius: 35% 65% 62% 38% / 58% 42% 60% 40%; filter: brightness(1.5) saturate(2.8); }
-  50% { transform: scale3d(1.08, 1.05, 1.1) rotate(-2deg); border-radius: 45% 55% 52% 48% / 48% 52% 46% 54%; filter: brightness(1.3) saturate(2.3); }
-  75% { transform: scale3d(1.12, 1.15, 1.1) rotate(2deg); border-radius: 40% 60% 58% 42% / 54% 46% 56% 44%; filter: brightness(1.4) saturate(2.5); }
-}
-
-/* Intensification du heartbeat pendant la parole - ANIMATIONS MAXIMALES */
-.thick-matter-button.voice-speaking {
-  animation: 
-    global-heartbeat-speaking 0.4s cubic-bezier(0.68, -0.2, 0.265, 1.55) infinite,
-    shadow-pulse-speaking 0.4s cubic-bezier(0.68, -0.2, 0.265, 1.55) infinite,
-    speaking-glow 0.4s ease-in-out infinite;
-}
-
-@keyframes global-heartbeat-speaking {
-  0% { transform: scale3d(1, 1, 1) rotate(0deg); border-radius: 50%; filter: brightness(1.2) saturate(2); }
-  20% { transform: scale3d(1.25, 1.28, 1.22) rotate(5deg); border-radius: 28% 72% 70% 30% / 68% 32% 70% 30%; filter: brightness(1.8) saturate(3.5); }
-  40% { transform: scale3d(1.15, 1.12, 1.18) rotate(-4deg); border-radius: 38% 62% 60% 40% / 58% 42% 60% 40%; filter: brightness(1.4) saturate(2.8); }
-  60% { transform: scale3d(1.22, 1.25, 1.2) rotate(4deg); border-radius: 32% 68% 65% 35% / 62% 38% 64% 36%; filter: brightness(1.7) saturate(3.2); }
-  80% { transform: scale3d(1.12, 1.1, 1.15) rotate(-3deg); border-radius: 42% 58% 55% 45% / 52% 48% 54% 46%; filter: brightness(1.35) saturate(2.6); }
-  100% { transform: scale3d(1, 1, 1) rotate(0deg); border-radius: 50%; filter: brightness(1.2) saturate(2); }
-}
-
-@keyframes shadow-pulse-speaking {
-  0%, 100% {
-    box-shadow: 
-      0 0 50px rgba(0, 170, 255, 0.8), 
-      0 0 100px rgba(0, 170, 255, 0.6), 
-      0 0 150px rgba(0, 170, 255, 0.4),
-      0 0 200px rgba(0, 170, 255, 0.3),
-      0 12px 30px rgba(0, 102, 255, 0.4),
-      inset 0 0 30px rgba(0, 170, 255, 0.3);
-  }
-  50% {
-    box-shadow: 
-      0 0 80px rgba(0, 170, 255, 1), 
-      0 0 150px rgba(0, 170, 255, 0.8), 
-      0 0 220px rgba(0, 170, 255, 0.6),
-      0 0 300px rgba(0, 170, 255, 0.4),
-      0 16px 40px rgba(0, 102, 255, 0.6),
-      inset 0 0 50px rgba(0, 170, 255, 0.5);
-  }
-}
-
-@keyframes speaking-glow {
-  0%, 100% { 
-    filter: brightness(1.2) saturate(2) drop-shadow(0 0 20px rgba(0, 170, 255, 0.6));
-  }
-  50% { 
-    filter: brightness(1.6) saturate(3) drop-shadow(0 0 40px rgba(0, 170, 255, 0.9));
-  }
-}
-
-/* Pulsation pour feedback sonore */
-.thick-matter-button.pulsing {
-  animation: gentle-pulse-feedback 1s ease-in-out 3;
-}
-
-@keyframes gentle-pulse-feedback {
-  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-  50% { transform: scale(1.08); box-shadow: 0 0 0 20px rgba(16, 185, 129, 0); }
-  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185,129, 0); }
 }
 
 
+/* Membrane organique - effet subtil */
 .organic-membrane {
   position: absolute; inset: -5%; border-radius: 50%;
-  background: radial-gradient(circle at center, transparent 20%, rgba(0, 170, 255, 0.03) 40%, rgba(0, 170, 255, 0.08) 60%, rgba(0, 170, 255, 0.04) 80%, transparent 95%);
-  opacity: 0;
-  animation: membrane-palpitation-intense 2.8s cubic-bezier(0.68, -0.2, 0.265, 1.55) infinite;
+  background: radial-gradient(circle at center, transparent 20%, rgba(0, 170, 255, 0.02) 40%, rgba(0, 170, 255, 0.04) 60%, rgba(0, 170, 255, 0.02) 80%, transparent 95%);
+  opacity: 0.3;
   pointer-events: none;
-}
-
-@keyframes membrane-palpitation-intense {
-  0%, 100% { opacity: 0; transform: scale(1) translateZ(0); filter: blur(0px); }
-  3% { opacity: 0.3; transform: scale(0.95) translateZ(-5px); filter: blur(1px); }
-  6% { opacity: 0.7; transform: scale(0.9) translateZ(-10px); filter: blur(0px); }
-  9% { opacity: 0.9; transform: scale(1.15) translateZ(15px); filter: blur(2px); }
-  12% { opacity: 0.95; transform: scale(1.25) translateZ(20px); filter: blur(3px); }
-  18% { opacity: 0.4; transform: scale(1.12) translateZ(10px); filter: blur(1px); }
 }
 
 .organic-membrane-secondary {
   position: absolute; inset: -8%; border-radius: 50%;
-  background: radial-gradient(circle at center, transparent 10%, rgba(255, 204, 0, 0.02) 30%, rgba(0, 170, 255, 0.05) 50%, rgba(255, 0, 255, 0.03) 70%, transparent 90%);
-  opacity: 0;
-  animation: membrane-palpitation-secondary 2.8s cubic-bezier(0.68, -0.2, 0.265, 1.55) infinite;
-  animation-delay: 0.2s;
+  background: radial-gradient(circle at center, transparent 10%, rgba(255, 204, 0, 0.01) 30%, rgba(0, 170, 255, 0.02) 50%, rgba(255, 0, 255, 0.01) 70%, transparent 90%);
+  opacity: 0.2;
   pointer-events: none;
 }
 
-@keyframes membrane-palpitation-secondary {
-  0%, 100% { opacity: 0; transform: scale(1.05) translateZ(5px) rotate(0deg); filter: blur(2px); }
-  5% { opacity: 0.4; transform: scale(0.98) translateZ(0px) rotate(5deg); filter: blur(3px); }
-  10% { opacity: 0.8; transform: scale(0.88) translateZ(-15px) rotate(-5deg); filter: blur(1px); }
-  15% { opacity: 1; transform: scale(1.2) translateZ(25px) rotate(3deg); filter: blur(4px); }
-  20% { opacity: 0.7; transform: scale(1.3) translateZ(30px) rotate(-3deg); filter: blur(5px); }
-}
-
+/* Émissions d'ondes désactivées par défaut */
 .wave-emission {
   position: absolute; top: 0; left: 0; right: 0; bottom: 0;
   width: 100%; height: 100%; border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.5) 0%, rgba(0, 170, 255, 0.3) 30%, transparent 70%);
-  transform: scale3d(0.9, 0.9, 1); opacity: 0;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, rgba(0, 170, 255, 0.1) 30%, transparent 70%);
+  transform: scale3d(0.9, 0.9, 1); 
+  opacity: 0;
   transform-style: preserve-3d;
 }
 
-.wave-1 { animation: wave-emission-heartbeat 2.8s cubic-bezier(0.215, 0.61, 0.355, 1) infinite; }
-.wave-2 { animation: wave-emission-heartbeat 2.8s cubic-bezier(0.215, 0.61, 0.355, 1) infinite; animation-delay: 0.3s; }
-.wave-3 { animation: wave-emission-heartbeat 2.8s cubic-bezier(0.215, 0.61, 0.355, 1) infinite; animation-delay: 0.6s; }
-
-@keyframes wave-emission-heartbeat {
-  0%, 20%, 100% { transform: scale3d(0.9, 0.9, 1) translateZ(0px); opacity: 0; filter: blur(0px); }
-  6% { transform: scale3d(1, 1, 1) translateZ(2px); opacity: 0.7; filter: blur(0px); }
-  12% { transform: scale3d(1.8, 1.8, 1.2) translateZ(10px); opacity: 0; filter: blur(10px); }
+.wave-1, .wave-2, .wave-3 { 
+  animation: none; 
+  opacity: 0;
 }
 
+/* Background morphing simplifié */
 .morphing-bg {
   background: 
     radial-gradient(circle at 20% 80%, rgba(0, 102, 255, 0.9) 0%, transparent 50%),
@@ -396,16 +269,11 @@ const styles = `
     radial-gradient(circle at 50% 50%, rgba(255, 0, 255, 0.7) 0%, transparent 50%),
     linear-gradient(135deg, #0066ff 0%, #00aaff 8%, #00ffff 16%, #4400ff 24%, #ff00ff 32%, #ff0066 40%, #ffcc00 48%, #ffc125 56%, #ff6600 64%, #ff0099 72%, #9400d3 80%, #4b0082 88%, #0066ff 100%);
   background-size: 200% 200%, 200% 200%, 200% 200%, 200% 200%, 200% 200%, 400% 400%;
-  animation: fluid-mix-organic 25s ease-in-out infinite, bg-pulse 2.8s cubic-bezier(0.68, -0.2, 0.265, 1.55) infinite, fluid-wave 12s ease-in-out infinite, color-shift-continuous 30s linear infinite;
-  filter: saturate(2) brightness(1.2);
+  animation: fluid-mix-organic 25s ease-in-out infinite, fluid-wave 12s ease-in-out infinite;
+  filter: saturate(1.8) brightness(1.1);
   mix-blend-mode: lighten;
-  box-shadow: inset 0 0 50px rgba(255, 255, 255, 0.3), inset 0 0 100px rgba(0, 170, 255, 0.3), inset 0 0 150px rgba(255, 204, 0, 0.2);
+  box-shadow: inset 0 0 30px rgba(255, 255, 255, 0.2), inset 0 0 60px rgba(0, 170, 255, 0.2);
   transform-style: preserve-3d;
-}
-
-@keyframes color-shift-continuous {
-  0%, 100% { filter: hue-rotate(0deg) saturate(2) brightness(1.2); }
-  50% { filter: hue-rotate(180deg) saturate(2.5) brightness(1.3); }
 }
 
 @keyframes fluid-wave {
@@ -416,8 +284,8 @@ const styles = `
 }
 
 .thick-matter-button:hover .morphing-bg {
-  animation-duration: 12s, 1.4s, 6s, 15s;
-  filter: saturate(3) brightness(1.5) contrast(1.3);
+  animation-duration: 15s, 8s;
+  filter: saturate(2) brightness(1.2);
 }
 
 .moving-highlights {
@@ -1200,7 +1068,20 @@ export const IAstedButtonFull: React.FC<IAstedButtonProps> = ({
     }
   }, [position]);
 
-  const voiceStateClass = voiceListening ? 'voice-listening' : voiceSpeaking ? 'voice-speaking' : '';
+  // Classes d'état selon les fréquences de battement de coeur
+  // 90 BPM = parole (voiceSpeaking)
+  // 70 BPM = écoute (voiceListening)
+  // 80 BPM = réflexion (voiceProcessing)
+  // 60 BPM = chat ouvert actif (isInterfaceOpen)
+  const getHeartbeatClass = () => {
+    if (voiceSpeaking) return 'voice-speaking'; // 90 BPM
+    if (voiceListening) return 'voice-listening'; // 70 BPM
+    if (voiceProcessing) return 'voice-processing'; // 80 BPM
+    if (isInterfaceOpen) return 'interface-open'; // 60 BPM
+    return ''; // Default animation
+  };
+  
+  const heartbeatClass = getHeartbeatClass();
 
   const handleClick = (e: React.MouseEvent) => {
     if (isDragging) {
@@ -1318,7 +1199,7 @@ export const IAstedButtonFull: React.FC<IAstedButtonProps> = ({
             onMouseDown={handleMouseDown}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseLeave}
-            className={`thick-matter-button living-matter ${size} ${isClicked ? 'color-shift' : ''} ${isActive ? 'active' : ''} ${isProcessing ? 'processing' : ''} ${isDragging ? 'grabbing' : ''} ${pulsing ? 'pulsing' : ''} ${voiceStateClass} relative cursor-grab focus:outline-none overflow-hidden border-0 ${className}`}
+            className={`thick-matter-button living-matter ${size} ${isClicked ? 'color-shift' : ''} ${isActive ? 'active' : ''} ${isProcessing ? 'processing' : ''} ${isDragging ? 'grabbing' : ''} ${pulsing ? 'pulsing' : ''} ${heartbeatClass} relative cursor-grab focus:outline-none overflow-hidden border-0 ${className}`}
             style={{
               '--iasted-icon-size': size === 'sm' ? 'clamp(24px, 5vw, 32px)' : size === 'lg' ? 'clamp(48px, 10vw, 64px)' : 'clamp(36px, 7vw, 48px)',
               '--iasted-text-size': size === 'sm' ? 'clamp(12px, 2.5vw, 14px)' : size === 'lg' ? 'clamp(20px, 4vw, 28px)' : 'clamp(16px, 3vw, 20px)',
