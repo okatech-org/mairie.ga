@@ -11,8 +11,6 @@ import { FileText, Upload, Trash2, Eye, Loader2, FileIcon, Pencil, X, Check, Cal
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { dossierService } from '@/services/dossier-service';
-import { supabase } from '@/integrations/supabase/client';
-import { useDocumentOCRAnalysis } from '@/hooks/useDocumentOCRAnalysis';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -286,11 +284,6 @@ export default function CitizenDocumentsPage() {
     const [pendingUploadFile, setPendingUploadFile] = useState<File | null>(null);
     const [uploadDate, setUploadDate] = useState('');
     const [uploadType, setUploadType] = useState<DocumentType>('OTHER');
-    const [ocrLoading, setOcrLoading] = useState(false);
-    const [ocrConfidence, setOcrConfidence] = useState<number | null>(null);
-
-    // OCR Analysis hook - listens for iAsted events
-    const { isAnalyzing: isOCRAnalyzing, results: ocrResults, consolidatedData } = useDocumentOCRAnalysis();
 
     useEffect(() => {
         fetchDocuments();
@@ -443,14 +436,13 @@ export default function CitizenDocumentsPage() {
         }
     };
 
-    const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    const onDrop = useCallback((acceptedFiles: File[]) => {
         if (acceptedFiles.length > 0) {
+            // Take the first file for review (Multi-file flow could be added later)
             const file = acceptedFiles[0];
             setPendingUploadFile(file);
-            setOcrLoading(true);
-            setOcrConfidence(null);
 
-            // Try to auto-detect type from filename first
+            // Try to auto-detect type just for UI pre-selection
             const lowerName = file.name.toLowerCase();
             let detectedType: DocumentType = selectedType;
 
@@ -468,72 +460,16 @@ export default function CitizenDocumentsPage() {
 
             setUploadType(detectedType);
 
-            // Default expiration logic
+            // Auto-set expiration based on detected type
             if (detectedType === 'BIRTH_CERTIFICATE') {
-                setUploadDate('');
+                setUploadDate(''); // No expiration
             } else if (detectedType === 'RESIDENCE_PROOF') {
+                // Auto-calculate J+90
                 const futureDate = new Date();
                 futureDate.setDate(futureDate.getDate() + 90);
                 setUploadDate(futureDate.toISOString().split('T')[0]);
             } else {
-                setUploadDate('');
-            }
-
-            // Try OCR to extract expiration date from image
-            if (file.type.startsWith('image/')) {
-                try {
-                    const reader = new FileReader();
-                    reader.onload = async () => {
-                        try {
-                            const base64 = (reader.result as string).split(',')[1];
-
-                            const { data, error } = await supabase.functions.invoke('document-ocr', {
-                                body: {
-                                    imageBase64: base64,
-                                    mimeType: file.type,
-                                    documentType: detectedType === 'PASSPORT' ? 'passport' :
-                                        detectedType === 'ID_CARD' ? 'cni' :
-                                            detectedType === 'BIRTH_CERTIFICATE' ? 'birth_certificate' :
-                                                detectedType === 'RESIDENCE_PROOF' ? 'residence_proof' : 'other'
-                                }
-                            });
-
-                            if (!error && data) {
-                                console.log('[OCR] Result:', data);
-                                setOcrConfidence(data.confidence || 0);
-
-                                // Auto-detect document type from OCR
-                                if (data.documentType && selectedType === 'OTHER') {
-                                    const typeMap: Record<string, DocumentType> = {
-                                        'passport': 'PASSPORT',
-                                        'cni': 'ID_CARD',
-                                        'birth_certificate': 'BIRTH_CERTIFICATE',
-                                        'residence_proof': 'RESIDENCE_PROOF',
-                                    };
-                                    if (typeMap[data.documentType]) {
-                                        setUploadType(typeMap[data.documentType]);
-                                    }
-                                }
-
-                                // Extract expiration date
-                                if (data.extractedData?.expiryDate) {
-                                    setUploadDate(data.extractedData.expiryDate);
-                                    toast.success(`Date d'expiration détectée: ${data.extractedData.expiryDate}`);
-                                }
-                            }
-                        } catch (ocrError) {
-                            console.error('[OCR] Error:', ocrError);
-                        } finally {
-                            setOcrLoading(false);
-                        }
-                    };
-                    reader.readAsDataURL(file);
-                } catch (e) {
-                    console.error('[OCR] Failed to read file:', e);
-                    setOcrLoading(false);
-                }
-            } else {
-                setOcrLoading(false);
+                setUploadDate(''); // Manual entry for others
             }
         }
     }, [selectedType]);
@@ -1247,17 +1183,6 @@ export default function CitizenDocumentsPage() {
                                     {pendingUploadFile && (pendingUploadFile.size / 1024 / 1024).toFixed(2)} MB
                                 </p>
                             </div>
-                            {ocrLoading && (
-                                <div className="flex items-center gap-2 text-sm text-primary">
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    Analyse IA...
-                                </div>
-                            )}
-                            {!ocrLoading && ocrConfidence !== null && (
-                                <Badge variant="outline" className={ocrConfidence > 0.7 ? "border-green-500 text-green-600" : "border-yellow-500 text-yellow-600"}>
-                                    IA: {Math.round(ocrConfidence * 100)}%
-                                </Badge>
-                            )}
                         </div>
 
                         <div className="space-y-2">

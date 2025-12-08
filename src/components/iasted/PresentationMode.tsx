@@ -185,6 +185,13 @@ interface PresentationModeProps {
     onButtonPositionChange?: (x: number, y: number) => void;
 }
 
+// Export the button position for external use
+export const presentationState = {
+    isActive: false,
+    buttonX: 90,
+    buttonY: 85
+};
+
 export default function PresentationMode({ onClose, autoStart = true, onButtonPositionChange }: PresentationModeProps) {
     const navigate = useNavigate();
     const location = useLocation();
@@ -200,15 +207,18 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
     const onButtonPositionChangeRef = useRef(onButtonPositionChange);
     const isMountedRef = useRef(true);
 
+    // Log mount
     useEffect(() => {
         console.log('🎬 [PresentationMode] Component MOUNTED, autoStart:', autoStart);
         isMountedRef.current = true;
+
         return () => {
             console.log('🎬 [PresentationMode] Component UNMOUNTING');
             isMountedRef.current = false;
         };
     }, [autoStart]);
 
+    // Keep callback ref up to date
     useEffect(() => {
         onButtonPositionChangeRef.current = onButtonPositionChange;
     }, [onButtonPositionChange]);
@@ -217,16 +227,31 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
     const totalSteps = PRESENTATION_SCRIPT.length;
     const totalDuration = PRESENTATION_SCRIPT.reduce((acc, step) => acc + step.duration, 0);
 
+    // Update external state
+    useEffect(() => {
+        presentationState.isActive = true;
+        presentationState.buttonX = buttonPosition.x;
+        presentationState.buttonY = buttonPosition.y;
+
+        return () => {
+            presentationState.isActive = false;
+        };
+    }, [buttonPosition]);
+
+    // Text-to-speech
     const speak = useCallback((text: string) => {
         if (isMuted || !('speechSynthesis' in window)) return;
+
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'fr-FR';
         utterance.rate = 1.0;
         utterance.pitch = 1;
+
         const voices = window.speechSynthesis.getVoices();
         const frenchVoice = voices.find(v => v.lang.startsWith('fr'));
         if (frenchVoice) utterance.voice = frenchVoice;
+
         window.speechSynthesis.speak(utterance);
     }, [isMuted]);
 
@@ -236,71 +261,102 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
         }
     }, []);
 
+    // Clear all action timeouts
     const clearActionTimeouts = useCallback(() => {
         actionTimeoutsRef.current.forEach(timeout => clearTimeout(timeout));
         actionTimeoutsRef.current = [];
     }, []);
 
+    // Execute a single action - DIRECT function, no useCallback to avoid stale closures
     const executeAction = (action: PresentationAction) => {
-        if (!isMountedRef.current) return;
+        console.log('▶️ [PresentationMode] executeAction called:', action.type, action);
+
+        if (!isMountedRef.current) {
+            console.log('⚠️ [PresentationMode] Component unmounted, skipping action');
+            return;
+        }
 
         switch (action.type) {
             case 'scroll':
+                console.log('📜 [PresentationMode] Executing scroll:', action.selector);
                 if (action.selector === 'top') {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 } else if (action.selector) {
                     const scrollTarget = document.querySelector(action.selector);
+                    console.log('📜 [PresentationMode] Scroll target found:', !!scrollTarget);
                     if (scrollTarget) {
                         scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }
                 }
                 break;
+
             case 'move':
                 if (action.position) {
+                    console.log('🚀 [PresentationMode] Moving button to:', action.position);
                     const newX = action.position.x;
                     const newY = action.position.y;
                     setButtonPosition({ x: newX, y: newY });
+                    // Call callback immediately
                     if (onButtonPositionChangeRef.current) {
+                        console.log('📡 [PresentationMode] Calling onButtonPositionChange');
                         onButtonPositionChangeRef.current(newX, newY);
+                    } else {
+                        console.log('⚠️ [PresentationMode] No onButtonPositionChange callback!');
                     }
                 }
                 break;
+
             case 'point':
+                console.log('👆 [PresentationMode] Executing point:', action.selector);
                 if (action.selector) {
                     const pointTarget = document.querySelector(action.selector);
                     if (pointTarget) {
                         const rect = pointTarget.getBoundingClientRect();
-                        setPointerPosition({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+                        setPointerPosition({
+                            x: rect.left + rect.width / 2,
+                            y: rect.top + rect.height / 2
+                        });
                         setShowPointer(true);
-                        setTimeout(() => setShowPointer(false), 2000);
+                        setTimeout(() => setShowPointer(false), 1500);
                     }
                 }
                 break;
+
             case 'highlight':
+                console.log('✨ [PresentationMode] Executing highlight:', action.selector);
                 if (action.selector) {
                     setHighlightedElement(null);
+
                     setTimeout(() => {
                         const highlightTarget = document.querySelector(action.selector!);
+                        console.log('✨ [PresentationMode] Highlight target found:', !!highlightTarget);
                         if (highlightTarget) {
                             setHighlightedElement(highlightTarget);
                         }
                     }, 100);
                 }
                 break;
+
             case 'click':
+                console.log('🖱️ [PresentationMode] Executing click visual');
                 setShowPointer(true);
-                setTimeout(() => setShowPointer(false), 600);
+                setTimeout(() => setShowPointer(false), 500);
                 break;
         }
     };
 
+    // Execute all actions for a step
     const executeStepActions = useCallback((actions: PresentationAction[]) => {
+        console.log('🎬 [PresentationMode] executeStepActions called with', actions.length, 'actions');
+        console.log('🎬 [PresentationMode] Actions detail:', JSON.stringify(actions.map(a => ({ type: a.type, delay: a.delay, position: a.position }))));
         clearActionTimeouts();
         setHighlightedElement(null);
         setShowPointer(false);
 
+        // Execute first move immediately if exists
         const firstMoveAction = actions.find(a => a.type === 'move');
         if (firstMoveAction && firstMoveAction.position) {
+            console.log('🚀 [PresentationMode] IMMEDIATE move action:', firstMoveAction.position);
             const newX = firstMoveAction.position.x;
             const newY = firstMoveAction.position.y;
             setButtonPosition({ x: newX, y: newY });
@@ -309,9 +365,12 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
             }
         }
 
-        actions.forEach((action) => {
+        actions.forEach((action, index) => {
             const delay = action.delay || 0;
+            console.log(`⏱️ [PresentationMode] Scheduling action ${index + 1}/${actions.length}: ${action.type} delay=${delay}ms`);
+
             const timeout = setTimeout(() => {
+                console.log(`🔄 [PresentationMode] Executing scheduled action: ${action.type}`);
                 if (isMountedRef.current) {
                     executeAction(action);
                 }
@@ -320,21 +379,36 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
         });
     }, [clearActionTimeouts]);
 
+    // Main presentation effect - Navigate and execute step
     useEffect(() => {
-        if (!isPlaying) return;
+        console.log('🎥 [PresentationMode] Main effect triggered - isPlaying:', isPlaying, 'stepIndex:', currentStepIndex);
+
+        if (!isPlaying) {
+            console.log('⏸️ [PresentationMode] Not playing, skipping');
+            return;
+        }
 
         const step = PRESENTATION_SCRIPT[currentStepIndex];
+        console.log('📋 [PresentationMode] Current step:', step.id, '-', step.title, 'route:', step.route);
+
+        // Navigate if needed
         const needsNavigation = location.pathname !== step.route;
         if (needsNavigation) {
+            console.log('🧭 [PresentationMode] Navigating from', location.pathname, 'to', step.route);
             navigate(step.route);
         }
 
+        // Wait for navigation then execute actions
         const navDelay = needsNavigation ? 800 : 200;
+        console.log('⏳ [PresentationMode] Waiting', navDelay, 'ms before executing actions');
+
         const navTimeout = setTimeout(() => {
+            console.log('✅ [PresentationMode] Now executing actions for step:', step.id);
             executeStepActions(step.actions);
             speak(step.narration);
         }, navDelay);
 
+        // Progress timer
         const stepDuration = step.duration * 1000;
         const interval = 100;
         let elapsed = 0;
@@ -346,9 +420,11 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
             if (elapsed >= stepDuration) {
                 clearInterval(progressTimer);
                 if (currentStepIndex < totalSteps - 1) {
+                    console.log('➡️ [PresentationMode] Moving to next step');
                     setCurrentStepIndex(prev => prev + 1);
                     setProgress(0);
                 } else {
+                    console.log('🏁 [PresentationMode] Presentation complete');
                     setIsPlaying(false);
                     setButtonPosition({ x: 90, y: 85 });
                     if (onButtonPositionChangeRef.current) {
@@ -364,6 +440,7 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
         };
     }, [currentStepIndex, isPlaying, navigate, location.pathname, speak, totalSteps, executeStepActions]);
 
+    // Cleanup
     useEffect(() => {
         return () => {
             stopSpeech();
@@ -372,6 +449,7 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
         };
     }, [stopSpeech, clearActionTimeouts]);
 
+    // Load voices
     useEffect(() => {
         if ('speechSynthesis' in window) {
             window.speechSynthesis.getVoices();
@@ -421,11 +499,11 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
         setIsMuted(!isMuted);
     };
 
-    // Spotlight Highlight Overlay
+    // Highlight overlay
     const renderHighlightOverlay = () => {
         if (!highlightedElement) return null;
+
         const rect = highlightedElement.getBoundingClientRect();
-        const padding = 15;
 
         return (
             <motion.div
@@ -434,130 +512,150 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 z-[55] pointer-events-none"
             >
+                {/* Dark overlay with hole */}
+                <div
+                    className="absolute inset-0 bg-black/50"
+                    style={{
+                        clipPath: `polygon(
+              0% 0%, 
+              0% 100%, 
+              ${rect.left - 10}px 100%, 
+              ${rect.left - 10}px ${rect.top - 10}px, 
+              ${rect.right + 10}px ${rect.top - 10}px, 
+              ${rect.right + 10}px ${rect.bottom + 10}px, 
+              ${rect.left - 10}px ${rect.bottom + 10}px, 
+              ${rect.left - 10}px 100%, 
+              100% 100%, 
+              100% 0%
+            )`
+                    }}
+                />
+                {/* Glowing border */}
                 <motion.div
-                    layoutId="spotlight"
-                    className="absolute rounded-xl border-2 border-primary/50"
-                    initial={{
-                        left: rect.left - padding,
-                        top: rect.top - padding,
-                        width: rect.width + padding * 2,
-                        height: rect.height + padding * 2,
-                        boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0)'
-                    }}
                     animate={{
-                        left: rect.left - padding,
-                        top: rect.top - padding,
-                        width: rect.width + padding * 2,
-                        height: rect.height + padding * 2,
-                        boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.7)'
+                        boxShadow: [
+                            '0 0 20px rgba(99, 102, 241, 0.6), 0 0 40px rgba(99, 102, 241, 0.4)',
+                            '0 0 30px rgba(99, 102, 241, 0.8), 0 0 60px rgba(99, 102, 241, 0.6)',
+                            '0 0 20px rgba(99, 102, 241, 0.6), 0 0 40px rgba(99, 102, 241, 0.4)'
+                        ]
                     }}
-                    transition={{ type: "spring", stiffness: 50, damping: 20 }}
-                >
-                    <motion.div
-                        className="absolute inset-0 rounded-xl bg-primary/10"
-                        animate={{ opacity: [0.3, 0.6, 0.3] }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                    />
-                    <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-primary -mt-1 -ml-1" />
-                    <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-primary -mt-1 -mr-1" />
-                    <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-primary -mb-1 -ml-1" />
-                    <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-primary -mb-1 -mr-1" />
-                </motion.div>
+                    transition={{ duration: 1, repeat: Infinity }}
+                    className="absolute rounded-lg border-2 border-primary"
+                    style={{
+                        left: rect.left - 10,
+                        top: rect.top - 10,
+                        width: rect.width + 20,
+                        height: rect.height + 20
+                    }}
+                />
             </motion.div>
         );
     };
 
-    // Enhanced Pointer
+    // Pointer indicator
     const renderPointer = () => {
         if (!showPointer) return null;
+
         return (
             <motion.div
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0, opacity: 0 }}
                 className="fixed z-[58] pointer-events-none"
-                style={{ left: pointerPosition.x, top: pointerPosition.y }}
+                style={{
+                    left: pointerPosition.x - 20,
+                    top: pointerPosition.y - 20
+                }}
             >
                 <motion.div
-                    animate={{ scale: [1, 0.8, 1], y: [0, -5, 0] }}
+                    animate={{ scale: [1, 1.3, 1] }}
                     transition={{ duration: 0.5, repeat: 2 }}
+                    className="w-10 h-10 rounded-full bg-primary/30 border-2 border-primary flex items-center justify-center"
                 >
-                    <MousePointer2
-                        className="h-8 w-8 text-primary fill-primary/20 drop-shadow-xl"
-                        style={{ filter: "drop-shadow(0px 2px 4px rgba(0,0,0,0.5))" }}
-                    />
+                    <MousePointer2 className="h-5 w-5 text-primary" />
                 </motion.div>
-                <motion.div
-                    initial={{ scale: 0, opacity: 1 }}
-                    animate={{ scale: 2, opacity: 0 }}
-                    transition={{ duration: 0.8 }}
-                    className="absolute top-0 left-0 w-8 h-8 rounded-full border-2 border-primary"
-                />
             </motion.div>
         );
     };
 
     return (
         <>
+            {/* Highlight overlay */}
             <AnimatePresence>
                 {highlightedElement && renderHighlightOverlay()}
             </AnimatePresence>
+
+            {/* Pointer indicator */}
             <AnimatePresence>
                 {renderPointer()}
             </AnimatePresence>
+
+            {/* Animated button position indicator (invisible, updates parent) */}
+            <motion.div
+                className="fixed z-[9999] pointer-events-none"
+                animate={{
+                    left: `${buttonPosition.x}%`,
+                    top: `${buttonPosition.y}%`
+                }}
+                transition={{
+                    type: "spring",
+                    stiffness: 100,
+                    damping: 20,
+                    duration: 0.8
+                }}
+                style={{ transform: 'translate(-50%, -50%)' }}
+            />
 
             {/* Control panel */}
             <motion.div
                 initial={{ y: 100, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 exit={{ y: 100, opacity: 0 }}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 className="fixed bottom-4 left-4 right-4 z-[60] pointer-events-none"
             >
-                <div className="max-w-2xl mx-auto bg-background/80 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-2xl pointer-events-auto overflow-hidden ring-1 ring-black/5">
-                    <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
-
-                    <div className="flex items-center justify-between p-3 border-b border-white/10 bg-white/5">
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-primary flex items-center justify-center shadow-lg">
+                <div className="max-w-2xl mx-auto bg-background/95 backdrop-blur-xl border border-primary/30 shadow-2xl rounded-2xl pointer-events-auto overflow-hidden">
+                    {/* Compact header */}
+                    <div className="flex items-center justify-between p-3 border-b border-border/50">
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-violet-600 to-primary flex items-center justify-center">
                                 <Bot className="h-4 w-4 text-white" />
                             </div>
                             <div>
                                 <div className="flex items-center gap-2">
                                     <span className="font-semibold text-sm">iAsted vous guide</span>
-                                    <Badge variant="secondary" className="text-[10px] h-5 px-1.5 bg-primary/10 text-primary border-primary/20">
+                                    <Badge variant="secondary" className="text-xs">
                                         {currentStepIndex + 1}/{totalSteps}
                                     </Badge>
                                 </div>
                             </div>
                         </div>
                         <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-white/10" onClick={handleMuteToggle}>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleMuteToggle}>
                                 {isMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-white/10 hover:text-destructive" onClick={handleClose}>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleClose}>
                                 <X className="h-3.5 w-3.5" />
                             </Button>
                         </div>
                     </div>
 
-                    <div className="p-4 relative">
-                        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
+                    {/* Current step content */}
+                    <div className="p-3">
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={currentStep.id}
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -20 }}
-                                transition={{ duration: 0.3 }}
-                                className="flex items-start gap-4"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                transition={{ duration: 0.2 }}
+                                className="flex items-center gap-3"
                             >
-                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700 flex items-center justify-center flex-shrink-0 shadow-sm mt-0.5">
+                                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                                     <currentStep.icon className="h-5 w-5 text-primary" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <h4 className="font-bold text-sm mb-1">{currentStep.title}</h4>
-                                    <p className="text-sm text-muted-foreground leading-relaxed">
+                                    <h4 className="font-medium text-sm">{currentStep.title}</h4>
+                                    <p className="text-xs text-muted-foreground line-clamp-2">
                                         {currentStep.narration}
                                     </p>
                                 </div>
@@ -565,44 +663,52 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
                         </AnimatePresence>
                     </div>
 
-                    <div className="px-4 pb-4 pt-1">
-                        <Progress value={progress} className="h-1 mb-3 bg-primary/10" />
+                    {/* Progress and controls */}
+                    <div className="px-3 pb-3">
+                        <Progress value={progress} className="h-1 mb-2" />
+
                         <div className="flex items-center justify-between">
-                            <span className="text-xs text-muted-foreground font-medium">
+                            <span className="text-xs text-muted-foreground">
                                 ~{Math.ceil(totalDuration / 60)} min
                             </span>
-                            <div className="flex items-center gap-2">
+
+                            <div className="flex items-center gap-1">
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-8 w-8 hover:bg-white/10"
+                                    className="h-8 w-8"
                                     onClick={handlePrevious}
                                     disabled={currentStepIndex === 0}
                                 >
                                     <SkipBack className="h-4 w-4" />
                                 </Button>
+
                                 <Button
                                     size="sm"
                                     onClick={handlePlayPause}
-                                    className="h-8 px-5 rounded-full shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 transition-all font-medium"
+                                    className="h-8 px-4"
                                 >
                                     {isPlaying ? (
-                                        <><Pause className="h-3.5 w-3.5 mr-1.5" /> Pause</>
+                                        <><Pause className="h-3.5 w-3.5 mr-1" /> Pause</>
                                     ) : (
-                                        <><Play className="h-3.5 w-3.5 mr-1.5" /> Reprendre</>
+                                        <><Play className="h-3.5 w-3.5 mr-1" /> Play</>
                                     )}
                                 </Button>
+
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-8 w-8 hover:bg-white/10"
+                                    className="h-8 w-8"
                                     onClick={handleNext}
                                     disabled={currentStepIndex === totalSteps - 1}
                                 >
                                     <SkipForward className="h-4 w-4" />
                                 </Button>
                             </div>
-                            <div className="w-12"></div>
+
+                            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleClose}>
+                                Terminer
+                            </Button>
                         </div>
                     </div>
                 </div>

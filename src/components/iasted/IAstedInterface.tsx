@@ -1,7 +1,7 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { IAstedChatModal } from '@/components/iasted/IAstedChatModal';
 import IAstedPresentationWrapper from "@/components/iasted/IAstedPresentationWrapper";
-import { useGeminiLive, GeminiVoice } from '@/hooks/useGeminiLive';
+import { useRealtimeVoiceWebRTC } from '@/hooks/useRealtimeVoiceWebRTC';
 import { IASTED_SYSTEM_PROMPT } from '@/config/iasted-config';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,7 +10,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { resolveRoute } from '@/utils/route-mapping';
 import { formAssistantStore } from '@/stores/formAssistantStore';
 import { usePresentationSafe } from '@/contexts/PresentationContext';
-import { useEmotionDetection, EmotionType } from '@/hooks/useEmotionDetection';
 
 interface IAstedInterfaceProps {
     userRole?: string;
@@ -46,16 +45,13 @@ export default function IAstedInterface({
         if (!value) controlledOnClose();
     } : setInternalIsOpen;
 
-    const [selectedVoice, setSelectedVoice] = useState<GeminiVoice>('Puck');
+    const [selectedVoice, setSelectedVoice] = useState<'echo' | 'ash' | 'shimmer'>('ash');
     const [pendingDocument, setPendingDocument] = useState<any>(null);
     const [questionsRemaining, setQuestionsRemaining] = useState(3);
     const [internalPresentationMode, setInternalPresentationMode] = useState(false);
     const { setTheme, theme } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
-
-    // Détection d'émotion
-    const { currentEmotion, analyzeEmotion, resetEmotion } = useEmotionDetection();
 
     // Connect to global presentation context
     const { showPresentation: contextPresentationMode, stopPresentation: contextStopPresentation } = usePresentationSafe();
@@ -90,10 +86,8 @@ export default function IAstedInterface({
 
     // Initialize voice from localStorage and reset question counter on new session
     useEffect(() => {
-        const savedVoice = localStorage.getItem('iasted-voice-selection') as GeminiVoice;
-        if (savedVoice && ['Puck', 'Charon', 'Kore', 'Fenrir', 'Aoede'].includes(savedVoice)) {
-            setSelectedVoice(savedVoice);
-        }
+        const savedVoice = localStorage.getItem('iasted-voice-selection') as 'echo' | 'ash' | 'shimmer';
+        if (savedVoice) setSelectedVoice(savedVoice);
 
         // Check if user is not identified (anonymous mode)
         const isAnonymous = !userRole || userRole === 'user' || userRole === 'unknown';
@@ -204,23 +198,31 @@ export default function IAstedInterface({
             + pageContext;
     }, [timeOfDay, userTitle, userRole, questionsRemaining, isOnRegistrationPage, isOnHomePage, registrationFormType, location.pathname]);
 
-    // Initialize Gemini Live with tool call handler (migrated from OpenAI Realtime)
-    const geminiLive = useGeminiLive(async (toolName, args) => {
+    // Initialize OpenAI RTC with tool call handler
+    const openaiRTC = useRealtimeVoiceWebRTC(async (toolName, args) => {
         console.log(`🔧 [IAstedInterface] Tool call: ${toolName}`, args);
 
         // 1. Internal Handlers
         if (toolName === 'change_voice') {
             console.log('🎙️ [IAstedInterface] Changement de voix demandé');
 
-            // Gemini voices: Puck, Charon, Kore, Fenrir, Aoede
-            const geminiVoices: GeminiVoice[] = ['Puck', 'Charon', 'Kore', 'Fenrir', 'Aoede'];
-            const currentIndex = geminiVoices.indexOf(selectedVoice);
-            const nextVoice = geminiVoices[(currentIndex + 1) % geminiVoices.length];
+            // Si voice_id spécifique fourni, l'utiliser
+            if (args.voice_id) {
+                setSelectedVoice(args.voice_id as any);
+                toast.success(`Voix modifiée : ${args.voice_id === 'ash' ? 'Homme (Ash)' : args.voice_id === 'shimmer' ? 'Femme (Shimmer)' : 'Standard (Echo)'}`);
+            }
+            // Sinon, alterner homme↔femme selon voix actuelle
+            else {
+                const currentVoice = selectedVoice;
+                const isCurrentlyMale = currentVoice === 'ash' || currentVoice === 'echo';
+                const newVoice = isCurrentlyMale ? 'shimmer' : 'ash';
 
-            setSelectedVoice(nextVoice);
-            toast.success(`Voix changée : ${nextVoice}`);
+                console.log(`🎙️ [IAstedInterface] Alternance voix: ${currentVoice} (${isCurrentlyMale ? 'homme' : 'femme'}) -> ${newVoice} (${isCurrentlyMale ? 'femme' : 'homme'})`);
+                setSelectedVoice(newVoice);
+                toast.success(`Voix changée : ${newVoice === 'shimmer' ? 'Femme (Shimmer)' : 'Homme (Ash)'}`);
+            }
 
-            return { success: true, message: `Voix modifiée vers ${nextVoice}` };
+            return { success: true, message: `Voix modifiée` };
         }
 
         if (toolName === 'logout_user') {
@@ -632,7 +634,7 @@ export default function IAstedInterface({
         if (toolName === 'stop_conversation') {
             console.log('🛑 [IAstedInterface] Arrêt de la conversation');
 
-            geminiLive.disconnect();
+            openaiRTC.disconnect();
             toast.info('Conversation terminée');
 
             return { success: true, message: 'Conversation arrêtée' };
@@ -690,10 +692,22 @@ export default function IAstedInterface({
             }
 
             if (args.action === 'set_speech_rate') {
-                // Note: Gemini doesn't support dynamic speech rate adjustment
-                console.log('⚠️ [IAstedInterface] Speech rate adjustment not supported in Gemini Live');
-                toast.info('L\'ajustement de la vitesse n\'est pas disponible avec Gemini');
-                return { success: false, message: 'Fonctionnalité non disponible' };
+                // Ajuster la vitesse de parole (0.5 à 2.0)
+                const rate = parseFloat(args.value || '1.0');
+                const clampedRate = Math.max(0.5, Math.min(2.0, rate));
+
+                console.log(`🎚️ [IAstedInterface] Ajustement vitesse: ${rate} -> ${clampedRate}`);
+                openaiRTC.setSpeechRate(clampedRate);
+
+                const speedDescription = clampedRate < 0.8 ? 'ralenti'
+                    : clampedRate > 1.2 ? 'accéléré'
+                        : 'normal';
+
+                setTimeout(() => {
+                    toast.success(`Vitesse de parole ajustée (${speedDescription}: ${clampedRate}x)`);
+                }, 100);
+
+                return { success: true, message: `Vitesse ajustée à ${clampedRate}x` };
             }
         }
 
@@ -1238,10 +1252,10 @@ export default function IAstedInterface({
     });
 
     const handleButtonClick = async () => {
-        if (geminiLive.isConnected) {
-            geminiLive.disconnect();
+        if (openaiRTC.isConnected) {
+            openaiRTC.disconnect();
         } else {
-            await geminiLive.connect(selectedVoice, formattedSystemPrompt);
+            await openaiRTC.connect(selectedVoice, formattedSystemPrompt);
         }
     };
 
@@ -1252,28 +1266,19 @@ export default function IAstedInterface({
                 onClosePresentation={handlePresentationClose}
                 onOpenInterface={handleButtonClick}
                 isInterfaceOpen={isOpen}
-                voiceListening={geminiLive.voiceState === 'listening'}
-                voiceSpeaking={geminiLive.voiceState === 'speaking'}
-                voiceProcessing={geminiLive.voiceState === 'connecting' || geminiLive.voiceState === 'thinking'}
-                audioLevel={geminiLive.audioLevel}
-                onDoubleClick={() => setIsOpen(true)}
-                currentEmotion={currentEmotion.emotion}
-                emotionIntensity={currentEmotion.intensity}
+                voiceListening={openaiRTC.voiceState === 'listening'}
+                voiceSpeaking={openaiRTC.voiceState === 'speaking'}
+                voiceProcessing={openaiRTC.voiceState === 'connecting' || openaiRTC.voiceState === 'thinking'}
             />
 
             <IAstedChatModal
                 isOpen={isOpen}
-                onClose={() => {
-                    setIsOpen(false);
-                    resetEmotion(); // Reset emotion when chat closes
-                }}
-                geminiLive={geminiLive}
+                onClose={() => setIsOpen(false)}
+                openaiRTC={openaiRTC}
                 currentVoice={selectedVoice}
                 systemPrompt={formattedSystemPrompt}
                 pendingDocument={pendingDocument}
                 onClearPendingDocument={() => setPendingDocument(null)}
-                onMessageSent={analyzeEmotion}
-                onAssistantMessage={analyzeEmotion}
             />
         </>
     );

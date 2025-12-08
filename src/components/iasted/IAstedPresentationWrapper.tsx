@@ -7,8 +7,6 @@ interface TrailPoint {
   id: number;
   x: number;
   y: number;
-  opacity: number;
-  scale: number;
 }
 
 interface IAstedPresentationWrapperProps {
@@ -19,10 +17,6 @@ interface IAstedPresentationWrapperProps {
   voiceListening?: boolean;
   voiceSpeaking?: boolean;
   voiceProcessing?: boolean;
-  audioLevel?: number;
-  onDoubleClick?: () => void;
-  currentEmotion?: 'joy' | 'sadness' | 'anger' | 'fear' | 'surprise' | 'disgust' | 'trust' | 'neutral';
-  emotionIntensity?: number;
 }
 
 export default function IAstedPresentationWrapper({
@@ -32,11 +26,7 @@ export default function IAstedPresentationWrapper({
   isInterfaceOpen,
   voiceListening = false,
   voiceSpeaking = false,
-  voiceProcessing = false,
-  audioLevel = 0,
-  onDoubleClick,
-  currentEmotion = 'neutral',
-  emotionIntensity = 0.5
+  voiceProcessing = false
 }: IAstedPresentationWrapperProps) {
   // Position in percentage of viewport
   const [buttonX, setButtonX] = useState(90);
@@ -47,7 +37,6 @@ export default function IAstedPresentationWrapper({
   const [trail, setTrail] = useState<TrailPoint[]>([]);
   const trailIdRef = useRef(0);
   const lastPosRef = useRef({ x: 90, y: 85 });
-  const isMovingRef = useRef(false);
 
   // Activate presentation mode
   useEffect(() => {
@@ -64,40 +53,31 @@ export default function IAstedPresentationWrapper({
   // Handle position change from PresentationMode
   const handlePositionChange = useCallback((x: number, y: number) => {
     console.log('📍 [Wrapper] Position change:', { x, y });
-    isMovingRef.current = true;
 
     // Show target indicator immediately
     setTargetX(x);
     setTargetY(y);
 
-    // Add trail points with more density for smoother look
+    // Add trail points
     const dx = Math.abs(x - lastPosRef.current.x);
     const dy = Math.abs(y - lastPosRef.current.y);
-    const distance = Math.sqrt(dx * dx + dy * dy);
 
-    if (distance > 2) {
-      const steps = Math.max(5, Math.floor(distance / 2)); // More particles
+    if (dx > 2 || dy > 2) {
+      const steps = Math.max(3, Math.floor(Math.sqrt(dx * dx + dy * dy) / 5));
 
       for (let i = 0; i < steps; i++) {
         const progress = i / steps;
         const interpX = lastPosRef.current.x + (x - lastPosRef.current.x) * progress;
         const interpY = lastPosRef.current.y + (y - lastPosRef.current.y) * progress;
 
-        // Stagger particle creation
         setTimeout(() => {
           trailIdRef.current += 1;
-          setTrail(prev => {
-            // Keep trail length managable but long enough for effect
-            const newTrail = [...prev.slice(-25), {
-              id: trailIdRef.current,
-              x: interpX,
-              y: interpY,
-              opacity: 0.8 + Math.random() * 0.2,
-              scale: 0.5 + Math.random() * 0.5
-            }];
-            return newTrail;
-          });
-        }, i * 30); // 30ms delay between particles
+          setTrail(prev => [...prev.slice(-15), {
+            id: trailIdRef.current,
+            x: interpX,
+            y: interpY
+          }]);
+        }, i * 50);
       }
     }
 
@@ -110,16 +90,15 @@ export default function IAstedPresentationWrapper({
     setTimeout(() => {
       setTargetX(null);
       setTargetY(null);
-      isMovingRef.current = false;
-    }, 1200);
+    }, 800);
   }, []);
 
-  // Clean up old trail points faster
+  // Clean up old trail points
   useEffect(() => {
     if (trail.length > 0) {
       const timer = setTimeout(() => {
         setTrail(prev => prev.slice(1));
-      }, 50); // Decay speed
+      }, 150);
       return () => clearTimeout(timer);
     }
   }, [trail]);
@@ -148,7 +127,7 @@ export default function IAstedPresentationWrapper({
 
   return (
     <>
-      {/* Target position indicator - Enhanced Ripple Effect */}
+      {/* Target position indicator */}
       <AnimatePresence>
         {isActive && targetX !== null && targetY !== null && (
           <motion.div
@@ -162,50 +141,41 @@ export default function IAstedPresentationWrapper({
               transform: 'translate(-50%, -50%)'
             }}
           >
-            {/* Multiple expanding rings */}
-            {[0, 1, 2].map((i) => (
-              <motion.div
-                key={i}
-                animate={{
-                  scale: [1, 2.5],
-                  opacity: [0.6, 0],
-                  borderWidth: ["4px", "0px"]
-                }}
-                transition={{
-                  duration: 1.5,
-                  repeat: Infinity,
-                  delay: i * 0.4,
-                  ease: "easeOut"
-                }}
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-primary"
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  borderColor: 'hsl(var(--primary))',
-                  boxShadow: '0 0 15px hsl(var(--primary) / 0.4)'
-                }}
-              />
-            ))}
-
-            {/* Center target dot */}
+            {/* Pulsing target ring */}
             <motion.div
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-primary"
-              animate={{ scale: [1, 1.3, 1] }}
-              transition={{ duration: 0.6, repeat: Infinity }}
-              style={{ boxShadow: '0 0 20px hsl(var(--primary))' }}
+              animate={{
+                scale: [1, 1.5, 1],
+                opacity: [0.8, 0.3, 0.8]
+              }}
+              transition={{
+                duration: 0.6,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+              className="w-16 h-16 rounded-full border-2 border-dashed border-primary"
+              style={{
+                boxShadow: '0 0 20px hsl(var(--primary) / 0.5)'
+              }}
+            />
+            {/* Center dot */}
+            <motion.div
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-primary"
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ duration: 0.3, repeat: Infinity }}
             />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Trail effect - Particles */}
+      {/* Trail effect */}
       <AnimatePresence>
-        {isActive && trail.map((point) => (
+        {isActive && trail.map((point, index) => (
           <motion.div
             key={point.id}
-            initial={{ opacity: point.opacity, scale: point.scale }}
-            animate={{ opacity: 0, scale: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
+            initial={{ opacity: 0.8, scale: 1 }}
+            animate={{ opacity: 0, scale: 0.3 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
             className="fixed pointer-events-none z-[9998]"
             style={{
               ...getPixelPosition(point.x, point.y),
@@ -213,16 +183,55 @@ export default function IAstedPresentationWrapper({
             }}
           >
             <div
-              className="rounded-full bg-primary/40 backdrop-blur-[1px]"
+              className="rounded-full"
               style={{
-                width: `${16 * point.scale}px`,
-                height: `${16 * point.scale}px`,
-                boxShadow: `0 0 10px hsl(var(--primary) / 0.3)`
+                width: `${24 - index * 1.2}px`,
+                height: `${24 - index * 1.2}px`,
+                background: `radial-gradient(circle, 
+                  hsl(var(--primary) / ${0.6 - index * 0.03}) 0%, 
+                  hsl(var(--primary) / ${0.4 - index * 0.02}) 50%, 
+                  transparent 100%)`,
+                boxShadow: `0 0 ${20 - index}px hsl(var(--primary) / ${0.5 - index * 0.03})`,
+                filter: `blur(${index * 0.5}px)`
               }}
             />
           </motion.div>
         ))}
       </AnimatePresence>
+
+      {/* Glow ring around button during movement */}
+      {isActive && (
+        <motion.div
+          className="fixed pointer-events-none z-[9998]"
+          animate={{
+            left: `${buttonX}vw`,
+            top: `${buttonY}vh`
+          }}
+          transition={{
+            type: "spring",
+            stiffness: 80,
+            damping: 15
+          }}
+          style={{ transform: 'translate(-50%, -50%)' }}
+        >
+          <motion.div
+            animate={{
+              scale: [1, 1.3, 1],
+              opacity: [0.3, 0.6, 0.3]
+            }}
+            transition={{
+              duration: 1.5,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+            className="w-20 h-20 rounded-full"
+            style={{
+              background: 'radial-gradient(circle, transparent 40%, hsl(var(--primary) / 0.2) 60%, transparent 80%)',
+              boxShadow: '0 0 40px hsl(var(--primary) / 0.3)'
+            }}
+          />
+        </motion.div>
+      )}
 
       {/* iAsted Button with animation */}
       <motion.div
@@ -244,52 +253,29 @@ export default function IAstedPresentationWrapper({
         }}
         transition={{
           type: "spring",
-          stiffness: 70, // Softer spring
-          damping: 14,   // Less friction for floaty feel
-          mass: 1.2
+          stiffness: 100,
+          damping: 20,
+          mass: 1
         }}
       >
         <div className="relative">
-          {/* Speaking/Presentation Aura - Only when active */}
+          {/* Speaking indicator during presentation */}
           <AnimatePresence>
             {isActive && (
               <motion.div
-                className="absolute inset-0 rounded-full z-[-1]"
-                animate={{
-                  boxShadow: [
-                    "0 0 0 0px hsl(var(--primary) / 0.2)",
-                    "0 0 0 15px hsl(var(--primary) / 0)",
-                    "0 0 0 0px hsl(var(--primary) / 0)"
-                  ]
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
-              />
-            )}
-          </AnimatePresence>
-
-          {/* Speaking indicator text during presentation */}
-          <AnimatePresence>
-            {isActive && (
-              <motion.div
-                initial={{ scale: 0, opacity: 0, y: 20 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0, opacity: 0, y: 10 }}
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0, opacity: 0 }}
                 className="absolute -top-16 left-1/2 -translate-x-1/2 whitespace-nowrap"
               >
-                <div className="bg-background/80 backdrop-blur-md border border-primary/20 rounded-full px-4 py-2 shadow-xl">
+                <div className="bg-background/95 backdrop-blur-xl border border-primary/30 rounded-full px-4 py-2 shadow-lg">
                   <div className="flex items-center gap-2">
                     <motion.div
-                      animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
-                      transition={{ duration: 1.5, repeat: Infinity }}
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ duration: 0.5, repeat: Infinity }}
                       className="w-2 h-2 rounded-full bg-primary"
                     />
-                    <span className="text-xs font-semibold bg-gradient-to-r from-primary to-violet-500 bg-clip-text text-transparent">
-                      iAsted présente...
-                    </span>
+                    <span className="text-xs font-medium">iAsted présente...</span>
                   </div>
                 </div>
               </motion.div>
@@ -301,17 +287,13 @@ export default function IAstedPresentationWrapper({
             onSingleClick={onOpenInterface}
             isInterfaceOpen={isInterfaceOpen}
             voiceListening={voiceListening}
-            voiceSpeaking={isActive || voiceSpeaking} // Force speaking state visual in presentation
+            voiceSpeaking={isActive}
             voiceProcessing={voiceProcessing}
-            audioLevel={audioLevel}
-            onDoubleClick={onDoubleClick}
-            currentEmotion={currentEmotion}
-            emotionIntensity={emotionIntensity}
           />
         </div>
       </motion.div>
 
-      {/* Presentation Mode Logic */}
+      {/* Presentation Mode */}
       <AnimatePresence>
         {showPresentation && (
           <PresentationMode
