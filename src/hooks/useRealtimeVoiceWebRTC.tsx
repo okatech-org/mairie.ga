@@ -237,6 +237,18 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                     },
                     {
                         type: 'function',
+                        name: 'start_presentation',
+                        description: 'Démarrer une présentation guidée interactive de l\'application (mode visite guidée). Utilise cette fonction quand l\'utilisateur demande "présente-moi l\'application", "fais-moi une visite", ou "comment ça marche ?".',
+                        parameters: { type: 'object', properties: {} }
+                    },
+                    {
+                        type: 'function',
+                        name: 'stop_presentation',
+                        description: 'Arrêter la présentation guidée en cours.',
+                        parameters: { type: 'object', properties: {} }
+                    },
+                    {
+                        type: 'function',
                         name: 'control_ui',
                         description: 'Contrôler l\'interface utilisateur (thème, sidebar)',
                         parameters: {
@@ -531,10 +543,10 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                         parameters: {
                             type: 'object',
                             properties: {
-                                document_ids: { 
-                                    type: 'array', 
+                                document_ids: {
+                                    type: 'array',
                                     items: { type: 'string' },
-                                    description: 'IDs des documents à analyser. Si vide, analyse tous les documents de l\'utilisateur.' 
+                                    description: 'IDs des documents à analyser. Si vide, analyse tous les documents de l\'utilisateur.'
                                 },
                                 document_types: {
                                     type: 'array',

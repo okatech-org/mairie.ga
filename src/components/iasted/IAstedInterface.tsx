@@ -27,12 +27,12 @@ interface IAstedInterfaceProps {
  * Includes the floating button and the chat modal.
  * Manages its own connection and visibility state.
  */
-export default function IAstedInterface({ 
-    userRole = 'user', 
-    userFirstName, 
-    defaultOpen = false, 
-    isOpen: controlledIsOpen, 
-    onClose: controlledOnClose, 
+export default function IAstedInterface({
+    userRole = 'user',
+    userFirstName,
+    defaultOpen = false,
+    isOpen: controlledIsOpen,
+    onClose: controlledOnClose,
     onToolCall,
     externalPresentationMode = false,
     onExternalPresentationClose
@@ -52,10 +52,10 @@ export default function IAstedInterface({
     const { setTheme, theme } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
-    
+
     // Connect to global presentation context
     const { showPresentation: contextPresentationMode, stopPresentation: contextStopPresentation } = usePresentationSafe();
-    
+
     // Combine all sources of presentation mode
     const isPresentationMode = internalPresentationMode || externalPresentationMode || contextPresentationMode;
 
@@ -109,7 +109,7 @@ export default function IAstedInterface({
     const userTitle = useMemo(() => {
         // Si on a le prénom, on l'utilise pour personnaliser
         const firstName = userFirstName;
-        
+
         switch (userRole) {
             // Personnel municipal
             case 'MAIRE':
@@ -293,14 +293,14 @@ export default function IAstedInterface({
         }
 
         // ========== MODE PRÉSENTATION ==========
-        
+
         if (toolName === 'start_presentation') {
             console.log('🎬 [IAstedInterface] Démarrage mode présentation');
             setInternalPresentationMode(true);
             toast.success('Mode présentation activé !');
-            return { 
-                success: true, 
-                message: 'Mode présentation démarré. Je vais vous faire découvrir MAIRIE.GA en moins de 2 minutes.' 
+            return {
+                success: true,
+                message: 'Mode présentation démarré. Je vais vous faire découvrir MAIRIE.GA en moins de 2 minutes.'
             };
         }
 
@@ -1269,6 +1269,8 @@ export default function IAstedInterface({
                 voiceListening={openaiRTC.voiceState === 'listening'}
                 voiceSpeaking={openaiRTC.voiceState === 'speaking'}
                 voiceProcessing={openaiRTC.voiceState === 'connecting' || openaiRTC.voiceState === 'thinking'}
+                audioLevel={openaiRTC.audioLevel}
+                onDoubleClick={() => setIsOpen(true)}
             />
 
             <IAstedChatModal

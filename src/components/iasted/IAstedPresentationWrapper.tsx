@@ -17,6 +17,8 @@ interface IAstedPresentationWrapperProps {
   voiceListening?: boolean;
   voiceSpeaking?: boolean;
   voiceProcessing?: boolean;
+  audioLevel?: number;
+  onDoubleClick?: () => void;
 }
 
 export default function IAstedPresentationWrapper({
@@ -26,7 +28,9 @@ export default function IAstedPresentationWrapper({
   isInterfaceOpen,
   voiceListening = false,
   voiceSpeaking = false,
-  voiceProcessing = false
+  voiceProcessing = false,
+  audioLevel = 0,
+  onDoubleClick
 }: IAstedPresentationWrapperProps) {
   // Position in percentage of viewport
   const [buttonX, setButtonX] = useState(90);
@@ -53,39 +57,39 @@ export default function IAstedPresentationWrapper({
   // Handle position change from PresentationMode
   const handlePositionChange = useCallback((x: number, y: number) => {
     console.log('📍 [Wrapper] Position change:', { x, y });
-    
+
     // Show target indicator immediately
     setTargetX(x);
     setTargetY(y);
-    
+
     // Add trail points
     const dx = Math.abs(x - lastPosRef.current.x);
     const dy = Math.abs(y - lastPosRef.current.y);
-    
+
     if (dx > 2 || dy > 2) {
       const steps = Math.max(3, Math.floor(Math.sqrt(dx * dx + dy * dy) / 5));
-      
+
       for (let i = 0; i < steps; i++) {
         const progress = i / steps;
         const interpX = lastPosRef.current.x + (x - lastPosRef.current.x) * progress;
         const interpY = lastPosRef.current.y + (y - lastPosRef.current.y) * progress;
-        
+
         setTimeout(() => {
           trailIdRef.current += 1;
-          setTrail(prev => [...prev.slice(-15), { 
-            id: trailIdRef.current, 
-            x: interpX, 
-            y: interpY 
+          setTrail(prev => [...prev.slice(-15), {
+            id: trailIdRef.current,
+            x: interpX,
+            y: interpY
           }]);
         }, i * 50);
       }
     }
-    
+
     // Update position - this is the key update!
     lastPosRef.current = { x, y };
     setButtonX(x);
     setButtonY(y);
-    
+
     // Hide target after animation completes
     setTimeout(() => {
       setTargetX(null);
@@ -143,12 +147,12 @@ export default function IAstedPresentationWrapper({
           >
             {/* Pulsing target ring */}
             <motion.div
-              animate={{ 
+              animate={{
                 scale: [1, 1.5, 1],
                 opacity: [0.8, 0.3, 0.8]
               }}
-              transition={{ 
-                duration: 0.6, 
+              transition={{
+                duration: 0.6,
                 repeat: Infinity,
                 ease: "easeInOut"
               }}
@@ -182,7 +186,7 @@ export default function IAstedPresentationWrapper({
               transform: 'translate(-50%, -50%)'
             }}
           >
-            <div 
+            <div
               className="rounded-full"
               style={{
                 width: `${24 - index * 1.2}px`,
@@ -215,12 +219,12 @@ export default function IAstedPresentationWrapper({
           style={{ transform: 'translate(-50%, -50%)' }}
         >
           <motion.div
-            animate={{ 
+            animate={{
               scale: [1, 1.3, 1],
               opacity: [0.3, 0.6, 0.3]
             }}
-            transition={{ 
-              duration: 1.5, 
+            transition={{
+              duration: 1.5,
               repeat: Infinity,
               ease: "easeInOut"
             }}
@@ -287,8 +291,10 @@ export default function IAstedPresentationWrapper({
             onSingleClick={onOpenInterface}
             isInterfaceOpen={isInterfaceOpen}
             voiceListening={voiceListening}
-            voiceSpeaking={isActive}
+            voiceSpeaking={isActive || voiceSpeaking}
             voiceProcessing={voiceProcessing}
+            audioLevel={audioLevel}
+            onDoubleClick={onDoubleClick}
           />
         </div>
       </motion.div>

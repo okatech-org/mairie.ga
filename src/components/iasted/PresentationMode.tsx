@@ -4,12 +4,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { 
-  Pause, 
-  SkipForward, 
-  SkipBack, 
-  X, 
-  Volume2, 
+import {
+  Pause,
+  SkipForward,
+  SkipBack,
+  X,
+  Volume2,
   VolumeX,
   Play,
   Home,
@@ -211,7 +211,7 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
   useEffect(() => {
     console.log('🎬 [PresentationMode] Component MOUNTED, autoStart:', autoStart);
     isMountedRef.current = true;
-    
+
     return () => {
       console.log('🎬 [PresentationMode] Component UNMOUNTING');
       isMountedRef.current = false;
@@ -232,7 +232,7 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
     presentationState.isActive = true;
     presentationState.buttonX = buttonPosition.x;
     presentationState.buttonY = buttonPosition.y;
-    
+
     return () => {
       presentationState.isActive = false;
     };
@@ -247,7 +247,7 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
     utterance.lang = 'fr-FR';
     utterance.rate = 1.0;
     utterance.pitch = 1;
-    
+
     const voices = window.speechSynthesis.getVoices();
     const frenchVoice = voices.find(v => v.lang.startsWith('fr'));
     if (frenchVoice) utterance.voice = frenchVoice;
@@ -270,7 +270,7 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
   // Execute a single action - DIRECT function, no useCallback to avoid stale closures
   const executeAction = (action: PresentationAction) => {
     console.log('▶️ [PresentationMode] executeAction called:', action.type, action);
-    
+
     if (!isMountedRef.current) {
       console.log('⚠️ [PresentationMode] Component unmounted, skipping action');
       return;
@@ -326,7 +326,7 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
         console.log('✨ [PresentationMode] Executing highlight:', action.selector);
         if (action.selector) {
           setHighlightedElement(null);
-          
+
           setTimeout(() => {
             const highlightTarget = document.querySelector(action.selector!);
             console.log('✨ [PresentationMode] Highlight target found:', !!highlightTarget);
@@ -368,7 +368,7 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
     actions.forEach((action, index) => {
       const delay = action.delay || 0;
       console.log(`⏱️ [PresentationMode] Scheduling action ${index + 1}/${actions.length}: ${action.type} delay=${delay}ms`);
-      
+
       const timeout = setTimeout(() => {
         console.log(`🔄 [PresentationMode] Executing scheduled action: ${action.type}`);
         if (isMountedRef.current) {
@@ -382,7 +382,7 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
   // Main presentation effect - Navigate and execute step
   useEffect(() => {
     console.log('🎥 [PresentationMode] Main effect triggered - isPlaying:', isPlaying, 'stepIndex:', currentStepIndex);
-    
+
     if (!isPlaying) {
       console.log('⏸️ [PresentationMode] Not playing, skipping');
       return;
@@ -390,7 +390,7 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
 
     const step = PRESENTATION_SCRIPT[currentStepIndex];
     console.log('📋 [PresentationMode] Current step:', step.id, '-', step.title, 'route:', step.route);
-    
+
     // Navigate if needed
     const needsNavigation = location.pathname !== step.route;
     if (needsNavigation) {
@@ -401,7 +401,7 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
     // Wait for navigation then execute actions
     const navDelay = needsNavigation ? 800 : 200;
     console.log('⏳ [PresentationMode] Waiting', navDelay, 'ms before executing actions');
-    
+
     const navTimeout = setTimeout(() => {
       console.log('✅ [PresentationMode] Now executing actions for step:', step.id);
       executeStepActions(step.actions);
@@ -504,7 +504,7 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
     if (!highlightedElement) return null;
 
     const rect = highlightedElement.getBoundingClientRect();
-    
+
     return (
       <motion.div
         initial={{ opacity: 0 }}
@@ -513,7 +513,7 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
         className="fixed inset-0 z-[55] pointer-events-none"
       >
         {/* Dark overlay with hole */}
-        <div 
+        <div
           className="absolute inset-0 bg-black/50"
           style={{
             clipPath: `polygon(
@@ -607,112 +607,115 @@ export default function PresentationMode({ onClose, autoStart = true, onButtonPo
       />
 
       {/* Control panel */}
-      <motion.div
-        initial={{ y: 100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 100, opacity: 0 }}
-        className="fixed bottom-4 left-4 right-4 z-[60] pointer-events-none"
-      >
-        <div className="max-w-2xl mx-auto bg-background/95 backdrop-blur-xl border border-primary/30 shadow-2xl rounded-2xl pointer-events-auto overflow-hidden">
-          {/* Compact header */}
-          <div className="flex items-center justify-between p-3 border-b border-border/50">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-violet-600 to-primary flex items-center justify-center">
-                <Bot className="h-4 w-4 text-white" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-sm">iAsted vous guide</span>
-                  <Badge variant="secondary" className="text-xs">
-                    {currentStepIndex + 1}/{totalSteps}
-                  </Badge>
+      {/* Control panel hidden but kept in DOM to ensure logic continuity */}
+      <div style={{ display: 'none' }}>
+        <motion.div
+          initial={{ y: 100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 100, opacity: 0 }}
+          className="fixed bottom-4 left-4 right-4 z-[60] pointer-events-none"
+        >
+          <div className="max-w-2xl mx-auto bg-background/95 backdrop-blur-xl border border-primary/30 shadow-2xl rounded-2xl pointer-events-auto overflow-hidden">
+            {/* Compact header */}
+            <div className="flex items-center justify-between p-3 border-b border-border/50">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-violet-600 to-primary flex items-center justify-center">
+                  <Bot className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm">iAsted vous guide</span>
+                    <Badge variant="secondary" className="text-xs">
+                      {currentStepIndex + 1}/{totalSteps}
+                    </Badge>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleMuteToggle}>
-                {isMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
-              </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleClose}>
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Current step content */}
-          <div className="p-3">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentStep.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-                className="flex items-center gap-3"
-              >
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <currentStep.icon className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-sm">{currentStep.title}</h4>
-                  <p className="text-xs text-muted-foreground line-clamp-2">
-                    {currentStep.narration}
-                  </p>
-                </div>
-              </motion.div>
-            </AnimatePresence>
-          </div>
-
-          {/* Progress and controls */}
-          <div className="px-3 pb-3">
-            <Progress value={progress} className="h-1 mb-2" />
-            
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">
-                ~{Math.ceil(totalDuration / 60)} min
-              </span>
-              
               <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={handlePrevious}
-                  disabled={currentStepIndex === 0}
-                >
-                  <SkipBack className="h-4 w-4" />
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleMuteToggle}>
+                  {isMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
                 </Button>
-                
-                <Button
-                  size="sm"
-                  onClick={handlePlayPause}
-                  className="h-8 px-4"
-                >
-                  {isPlaying ? (
-                    <><Pause className="h-3.5 w-3.5 mr-1" /> Pause</>
-                  ) : (
-                    <><Play className="h-3.5 w-3.5 mr-1" /> Play</>
-                  )}
-                </Button>
-                
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={handleNext}
-                  disabled={currentStepIndex === totalSteps - 1}
-                >
-                  <SkipForward className="h-4 w-4" />
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleClose}>
+                  <X className="h-3.5 w-3.5" />
                 </Button>
               </div>
+            </div>
 
-              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleClose}>
-                Terminer
-              </Button>
+            {/* Current step content */}
+            <div className="p-3">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentStep.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex items-center gap-3"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <currentStep.icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-sm">{currentStep.title}</h4>
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {currentStep.narration}
+                    </p>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            {/* Progress and controls */}
+            <div className="px-3 pb-3">
+              <Progress value={progress} className="h-1 mb-2" />
+
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">
+                  ~{Math.ceil(totalDuration / 60)} min
+                </span>
+
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={handlePrevious}
+                    disabled={currentStepIndex === 0}
+                  >
+                    <SkipBack className="h-4 w-4" />
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    onClick={handlePlayPause}
+                    className="h-8 px-4"
+                  >
+                    {isPlaying ? (
+                      <><Pause className="h-3.5 w-3.5 mr-1" /> Pause</>
+                    ) : (
+                      <><Play className="h-3.5 w-3.5 mr-1" /> Play</>
+                    )}
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={handleNext}
+                    disabled={currentStepIndex === totalSteps - 1}
+                  >
+                    <SkipForward className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleClose}>
+                  Terminer
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </>
   );
 }
