@@ -16,10 +16,17 @@ import { OrganizationType } from "@/types/organization";
 export default function DemoPortal() {
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
 
+  // Mairies filtrées pour la démo (seulement Libreville et Port-Gentil)
+  const DEMO_MAIRIES = useMemo(() =>
+    MAIRIES_GABON.filter(m =>
+      m.id === 'estuaire-libreville-centrale' ||
+      m.id === 'ogoue-maritime-port-gentil'
+    ), []);
+
   // Grouper les mairies par province
   const mairiesByProvince = useMemo(() => {
-    const grouped: Record<string, typeof MAIRIES_GABON> = {};
-    MAIRIES_GABON.forEach(mairie => {
+    const grouped: Record<string, typeof DEMO_MAIRIES> = {};
+    DEMO_MAIRIES.forEach(mairie => {
       const province = mairie.province || 'Autre';
       if (!grouped[province]) {
         grouped[province] = [];
@@ -27,22 +34,22 @@ export default function DemoPortal() {
       grouped[province].push(mairie);
     });
     return grouped;
-  }, []);
+  }, [DEMO_MAIRIES]);
 
   const provinces = Object.keys(mairiesByProvince).sort();
 
   // Statistiques
   const stats = useMemo(() => ({
-    totalMairies: MAIRIES_GABON.length,
-    mairiesCentrales: MAIRIES_GABON.filter(m => m.type === OrganizationType.MAIRIE_CENTRALE).length,
-    arrondissements: MAIRIES_GABON.filter(m => m.type === OrganizationType.MAIRIE_ARRONDISSEMENT).length,
-    communes: MAIRIES_GABON.filter(m => m.type === OrganizationType.MAIRIE_COMMUNE).length,
-    populationTotale: MAIRIES_GABON.reduce((sum, m) => sum + (m.population || 0), 0)
-  }), []);
+    totalMairies: DEMO_MAIRIES.length,
+    mairiesCentrales: DEMO_MAIRIES.filter(m => m.type === OrganizationType.MAIRIE_CENTRALE).length,
+    arrondissements: DEMO_MAIRIES.filter(m => m.type === OrganizationType.MAIRIE_ARRONDISSEMENT).length,
+    communes: DEMO_MAIRIES.filter(m => m.type === OrganizationType.MAIRIE_COMMUNE).length,
+    populationTotale: DEMO_MAIRIES.reduce((sum, m) => sum + (m.population || 0), 0)
+  }), [DEMO_MAIRIES]);
 
   const displayedMairies = selectedProvince
     ? mairiesByProvince[selectedProvince] || []
-    : MAIRIES_GABON;
+    : DEMO_MAIRIES;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">

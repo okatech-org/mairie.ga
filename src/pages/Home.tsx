@@ -2,15 +2,15 @@ import { useState, useEffect, lazy, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  FileText, 
-  Building2, 
-  Users, 
+import {
+  FileText,
+  Building2,
+  Users,
   UserPlus,
-  ArrowRight, 
-  Shield, 
-  Clock, 
-  MapPin, 
+  ArrowRight,
+  Shield,
+  Clock,
+  MapPin,
   Sparkles,
   CheckCircle2,
   Newspaper,
@@ -47,7 +47,7 @@ export default function Home() {
     const handleScroll = () => {
       setScrollY(window.scrollY);
     };
-    
+
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -105,30 +105,30 @@ export default function Home() {
   ];
 
   const quickLinks = [
-    { 
-      icon: Newspaper, 
-      label: "Actualités", 
+    {
+      icon: Newspaper,
+      label: "Actualités",
       description: "Vie de votre commune",
       href: "/actualites",
       color: "bg-primary/10 text-primary"
     },
-    { 
-      icon: Heart, 
-      label: "Sensibilisation", 
+    {
+      icon: Heart,
+      label: "Sensibilisation",
       description: "Programmes citoyens",
       href: "/sensibilisation",
       color: "bg-accent/10 text-accent"
     },
-    { 
-      icon: FileText, 
-      label: "Services", 
+    {
+      icon: FileText,
+      label: "Services",
       description: "Catalogue complet",
       href: "/services",
       color: "bg-secondary/10 text-secondary"
     },
-    { 
-      icon: Users, 
-      label: "Associations", 
+    {
+      icon: Users,
+      label: "Associations",
       description: "Vie associative locale",
       href: "/associations",
       color: "bg-warning/10 text-warning"
@@ -153,11 +153,11 @@ export default function Home() {
       <section className="relative overflow-hidden min-h-[85vh] flex items-center">
         {/* Background Image with Theme-Aware Overlay */}
         <div className="absolute inset-0 z-0 overflow-hidden">
-          <img 
-            src={heroImage} 
-            alt="Mairie du Gabon - Accueil citoyens" 
+          <img
+            src={heroImage}
+            alt="Mairie du Gabon - Accueil citoyens"
             className="w-full h-full object-cover transition-transform duration-100 will-change-transform"
-            style={{ 
+            style={{
               transform: `translateY(${scrollY * 0.3}px) scale(${1 + scrollY * 0.0002})`,
             }}
           />
@@ -180,7 +180,7 @@ export default function Home() {
                     </Badge>
                   </div>
                 </div>
-                
+
                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
                   <span className="text-white dark:text-primary drop-shadow-lg">MAIRIE.GA</span>
                   <br />
@@ -188,12 +188,12 @@ export default function Home() {
                     Le Portail des Communes du Gabon
                   </span>
                 </h1>
-                
+
                 <p className="text-lg md:text-xl mb-8 text-white/90 leading-relaxed drop-shadow-md">
-                  Accédez aux services de votre mairie en ligne. État civil, urbanisme, 
+                  Accédez aux services de votre mairie en ligne. État civil, urbanisme,
                   fiscalité locale — toutes vos démarches administratives municipales simplifiées et sécurisées.
                 </p>
-                
+
                 <div className="flex flex-col sm:flex-row flex-wrap gap-3">
                   <Link to="/login">
                     <Button size="lg" className="w-full sm:w-auto min-w-[180px] gap-2 h-12 text-base bg-primary hover:bg-primary/90 text-white dark:text-primary-foreground">
@@ -213,18 +213,18 @@ export default function Home() {
                       Nos Services
                     </Button>
                   </Link>
-                  <Link to="/iasted-guide">
+                  <a href="#iasted-section">
                     <Button size="lg" variant="outline" className="w-full sm:w-auto min-w-[180px] gap-2 h-12 text-base bg-violet-500/20 border-violet-400/40 text-white hover:bg-violet-500/30 backdrop-blur-sm animate-pulse hover:animate-none">
                       <Mic className="h-5 w-5" />
                       Découvrir iAsted
                     </Button>
-                  </Link>
+                  </a>
                 </div>
 
                 {/* Features Mini Grid */}
                 <div className="grid grid-cols-2 gap-4 mt-10">
                   {features.map((feature, index) => (
-                    <div 
+                    <div
                       key={index}
                       className="flex items-center gap-3 p-3 rounded-lg bg-white/10 dark:bg-black/40 backdrop-blur-md dark:backdrop-blur-sm border border-white/20 dark:border-white/10 hover:border-white/40 dark:hover:border-primary/50 transition-colors"
                     >
@@ -244,7 +244,7 @@ export default function Home() {
               <div className="hidden lg:block animate-fade-in" style={{ animationDelay: '0.2s' }}>
                 <div className="grid grid-cols-2 gap-4">
                   {quickLinks.map((link, index) => (
-                    <Link 
+                    <Link
                       key={index}
                       to={link.href}
                       className="group p-6 rounded-xl bg-white/95 dark:bg-card/90 backdrop-blur-sm dark:backdrop-blur-none border border-white/50 dark:border-border/50 shadow-lg dark:shadow-none hover:shadow-xl hover:border-primary/30 transition-all hover:-translate-y-1"
@@ -268,7 +268,7 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-2 gap-2">
             {quickLinks.map((link, index) => (
-              <Link 
+              <Link
                 key={index}
                 to={link.href}
                 className="flex flex-col items-center text-center gap-2 p-3 rounded-lg bg-card border border-border/50 hover:border-primary/30 transition-colors"
@@ -307,8 +307,8 @@ export default function Home() {
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
                   <div className="h-48 overflow-hidden relative">
-                    <img 
-                      src={service.image} 
+                    <img
+                      src={service.image}
                       alt={service.title}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     />
@@ -395,7 +395,7 @@ export default function Home() {
       </section>
 
       {/* iAsted Section */}
-      <section className="py-20 md:py-24 bg-gradient-to-br from-violet-500/5 via-background to-primary/5 overflow-hidden">
+      <section id="iasted-section" className="py-20 md:py-24 bg-gradient-to-br from-violet-500/5 via-background to-primary/5 overflow-hidden">
         <div className="container mx-auto px-4">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left - Visual */}
@@ -405,7 +405,7 @@ export default function Home() {
                 <div className="absolute inset-0 rounded-full border-2 border-cyan-500/20 animate-ping" style={{ animationDuration: '3s' }} />
                 <div className="absolute inset-4 rounded-full border-2 border-cyan-500/30 animate-ping" style={{ animationDuration: '3s', animationDelay: '0.5s' }} />
                 <div className="absolute inset-8 rounded-full border-2 border-cyan-500/40 animate-ping" style={{ animationDuration: '3s', animationDelay: '1s' }} />
-                
+
                 {/* Center - Demo iAsted Button (Real spherical visual) */}
                 <IAstedDemoButton size="md" />
 
@@ -416,21 +416,21 @@ export default function Home() {
                     <span className="text-xs font-medium">Commande vocale</span>
                   </div>
                 </div>
-                
+
                 <div className="absolute top-1/4 -right-4 md:right-0 bg-card rounded-xl p-3 shadow-lg border border-border animate-fade-in z-20" style={{ animationDelay: '0.4s' }}>
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-primary" />
                     <span className="text-xs font-medium">Documents</span>
                   </div>
                 </div>
-                
+
                 <div className="absolute bottom-1/4 -left-4 md:left-0 bg-card rounded-xl p-3 shadow-lg border border-border animate-fade-in z-20" style={{ animationDelay: '0.6s' }}>
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-emerald-500" />
                     <span className="text-xs font-medium">Rendez-vous</span>
                   </div>
                 </div>
-                
+
                 <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-card rounded-xl p-3 shadow-lg border border-border animate-fade-in z-20" style={{ animationDelay: '0.8s' }}>
                   <div className="flex items-center gap-2">
                     <Navigation className="h-4 w-4 text-orange-500" />
@@ -450,7 +450,7 @@ export default function Home() {
                 Rencontrez <span className="text-violet-500">iAsted</span>
               </h2>
               <p className="text-muted-foreground text-base mb-6">
-                Votre assistant municipal intelligent qui vous accompagne dans toutes vos démarches 
+                Votre assistant municipal intelligent qui vous accompagne dans toutes vos démarches
                 administratives. Parlez-lui naturellement, il comprend et agit pour vous.
               </p>
 
@@ -473,7 +473,7 @@ export default function Home() {
                 Votre Mairie Vous Accompagne
               </h2>
               <p className="text-muted-foreground text-lg mb-8">
-                Découvrez les programmes d'accompagnement mis en place par les mairies 
+                Découvrez les programmes d'accompagnement mis en place par les mairies
                 du Gabon pour améliorer le quotidien des citoyens.
               </p>
 
@@ -505,8 +505,8 @@ export default function Home() {
             </div>
 
             <div className="relative">
-              <img 
-                src={serviceImage} 
+              <img
+                src={serviceImage}
                 alt="Service municipal - Accompagnement citoyen"
                 className="w-full rounded-2xl shadow-2xl"
               />
@@ -538,7 +538,7 @@ export default function Home() {
                     Créez votre Compte Citoyen
                   </h2>
                   <p className="text-muted-foreground mb-6">
-                    Accédez à tous les services de votre mairie en ligne. 
+                    Accédez à tous les services de votre mairie en ligne.
                     Suivez vos demandes et recevez des notifications en temps réel.
                   </p>
                   <ul className="space-y-3 mb-8">

@@ -13,13 +13,17 @@ import {
 
 import { useCitizenProfile } from '@/hooks/useCitizenProfile';
 import { useNavigate } from 'react-router-dom';
-import { requestService } from '@/services/requestService';
 import { useAuth } from '@/hooks/useAuth';
+// 🧠 Neuro-Hexagonal: Using Neuron hook instead of legacy service
+import { useRequestNeurons } from '@/hooks/neurons';
 
 export default function CitizenDashboard() {
     const { user: citizen, loading, error } = useCitizenProfile();
     const { user: authUser } = useAuth();
     const navigate = useNavigate();
+
+    // 🧠 Neuro-Hexagonal: Hook injects adapter into neurons
+    const { getStatistics, loading: statsLoading } = useRequestNeurons();
 
     const [stats, setStats] = useState({
         total: 0,
@@ -37,8 +41,11 @@ export default function CitizenDashboard() {
 
     const loadStats = async (userId: string) => {
         try {
-            const data = await requestService.getStats(userId);
-            setStats(data);
+            // 🧠 Using Neuron instead of direct service call
+            const data = await getStatistics(userId);
+            if (data) {
+                setStats(data);
+            }
         } catch (err) {
             console.error("Failed to load dashboard stats", err);
         }

@@ -10,6 +10,7 @@ const MOCK_SERVICES = Object.values(MUNICIPAL_SERVICE_CATALOG).map(s => ({
     id: s.id,
     name: s.name,
     description: s.description,
+    category: s.category,
     price: s.price,
     currency: 'FCFA',
     is_active: true,

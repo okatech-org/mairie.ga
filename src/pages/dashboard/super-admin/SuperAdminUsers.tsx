@@ -5,18 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Search, Filter, Building2, User, Mail, Shield } from "lucide-react";
+import { Search, Filter, Building2, User, Mail, Shield, UserPlus } from "lucide-react";
 import { COUNTRY_FLAGS } from "@/types/entity";
 import { UserDialog } from "@/components/super-admin/UserDialog";
 import { useToast } from "@/components/ui/use-toast";
-import { profileService, Profile } from "@/services/profileService";
+import { profileService, ProfileWithRole } from "@/services/profileService";
+import { MunicipalRole } from "@/types/municipal-roles";
 
 export default function SuperAdminUsers() {
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<any | null>(null);
-    const [profiles, setProfiles] = useState<Profile[]>([]);
+    const [profiles, setProfiles] = useState<ProfileWithRole[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -24,6 +25,7 @@ export default function SuperAdminUsers() {
     }, []);
 
     const loadProfiles = async () => {
+        setLoading(true);
         try {
             const data = await profileService.getAll();
             setProfiles(data);
@@ -45,7 +47,15 @@ export default function SuperAdminUsers() {
     };
 
     const handleEdit = (user: any) => {
-        setSelectedUser(user);
+        // Map table user to dialog format
+        setSelectedUser({
+            ...user,
+            entityId: user.organizationId || user.employer || "", // Prefer explicit ID, fallback to employer
+            name: user.name,
+            role: user.role,
+            email: user.email
+            // Add other complex fields if they were persisted/available
+        });
         setIsDialogOpen(true);
     };
 
@@ -60,29 +70,34 @@ export default function SuperAdminUsers() {
                     first_name: firstName,
                     last_name: lastName,
                     role: data.role,
-                    email: data.email
-                    // Note: organization_id update would require looking up the org by name or ID
-                });
+                    email: data.email,
+                    // Pass specific fields that profileService.update now handles for 'employer'
+                    entityId: data.entityId,
+                    // Note: complex fields (functions, etc) would go to specific columns if schema allows
+                } as any);
 
                 toast({
                     title: "Utilisateur modifié",
-                    description: `L'utilisateur ${data.name} a été enregistré avec succès.`,
+                    description: `Les droits de ${data.name} ont été mis à jour avec succès.`,
                 });
             } else {
-                // Create new user - Not fully implemented in this MVP without Auth integration
+                // Create new user (Simulation)
+                await profileService.create(data);
+
                 toast({
-                    title: "Non implémenté",
-                    description: "La création d'utilisateur nécessite une intégration Auth complète.",
-                    variant: "destructive"
+                    title: "Invitation envoyée",
+                    description: `Un email d'invitation a été envoyé à ${data.email} pour rejoindre ${data.entityId || "l'organisation"}.`,
+                    variant: "default"
                 });
             }
+            // Reload to see changes (even if simulated, we might want to refresh what we can)
             loadProfiles();
             setIsDialogOpen(false);
         } catch (error) {
             console.error("Failed to save user", error);
             toast({
                 title: "Erreur",
-                description: "Une erreur est survenue.",
+                description: "Une erreur est survenue lors de l'enregistrement.",
                 variant: "destructive"
             });
         }
@@ -91,18 +106,21 @@ export default function SuperAdminUsers() {
     // 1. Enrich Users with Entity Data
     const enrichedUsers = useMemo(() => {
         return profiles.map(user => {
+            const orgName = user.organization?.name || user.employer || "Non assigné";
+            const country = user.organization?.metadata?.country || "Gabon"; // Default to Gabon for now if generic
+
             return {
                 id: user.id,
                 name: `${user.first_name} ${user.last_name}`,
                 email: user.email,
                 role: user.role,
-                entityName: user.organization?.name || "Non assigné",
-                country: user.organization?.metadata?.country || "Non assigné",
-                countryCode: "GA", // Default to Gabon if unknown, or map from country name
-                // Preserve other fields for dialog if needed, though they might be empty
-                functions: [],
-                billingFeatures: [],
-                quotas: {}
+                employer: user.employer,
+                organizationId: user.employer, // Use employer as link id
+                entityName: orgName,
+                country: country,
+                countryCode: user.organization?.metadata?.countryCode || "GA",
+                // Preserve original profile for full mapping if needed
+                original: user
             };
         });
     }, [profiles]);
@@ -114,9 +132,8 @@ export default function SuperAdminUsers() {
         return enrichedUsers.filter(user =>
             user.name.toLowerCase().includes(lowerTerm) ||
             user.email?.toLowerCase().includes(lowerTerm) ||
-            user.role.toLowerCase().includes(lowerTerm) ||
-            user.entityName.toLowerCase().includes(lowerTerm) ||
-            user.country.toLowerCase().includes(lowerTerm)
+            user.role?.toLowerCase().includes(lowerTerm) ||
+            user.entityName.toLowerCase().includes(lowerTerm)
         );
     }, [searchTerm, enrichedUsers]);
 
@@ -148,7 +165,7 @@ export default function SuperAdminUsers() {
                         </p>
                     </div>
                     <Button className="neu-raised gap-2" onClick={handleAdd}>
-                        <User className="w-4 h-4" />
+                        <UserPlus className="w-4 h-4" />
                         Ajouter un Utilisateur
                     </Button>
                 </div>
@@ -167,28 +184,30 @@ export default function SuperAdminUsers() {
                         </div>
                         <Button variant="outline" className="neu-raised gap-2">
                             <Filter className="w-4 h-4" />
-                            Filtres Avancés
+                            Filtres
                         </Button>
                     </CardContent>
                 </Card>
 
                 {/* Segmented View */}
-                <div className="space-y-4">
+                <div className="space-y-6">
                     {loading ? (
-                        <div className="text-center py-12 text-muted-foreground">Chargement...</div>
+                        <div className="flex justify-center items-center py-12">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        </div>
                     ) : Object.keys(segmentedData).length === 0 ? (
-                        <div className="text-center py-12 text-muted-foreground">
+                        <div className="text-center py-12 text-muted-foreground bg-muted/10 rounded-lg border border-dashed">
                             Aucun utilisateur trouvé pour cette recherche.
                         </div>
                     ) : (
                         Object.entries(segmentedData).map(([country, orgs]) => (
-                            <Card key={country} className="neu-raised overflow-hidden">
-                                <CardHeader className="bg-muted/20 pb-2">
-                                    <CardTitle className="flex items-center gap-2 text-lg">
-                                        <span className="text-2xl">{COUNTRY_FLAGS[Object.values(orgs)[0][0].countryCode] || '🏳️'}</span>
+                            <Card key={country} className="neu-raised overflow-hidden border-none shadow-md">
+                                <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent pb-3 pt-4 border-b">
+                                    <CardTitle className="flex items-center gap-3 text-lg">
+                                        <span className="text-2xl shadow-sm rounded bg-white px-1">{COUNTRY_FLAGS[Object.values(orgs)[0][0].countryCode] || '🏳️'}</span>
                                         {country}
-                                        <Badge variant="secondary" className="ml-auto">
-                                            {Object.values(orgs).reduce((acc, users) => acc + users.length, 0)} utilisateurs
+                                        <Badge variant="secondary" className="ml-auto font-normal">
+                                            {Object.values(orgs).reduce((acc, users) => acc + users.length, 0)} personnel(s)
                                         </Badge>
                                     </CardTitle>
                                 </CardHeader>
@@ -196,36 +215,38 @@ export default function SuperAdminUsers() {
                                     <Accordion type="multiple" className="w-full">
                                         {Object.entries(orgs).map(([orgName, users]) => (
                                             <AccordionItem key={orgName} value={orgName} className="border-b last:border-0">
-                                                <AccordionTrigger className="px-6 hover:no-underline hover:bg-muted/10">
+                                                <AccordionTrigger className="px-6 py-4 hover:bg-muted/5 transition-colors">
                                                     <div className="flex items-center gap-3">
-                                                        <Building2 className="h-4 w-4 text-primary" />
-                                                        <span className="font-medium">{orgName}</span>
-                                                        <Badge variant="outline" className="text-xs font-normal">
+                                                        <div className="bg-primary/10 p-2 rounded-full">
+                                                            <Building2 className="h-4 w-4 text-primary" />
+                                                        </div>
+                                                        <span className="font-semibold text-muted-foreground group-hover:text-foreground transition-colors">{orgName}</span>
+                                                        <Badge variant="outline" className="text-xs font-normal ml-2">
                                                             {users.length}
                                                         </Badge>
                                                     </div>
                                                 </AccordionTrigger>
-                                                <AccordionContent className="px-6 pb-4 pt-2 bg-muted/5">
-                                                    <div className="grid gap-3">
+                                                <AccordionContent className="px-0 pb-0 bg-muted/5">
+                                                    <div className="divide-y">
                                                         {users.map(user => (
-                                                            <div key={user.id} className="flex items-center justify-between p-3 rounded-lg bg-background border hover:shadow-sm transition-shadow">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
+                                                            <div key={user.id} className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 pl-14 hover:bg-background transition-colors group">
+                                                                <div className="flex items-center gap-4 mb-3 md:mb-0">
+                                                                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary font-bold shadow-sm">
                                                                         {user.name.substring(0, 2).toUpperCase()}
                                                                     </div>
                                                                     <div>
-                                                                        <div className="font-medium text-sm">{user.name}</div>
+                                                                        <div className="font-medium text-sm text-foreground">{user.name}</div>
                                                                         <div className="text-xs text-muted-foreground flex items-center gap-1">
                                                                             <Mail className="h-3 w-3" /> {user.email || 'N/A'}
                                                                         </div>
                                                                     </div>
                                                                 </div>
-                                                                <div className="flex items-center gap-4">
-                                                                    <Badge variant={user.role === 'ADMIN' ? 'destructive' : 'secondary'} className="text-[10px]">
+                                                                <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+                                                                    <Badge variant={user.role === 'ADMIN' || user.role === 'super_admin' ? 'default' : 'secondary'} className="text-[10px] uppercase tracking-wider">
                                                                         <Shield className="h-3 w-3 mr-1" />
                                                                         {user.role}
                                                                     </Badge>
-                                                                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => handleEdit(user)}>
+                                                                    <Button variant="ghost" size="sm" className="h-8 text-xs opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleEdit(user)}>
                                                                         Gérer
                                                                     </Button>
                                                                 </div>
@@ -242,7 +263,6 @@ export default function SuperAdminUsers() {
                     )}
                 </div>
 
-
                 <UserDialog
                     open={isDialogOpen}
                     onOpenChange={setIsDialogOpen}
@@ -250,6 +270,6 @@ export default function SuperAdminUsers() {
                     onSave={handleSave}
                 />
             </div>
-        </DashboardLayout >
+        </DashboardLayout>
     );
 }

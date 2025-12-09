@@ -246,13 +246,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             ];
         }
 
-        // Personne Morale (Entreprise/Association)
+        // Personne Morale (fallback to citizen nav)
         if (isPersonneMorale) {
             return [
-                { label: "Tableau de Bord", icon: LayoutDashboard, path: "/dashboard/entreprise" },
-                { label: "Mes Demandes", icon: ClipboardList, path: "/dashboard/entreprise/requests" },
-                { label: "Autorisations", icon: ShieldCheck, path: "/dashboard/entreprise/autorisations" },
-                { label: "Fiscalité", icon: Briefcase, path: "/dashboard/entreprise/fiscalite" },
+                { label: "Tableau de Bord", icon: LayoutDashboard, path: "/dashboard/citizen" },
+                { label: "Mes Demandes", icon: FileText, path: "/dashboard/citizen/requests" },
+                { label: "Mes Documents", icon: ShieldCheck, path: "/dashboard/citizen/documents" },
                 { label: "iBoîte", icon: Mail, path: "/iboite" },
             ];
         }
@@ -285,7 +284,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         if (isAgentAccueil) return { title: "ACCUEIL", subtitle: "Agent d'Accueil" };
         if (isStagiaire) return { title: "MAIRIE", subtitle: "Stagiaire" };
         if (isForeigner) return { title: "MAIRIE", subtitle: "Espace Résident" };
-        if (isPersonneMorale) return { title: "MAIRIE", subtitle: "Espace Entreprise" };
+        if (isPersonneMorale) return { title: "MAIRIE", subtitle: "Espace Pro" };
         return { title: "MAIRIE", subtitle: "Espace Citoyen" };
     };
 

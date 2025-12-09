@@ -8,14 +8,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { MunicipalRole } from "@/types/municipal-roles";
-import { DemoUser } from "@/types/roles";
-import { UserFunction, BillingFeature } from "@/types/user-management";
+import { UserFunction } from "@/types/user-management";
 import { serviceCatalog } from "@/services/serviceCatalog";
+import { ServiceCategory, getCategoryIcon, getCategoryLabel } from "@/types/municipal-services";
 import { ConsularService } from "@/types/services";
-import { Shield, Briefcase, CreditCard, Settings, User } from "lucide-react";
+import { Shield, Briefcase, Settings, User, ScrollText, Building2, Coins, Heart, Search } from "lucide-react";
+
+import { getDefaultsForRole } from "@/utils/role-permissions";
 
 interface UserDialogProps {
     open: boolean;
@@ -28,18 +29,13 @@ export function UserDialog({ open, onOpenChange, initialData, onSave }: UserDial
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState("general");
     const [services, setServices] = useState<ConsularService[]>([]);
+    const [searchQuery, setSearchQuery] = useState("");
     const [formData, setFormData] = useState<any>({
         name: "",
         role: MunicipalRole.CITOYEN,
         entityId: "",
         email: "",
         functions: [],
-        billingFeatures: [],
-        quotas: {
-            maxDailyFiles: 10,
-            maxStorageGB: 1,
-            canExportData: false
-        },
         accessibleServices: []
     });
 
@@ -55,32 +51,47 @@ export function UserDialog({ open, onOpenChange, initialData, onSave }: UserDial
         loadServices();
     }, []);
 
+    // Apply defaults when role changes for NEW users
+    const handleRoleChange = (newRole: string) => {
+        const defaults = getDefaultsForRole(newRole as MunicipalRole);
+
+        // Filter services based on categories
+        const defaultServices = services
+            .filter(s => {
+                // Cast to any to access category from mock data if strict type is missing it
+                const serviceCategory = (s as any).category;
+                return defaults.serviceCategories.includes(serviceCategory);
+            })
+            .map(s => ({
+                serviceId: s.id,
+                canView: defaults.serviceAccessLevel.canView,
+                canProcess: defaults.serviceAccessLevel.canProcess,
+                canValidate: defaults.serviceAccessLevel.canValidate
+            }));
+
+        setFormData((prev: any) => ({
+            ...prev,
+            role: newRole,
+            functions: defaults.functions,
+            accessibleServices: defaultServices
+        }));
+    };
+
     useEffect(() => {
         if (initialData) {
             setFormData({
                 ...initialData,
                 functions: initialData.functions || [],
-                billingFeatures: initialData.billingFeatures || [],
-                quotas: initialData.quotas || {
-                    maxDailyFiles: 10,
-                    maxStorageGB: 1,
-                    canExportData: false
-                },
                 accessibleServices: initialData.accessibleServices || []
             });
         } else {
+            // Reset for new user
             setFormData({
                 name: "",
                 role: MunicipalRole.CITOYEN,
                 entityId: "",
                 email: "",
                 functions: [],
-                billingFeatures: [],
-                quotas: {
-                    maxDailyFiles: 10,
-                    maxStorageGB: 1,
-                    canExportData: false
-                },
                 accessibleServices: []
             });
         }
@@ -110,16 +121,7 @@ export function UserDialog({ open, onOpenChange, initialData, onSave }: UserDial
         });
     };
 
-    const toggleBillingFeature = (feat: BillingFeature) => {
-        setFormData((prev: any) => {
-            const current = prev.billingFeatures || [];
-            if (current.includes(feat)) {
-                return { ...prev, billingFeatures: current.filter((f: any) => f !== feat) };
-            } else {
-                return { ...prev, billingFeatures: [...current, feat] };
-            }
-        });
-    };
+
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -134,7 +136,7 @@ export function UserDialog({ open, onOpenChange, initialData, onSave }: UserDial
                 <form onSubmit={handleSubmit} className="flex-1 overflow-hidden flex flex-col">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
                         <div className="px-1">
-                            <TabsList className="grid w-full grid-cols-4 mb-4">
+                            <TabsList className="grid w-full grid-cols-3 mb-4">
                                 <TabsTrigger value="general" className="gap-2">
                                     <User className="w-4 h-4" /> Général
                                 </TabsTrigger>
@@ -143,9 +145,6 @@ export function UserDialog({ open, onOpenChange, initialData, onSave }: UserDial
                                 </TabsTrigger>
                                 <TabsTrigger value="services" className="gap-2">
                                     <Settings className="w-4 h-4" /> Services
-                                </TabsTrigger>
-                                <TabsTrigger value="billing" className="gap-2">
-                                    <CreditCard className="w-4 h-4" /> Facturation
                                 </TabsTrigger>
                             </TabsList>
                         </div>
@@ -180,7 +179,14 @@ export function UserDialog({ open, onOpenChange, initialData, onSave }: UserDial
                                             <Label htmlFor="role">Rôle Principal</Label>
                                             <Select
                                                 value={formData.role}
-                                                onValueChange={(v) => setFormData((p: any) => ({ ...p, role: v }))}
+                                                onValueChange={(v) => {
+                                                    // Only apply defaults if it's a new user (no initialData) to avoid overwriting custom edits on existing users
+                                                    if (!initialData) {
+                                                        handleRoleChange(v);
+                                                    } else {
+                                                        setFormData((p: any) => ({ ...p, role: v }));
+                                                    }
+                                                }}
                                             >
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Sélectionner un rôle" />
@@ -224,17 +230,24 @@ export function UserDialog({ open, onOpenChange, initialData, onSave }: UserDial
                                 <TabsContent value="functions" className="space-y-6 mt-0">
                                     <div className="space-y-4">
                                         <div>
-                                            <h3 className="text-sm font-bold mb-3 uppercase text-muted-foreground">Gestion des Visas</h3>
+                                            <h3 className="text-sm font-bold mb-3 uppercase text-muted-foreground flex items-center gap-2">
+                                                <ScrollText className="w-4 h-4" /> État Civil
+                                            </h3>
                                             <div className="grid grid-cols-2 gap-3">
-                                                {[UserFunction.VISA_VIEW, UserFunction.VISA_PROCESS, UserFunction.VISA_VALIDATE, UserFunction.VISA_PRINT].map(func => (
-                                                    <div key={func} className="flex items-center space-x-2 border p-3 rounded-md hover:bg-muted/50 transition-colors">
+                                                {[
+                                                    { id: UserFunction.CIVIL_REGISTRY_VIEW, label: "Consultation" },
+                                                    { id: UserFunction.CIVIL_REGISTRY_CREATE, label: "Édition / Création" },
+                                                    { id: UserFunction.CIVIL_REGISTRY_VALIDATE, label: "Validation / Signature" },
+                                                    { id: UserFunction.CIVIL_REGISTRY_PRINT, label: "Impression Actes" }
+                                                ].map(item => (
+                                                    <div key={item.id} className="flex items-center space-x-2 border p-3 rounded-md hover:bg-muted/50 transition-colors">
                                                         <Checkbox
-                                                            id={func}
-                                                            checked={formData.functions?.includes(func)}
-                                                            onCheckedChange={() => toggleFunction(func)}
+                                                            id={item.id}
+                                                            checked={formData.functions?.includes(item.id)}
+                                                            onCheckedChange={() => toggleFunction(item.id)}
                                                         />
-                                                        <Label htmlFor={func} className="text-sm font-medium cursor-pointer flex-1">
-                                                            {func.replace('VISA_', '').replace('_', ' ')}
+                                                        <Label htmlFor={item.id} className="text-sm font-medium cursor-pointer flex-1">
+                                                            {item.label}
                                                         </Label>
                                                     </div>
                                                 ))}
@@ -244,17 +257,23 @@ export function UserDialog({ open, onOpenChange, initialData, onSave }: UserDial
                                         <Separator />
 
                                         <div>
-                                            <h3 className="text-sm font-bold mb-3 uppercase text-muted-foreground">Passeports & Biométrie</h3>
+                                            <h3 className="text-sm font-bold mb-3 uppercase text-muted-foreground flex items-center gap-2">
+                                                <Building2 className="w-4 h-4" /> Urbanisme
+                                            </h3>
                                             <div className="grid grid-cols-2 gap-3">
-                                                {[UserFunction.PASSPORT_VIEW, UserFunction.PASSPORT_ENROLL, UserFunction.PASSPORT_VALIDATE, UserFunction.PASSPORT_DELIVER].map(func => (
-                                                    <div key={func} className="flex items-center space-x-2 border p-3 rounded-md hover:bg-muted/50 transition-colors">
+                                                {[
+                                                    { id: UserFunction.URBANISM_VIEW, label: "Consultation Dossiers" },
+                                                    { id: UserFunction.URBANISM_PROCESS, label: "Instruction / Traitement" },
+                                                    { id: UserFunction.URBANISM_VALIDATE, label: "Validation Permis" }
+                                                ].map(item => (
+                                                    <div key={item.id} className="flex items-center space-x-2 border p-3 rounded-md hover:bg-muted/50 transition-colors">
                                                         <Checkbox
-                                                            id={func}
-                                                            checked={formData.functions?.includes(func)}
-                                                            onCheckedChange={() => toggleFunction(func)}
+                                                            id={item.id}
+                                                            checked={formData.functions?.includes(item.id)}
+                                                            onCheckedChange={() => toggleFunction(item.id)}
                                                         />
-                                                        <Label htmlFor={func} className="text-sm font-medium cursor-pointer flex-1">
-                                                            {func.replace('PASSPORT_', '').replace('_', ' ')}
+                                                        <Label htmlFor={item.id} className="text-sm font-medium cursor-pointer flex-1">
+                                                            {item.label}
                                                         </Label>
                                                     </div>
                                                 ))}
@@ -264,17 +283,75 @@ export function UserDialog({ open, onOpenChange, initialData, onSave }: UserDial
                                         <Separator />
 
                                         <div>
-                                            <h3 className="text-sm font-bold mb-3 uppercase text-muted-foreground">État Civil</h3>
+                                            <h3 className="text-sm font-bold mb-3 uppercase text-muted-foreground flex items-center gap-2">
+                                                <Coins className="w-4 h-4" /> Fiscalité
+                                            </h3>
                                             <div className="grid grid-cols-2 gap-3">
-                                                {[UserFunction.CIVIL_REGISTRY_VIEW, UserFunction.CIVIL_REGISTRY_CREATE, UserFunction.CIVIL_REGISTRY_VALIDATE].map(func => (
-                                                    <div key={func} className="flex items-center space-x-2 border p-3 rounded-md hover:bg-muted/50 transition-colors">
+                                                {[
+                                                    { id: UserFunction.FISCAL_VIEW, label: "Consultation" },
+                                                    { id: UserFunction.FISCAL_COLLECT, label: "Recouvrement / Encaissement" },
+                                                    { id: UserFunction.FISCAL_VALIDATE, label: "Validation / Contrôle" }
+                                                ].map(item => (
+                                                    <div key={item.id} className="flex items-center space-x-2 border p-3 rounded-md hover:bg-muted/50 transition-colors">
                                                         <Checkbox
-                                                            id={func}
-                                                            checked={formData.functions?.includes(func)}
-                                                            onCheckedChange={() => toggleFunction(func)}
+                                                            id={item.id}
+                                                            checked={formData.functions?.includes(item.id)}
+                                                            onCheckedChange={() => toggleFunction(item.id)}
                                                         />
-                                                        <Label htmlFor={func} className="text-sm font-medium cursor-pointer flex-1">
-                                                            {func.replace('CIVIL_REGISTRY_', '').replace('_', ' ')}
+                                                        <Label htmlFor={item.id} className="text-sm font-medium cursor-pointer flex-1">
+                                                            {item.label}
+                                                        </Label>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <Separator />
+
+                                        <div>
+                                            <h3 className="text-sm font-bold mb-3 uppercase text-muted-foreground flex items-center gap-2">
+                                                <Heart className="w-4 h-4" /> Affaires Sociales
+                                            </h3>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                {[
+                                                    { id: UserFunction.SOCIAL_VIEW, label: "Consultation Dossiers" },
+                                                    { id: UserFunction.SOCIAL_PROCESS, label: "Instruction Demandes" },
+                                                    { id: UserFunction.SOCIAL_VALIDATE, label: "Validation Aides" }
+                                                ].map(item => (
+                                                    <div key={item.id} className="flex items-center space-x-2 border p-3 rounded-md hover:bg-muted/50 transition-colors">
+                                                        <Checkbox
+                                                            id={item.id}
+                                                            checked={formData.functions?.includes(item.id)}
+                                                            onCheckedChange={() => toggleFunction(item.id)}
+                                                        />
+                                                        <Label htmlFor={item.id} className="text-sm font-medium cursor-pointer flex-1">
+                                                            {item.label}
+                                                        </Label>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <Separator />
+
+                                        <div>
+                                            <h3 className="text-sm font-bold mb-3 uppercase text-muted-foreground flex items-center gap-2">
+                                                <Shield className="w-4 h-4" /> Administration
+                                            </h3>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                {[
+                                                    { id: UserFunction.USER_MANAGEMENT, label: "Gestion des Utilisateurs" },
+                                                    { id: UserFunction.SETTINGS_MANAGEMENT, label: "Configuration Système" },
+                                                    { id: UserFunction.REPORTING_VIEW, label: "Accès Statistiques" }
+                                                ].map(item => (
+                                                    <div key={item.id} className="flex items-center space-x-2 border p-3 rounded-md hover:bg-muted/50 transition-colors">
+                                                        <Checkbox
+                                                            id={item.id}
+                                                            checked={formData.functions?.includes(item.id)}
+                                                            onCheckedChange={() => toggleFunction(item.id)}
+                                                        />
+                                                        <Label htmlFor={item.id} className="text-sm font-medium cursor-pointer flex-1">
+                                                            {item.label}
                                                         </Label>
                                                     </div>
                                                 ))}
@@ -284,164 +361,168 @@ export function UserDialog({ open, onOpenChange, initialData, onSave }: UserDial
                                 </TabsContent>
 
                                 <TabsContent value="services" className="mt-0 space-y-4">
-                                    <div className="bg-muted/30 p-4 rounded-lg border mb-4">
-                                        <p className="text-sm text-muted-foreground">
-                                            Définissez les services auxquels cet utilisateur a accès et son niveau d'autorisation.
-                                        </p>
+                                    <div className="bg-muted/30 p-4 rounded-lg border mb-4 space-y-4">
+                                        <div className="space-y-1">
+                                            <p className="text-sm text-muted-foreground">
+                                                Définissez les services et niveaux d'autorisation pour cet agent.
+                                            </p>
+                                        </div>
+                                        <div className="relative">
+                                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                            <Input
+                                                type="search"
+                                                placeholder="Rechercher un service..."
+                                                className="pl-9 bg-background/50 border-input/50 focus:bg-background transition-all"
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="space-y-3">
-                                        {services.map(service => {
-                                            const access = formData.accessibleServices?.find((s: any) => s.serviceId === service.id);
-                                            const hasAccess = !!access;
+
+                                    <div className="space-y-4 h-[400px] pr-2 overflow-y-auto custom-scrollbar">
+                                        {Object.values(ServiceCategory).map((category) => {
+                                            const categoryServices = services.filter((s: any) => {
+                                                const matchesCategory = s.category === category;
+                                                const matchesSearch = searchQuery
+                                                    ? s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                                    s.description?.toLowerCase().includes(searchQuery.toLowerCase())
+                                                    : true;
+                                                return matchesCategory && matchesSearch;
+                                            });
+
+                                            if (categoryServices.length === 0) return null;
+
+                                            const CategoryIcon = getCategoryIcon(category);
+                                            const categoryLabel = getCategoryLabel(category);
+                                            const isExpanded = searchQuery.length > 0; // Auto-expand when searching
 
                                             return (
-                                                <div key={service.id} className="border rounded-lg p-3 hover:bg-muted/20 transition-colors">
-                                                    <div className="flex items-start justify-between mb-3">
-                                                        <div className="flex items-center gap-3">
-                                                            <Switch
-                                                                checked={hasAccess}
-                                                                onCheckedChange={(checked) => {
-                                                                    setFormData((prev: any) => {
-                                                                        const current = prev.accessibleServices || [];
-                                                                        if (checked) {
-                                                                            return {
-                                                                                ...prev,
-                                                                                accessibleServices: [...current, {
-                                                                                    serviceId: service.id,
-                                                                                    canView: true,
-                                                                                    canProcess: false,
-                                                                                    canValidate: false
-                                                                                }]
-                                                                            };
-                                                                        } else {
-                                                                            return {
-                                                                                ...prev,
-                                                                                accessibleServices: current.filter((s: any) => s.serviceId !== service.id)
-                                                                            };
-                                                                        }
-                                                                    });
-                                                                }}
-                                                            />
-                                                            <div>
-                                                                <div className="font-medium text-sm">{service.name}</div>
-                                                                <div className="text-xs text-muted-foreground">{service.description}</div>
+                                                <div key={category as string} className="border rounded-lg overflow-hidden bg-card/50 shadow-sm">
+                                                    <div className="bg-muted/30 p-3 border-b flex items-center justify-between">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="p-1.5 rounded-md bg-primary/10 text-primary">
+                                                                <CategoryIcon className="w-4 h-4" />
                                                             </div>
+                                                            <h3 className="font-semibold text-sm">{categoryLabel}</h3>
                                                         </div>
-                                                        {/* <Badge variant="outline" className="text-[10px]">{service.type}</Badge> */}
+                                                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                                                            {categoryServices.length}
+                                                        </span>
                                                     </div>
+                                                    <div className="p-2 space-y-2">
+                                                        {categoryServices.map((service) => {
+                                                            const access = formData.accessibleServices?.find((s: any) => s.serviceId === service.id);
+                                                            const hasAccess = !!access;
 
-                                                    {hasAccess && (
-                                                        <div className="pl-12 grid grid-cols-3 gap-2 animate-fade-in">
-                                                            <div className="flex items-center space-x-2">
-                                                                <Checkbox
-                                                                    id={`view-${service.id}`}
-                                                                    checked={access?.canView}
-                                                                    onCheckedChange={(c) => {
-                                                                        setFormData((prev: any) => ({
-                                                                            ...prev,
-                                                                            accessibleServices: prev.accessibleServices?.map((s: any) =>
-                                                                                s.serviceId === service.id ? { ...s, canView: !!c } : s
-                                                                            )
-                                                                        }));
-                                                                    }}
-                                                                />
-                                                                <Label htmlFor={`view-${service.id}`} className="text-xs">Voir</Label>
-                                                            </div>
-                                                            <div className="flex items-center space-x-2">
-                                                                <Checkbox
-                                                                    id={`process-${service.id}`}
-                                                                    checked={access?.canProcess}
-                                                                    onCheckedChange={(c) => {
-                                                                        setFormData((prev: any) => ({
-                                                                            ...prev,
-                                                                            accessibleServices: prev.accessibleServices?.map((s: any) =>
-                                                                                s.serviceId === service.id ? { ...s, canProcess: !!c } : s
-                                                                            )
-                                                                        }));
-                                                                    }}
-                                                                />
-                                                                <Label htmlFor={`process-${service.id}`} className="text-xs">Traiter</Label>
-                                                            </div>
-                                                            <div className="flex items-center space-x-2">
-                                                                <Checkbox
-                                                                    id={`validate-${service.id}`}
-                                                                    checked={access?.canValidate}
-                                                                    onCheckedChange={(c) => {
-                                                                        setFormData((prev: any) => ({
-                                                                            ...prev,
-                                                                            accessibleServices: prev.accessibleServices?.map((s: any) =>
-                                                                                s.serviceId === service.id ? { ...s, canValidate: !!c } : s
-                                                                            )
-                                                                        }));
-                                                                    }}
-                                                                />
-                                                                <Label htmlFor={`validate-${service.id}`} className="text-xs">Valider</Label>
-                                                            </div>
-                                                        </div>
-                                                    )}
+                                                            return (
+                                                                <div
+                                                                    key={service.id}
+                                                                    className={`border rounded-md p-3 transition-all duration-200 ${hasAccess ? 'bg-primary/5 border-primary/20' : 'hover:bg-muted/30 border-transparent'}`}
+                                                                >
+                                                                    <div className="flex items-start justify-between mb-3">
+                                                                        <div className="flex items-center gap-3 w-full">
+                                                                            <Switch
+                                                                                checked={hasAccess}
+                                                                                onCheckedChange={(checked) => {
+                                                                                    setFormData((prev: any) => {
+                                                                                        const current = prev.accessibleServices || [];
+                                                                                        if (checked) {
+                                                                                            // Default permissions on enable
+                                                                                            return {
+                                                                                                ...prev,
+                                                                                                accessibleServices: [...current, {
+                                                                                                    serviceId: service.id,
+                                                                                                    canView: true,
+                                                                                                    canProcess: false,
+                                                                                                    canValidate: false
+                                                                                                }]
+                                                                                            };
+                                                                                        } else {
+                                                                                            return {
+                                                                                                ...prev,
+                                                                                                accessibleServices: current.filter((s: any) => s.serviceId !== service.id)
+                                                                                            };
+                                                                                        }
+                                                                                    });
+                                                                                }}
+                                                                            />
+                                                                            <div className="flex-1">
+                                                                                <div className="font-medium text-sm flex items-center justify-between">
+                                                                                    {service.name}
+                                                                                    {hasAccess && <span className="text-[10px] text-primary font-bold uppercase tracking-wider">Activé</span>}
+                                                                                </div>
+                                                                                <div className="text-xs text-muted-foreground line-clamp-1">{service.description}</div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {hasAccess && (
+                                                                        <div className="pl-12 grid grid-cols-3 gap-2 animate-in slide-in-from-top-1 fade-in duration-200">
+                                                                            <label className="flex items-center space-x-2 cursor-pointer p-1.5 rounded hover:bg-background/80 transition-colors">
+                                                                                <Checkbox
+                                                                                    id={`view-${service.id}`}
+                                                                                    checked={access?.canView}
+                                                                                    onCheckedChange={(c) => {
+                                                                                        setFormData((prev: any) => ({
+                                                                                            ...prev,
+                                                                                            accessibleServices: prev.accessibleServices?.map((s: any) =>
+                                                                                                s.serviceId === service.id ? { ...s, canView: !!c } : s
+                                                                                            )
+                                                                                        }));
+                                                                                    }}
+                                                                                />
+                                                                                <span className="text-xs font-medium">Voir</span>
+                                                                            </label>
+                                                                            <label className="flex items-center space-x-2 cursor-pointer p-1.5 rounded hover:bg-background/80 transition-colors">
+                                                                                <Checkbox
+                                                                                    id={`process-${service.id}`}
+                                                                                    checked={access?.canProcess}
+                                                                                    onCheckedChange={(c) => {
+                                                                                        setFormData((prev: any) => ({
+                                                                                            ...prev,
+                                                                                            accessibleServices: prev.accessibleServices?.map((s: any) =>
+                                                                                                s.serviceId === service.id ? { ...s, canProcess: !!c } : s
+                                                                                            )
+                                                                                        }));
+                                                                                    }}
+                                                                                />
+                                                                                <span className="text-xs font-medium">Traiter</span>
+                                                                            </label>
+                                                                            <label className="flex items-center space-x-2 cursor-pointer p-1.5 rounded hover:bg-background/80 transition-colors">
+                                                                                <Checkbox
+                                                                                    id={`validate-${service.id}`}
+                                                                                    checked={access?.canValidate}
+                                                                                    onCheckedChange={(c) => {
+                                                                                        setFormData((prev: any) => ({
+                                                                                            ...prev,
+                                                                                            accessibleServices: prev.accessibleServices?.map((s: any) =>
+                                                                                                s.serviceId === service.id ? { ...s, canValidate: !!c } : s
+                                                                                            )
+                                                                                        }));
+                                                                                    }}
+                                                                                />
+                                                                                <span className="text-xs font-medium">Valider</span>
+                                                                            </label>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
                                                 </div>
                                             );
                                         })}
-                                    </div>
-                                </TabsContent>
-
-                                <TabsContent value="billing" className="space-y-6 mt-0">
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <div className="space-y-4">
-                                            <h3 className="text-sm font-bold uppercase text-muted-foreground">Quotas & Limites</h3>
-                                            <div className="space-y-4 border p-4 rounded-lg">
-                                                <div className="space-y-2">
-                                                    <Label>Quota journalier (Dossiers)</Label>
-                                                    <Input
-                                                        type="number"
-                                                        value={formData.quotas?.maxDailyFiles}
-                                                        onChange={(e) => setFormData((p: any) => ({ ...p, quotas: { ...p.quotas, maxDailyFiles: parseInt(e.target.value) } }))}
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label>Stockage (GB)</Label>
-                                                    <Input
-                                                        type="number"
-                                                        value={formData.quotas?.maxStorageGB}
-                                                        onChange={(e) => setFormData((p: any) => ({ ...p, quotas: { ...p.quotas, maxStorageGB: parseFloat(e.target.value) } }))}
-                                                    />
-                                                </div>
-                                                <div className="flex items-center justify-between pt-2">
-                                                    <Label>Export de données</Label>
-                                                    <Switch
-                                                        checked={formData.quotas?.canExportData}
-                                                        onCheckedChange={(c) => setFormData((p: any) => ({ ...p, quotas: { ...p.quotas, canExportData: c } }))}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-4">
-                                            <h3 className="text-sm font-bold uppercase text-muted-foreground">Fonctionnalités Premium</h3>
-                                            <div className="space-y-3">
-                                                {Object.values(BillingFeature).map(feat => (
-                                                    <div key={feat} className="flex items-center justify-between border p-3 rounded-md">
-                                                        <Label className="text-xs font-medium">{feat.replace('_', ' ')}</Label>
-                                                        <Switch
-                                                            checked={formData.billingFeatures?.includes(feat)}
-                                                            onCheckedChange={() => toggleBillingFeature(feat)}
-                                                        />
+                                        {services.filter(s => searchQuery &&
+                                            ((s.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                                                ((s as any).description?.toLowerCase().includes(searchQuery.toLowerCase())))
+                                        ).length === 0 && searchQuery && (
+                                                <div className="text-center py-8 text-muted-foreground">
+                                                    <div className="flex justify-center mb-2">
+                                                        <Search className="w-8 h-8 opacity-20" />
                                                     </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-100 dark:border-blue-800">
-                                        <div className="flex items-start gap-3">
-                                            <CreditCard className="w-5 h-5 text-blue-600 mt-0.5" />
-                                            <div>
-                                                <h4 className="text-sm font-bold text-blue-800 dark:text-blue-300">Impact Facturation</h4>
-                                                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                                                    L'activation de fonctionnalités premium et l'augmentation des quotas impacteront la facturation mensuelle de l'organisme <strong>{formData.entityId || "N/A"}</strong>.
-                                                </p>
-                                            </div>
-                                        </div>
+                                                    <p>Aucun service trouvé pour "{searchQuery}"</p>
+                                                </div>
+                                            )}
                                     </div>
                                 </TabsContent>
                             </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Save, AlertTriangle, Bell, Shield, Database, Mail, RefreshCw, XCircle, CheckCircle2 } from "lucide-react";
+import { Save, AlertTriangle, Bell, Shield, Database, Mail, RefreshCw, XCircle, CheckCircle2, Bot } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { IAstedOptimizerStats } from "@/components/iasted/IAstedOptimizerStats";
 
 // Types
 interface SettingsState {
@@ -169,6 +170,10 @@ export default function SuperAdminSettings() {
                         <TabsTrigger value="general">Général</TabsTrigger>
                         <TabsTrigger value="security">Sécurité Avancée</TabsTrigger>
                         <TabsTrigger value="roles">Rôles & Permissions</TabsTrigger>
+                        <TabsTrigger value="iasted" className="gap-2">
+                            <Bot className="w-4 h-4" />
+                            iAsted IA
+                        </TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="general" className="space-y-6">
@@ -384,6 +389,114 @@ export default function SuperAdminSettings() {
                                         ))}
                                     </TableBody>
                                 </Table>
+                            </div>
+                        </div>
+                    </TabsContent>
+
+                    <TabsContent value="iasted" className="space-y-6">
+                        <div className="neu-raised p-6 rounded-xl space-y-6">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="neu-inset p-2 rounded-full text-violet-600">
+                                    <Bot className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold">Statistiques iAsted</h2>
+                                    <p className="text-sm text-muted-foreground">
+                                        Suivi des coûts et économies de l'assistant IA
+                                    </p>
+                                </div>
+                            </div>
+
+                            <IAstedOptimizerStats userTier="admin" />
+
+                            <div className="pt-4 border-t">
+                                <h3 className="font-semibold mb-3">Configuration des optimisations</h3>
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50/50">
+                                        <div className="space-y-0.5">
+                                            <Label className="text-base font-bold">Prompt Allégé</Label>
+                                            <p className="text-sm text-muted-foreground">
+                                                Réduit le prompt système de ~10,000 à ~2,000 tokens (~80% économie)
+                                            </p>
+                                        </div>
+                                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+                                            Actif
+                                        </Badge>
+                                    </div>
+
+                                    <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50/50">
+                                        <div className="space-y-0.5">
+                                            <Label className="text-base font-bold">Commandes Locales</Label>
+                                            <p className="text-sm text-muted-foreground">
+                                                Exécute navigation, thème, etc. sans appel API (~40% économie)
+                                            </p>
+                                        </div>
+                                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+                                            Actif
+                                        </Badge>
+                                    </div>
+
+                                    <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50/50">
+                                        <div className="space-y-0.5">
+                                            <Label className="text-base font-bold">Cache FAQ</Label>
+                                            <p className="text-sm text-muted-foreground">
+                                                Réponses pré-configurées pour les questions fréquentes (~20% économie)
+                                            </p>
+                                        </div>
+                                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+                                            Actif
+                                        </Badge>
+                                    </div>
+
+                                    <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50/50">
+                                        <div className="space-y-0.5">
+                                            <Label className="text-base font-bold">Routeur de Complexité</Label>
+                                            <p className="text-sm text-muted-foreground">
+                                                Utilise GPT-4o-mini pour les requêtes simples (~90% économie sur ces requêtes)
+                                            </p>
+                                        </div>
+                                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+                                            Actif
+                                        </Badge>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="pt-4 border-t">
+                                <h3 className="font-semibold mb-3">Quotas par type d'utilisateur</h3>
+                                <div className="rounded-md border">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Type</TableHead>
+                                                <TableHead className="text-center">Limite/jour</TableHead>
+                                                <TableHead>Après limite</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            <TableRow>
+                                                <TableCell className="font-medium">Non connecté</TableCell>
+                                                <TableCell className="text-center">3</TableCell>
+                                                <TableCell className="text-muted-foreground">Demander connexion</TableCell>
+                                            </TableRow>
+                                            <TableRow>
+                                                <TableCell className="font-medium">Citoyen</TableCell>
+                                                <TableCell className="text-center">20</TableCell>
+                                                <TableCell className="text-muted-foreground">Message d'attente</TableCell>
+                                            </TableRow>
+                                            <TableRow>
+                                                <TableCell className="font-medium">Agent</TableCell>
+                                                <TableCell className="text-center">100</TableCell>
+                                                <TableCell className="text-muted-foreground">Fallback GPT-4o-mini</TableCell>
+                                            </TableRow>
+                                            <TableRow>
+                                                <TableCell className="font-medium">Maire / Admin</TableCell>
+                                                <TableCell className="text-center">∞ Illimité</TableCell>
+                                                <TableCell className="text-muted-foreground">-</TableCell>
+                                            </TableRow>
+                                        </TableBody>
+                                    </Table>
+                                </div>
                             </div>
                         </div>
                     </TabsContent>

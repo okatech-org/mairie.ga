@@ -1,14 +1,23 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { IASTED_SYSTEM_PROMPT } from '@/config/iasted-config';
 import { IASTED_VOICE_PROMPT_LITE } from '@/config/iasted-prompt-lite';
 import { getRouteKnowledgePrompt, resolveRoute } from '@/utils/route-mapping';
+import { matchLocalCommand, LocalCommandResult } from '@/utils/local-command-router';
+import {
+    routeRequest,
+    recordRequest,
+    trimConversationHistory,
+    getMaxTokensForContext,
+    type UserTier
+} from '@/utils/iasted-optimizer';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-// Flag pour utiliser le prompt économique (réduire les coûts de ~80%)
-const USE_LITE_PROMPT = true;
+// Flags d'optimisation des coûts
+const USE_LITE_PROMPT = true;      // Prompt allégé (~80% économie)
+const USE_LOCAL_ROUTER = true;     // Commandes locales (~40% économie)
+const USE_FAQ_CACHE = true;        // Cache FAQ (~20% économie supplémentaire)
 
 export type VoiceState = 'idle' | 'connecting' | 'listening' | 'thinking' | 'speaking';
 
@@ -595,6 +604,59 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             case 'input_audio_buffer.speech_started':
                 setVoiceState('listening'); // Actually user speaking
                 break;
+            // Intercept user transcription to check for local commands
+            case 'conversation.item.input_audio_transcription.completed':
+                if (event.transcript) {
+                    const transcript = event.transcript;
+                    console.log(`🎤 [Optimizer] User said: "${transcript}"`);
+
+                    // 1. Check local commands first (navigation, theme, etc.)
+                    if (USE_LOCAL_ROUTER) {
+                        const result = matchLocalCommand(transcript);
+                        if (result.matched && result.toolName) {
+                            console.log(`✅ [LocalRouter] Executing locally: ${result.toolName}`);
+                            handleLocalToolCall(result);
+                            recordRequest('local', 0);
+
+                            // Cancel the pending API response to save costs
+                            if (dataChannel.current?.readyState === 'open') {
+                                dataChannel.current.send(JSON.stringify({ type: 'response.cancel' }));
+                            }
+                            break;
+                        }
+                    }
+
+                    // 2. Check FAQ cache (horaires, actes, etc.)
+                    if (USE_FAQ_CACHE) {
+                        const routingResult = routeRequest(transcript, 'citizen', true);
+                        if (routingResult.cached && routingResult.cachedResponse) {
+                            console.log(`📦 [Cache] FAQ hit! Responding locally.`);
+
+                            // Add cached response to messages
+                            setMessages(prev => [...prev, {
+                                role: 'assistant',
+                                content: routingResult.cachedResponse
+                            }]);
+
+                            toast({
+                                title: "Réponse rapide",
+                                description: routingResult.cachedResponse?.substring(0, 100) + "...",
+                            });
+
+                            recordRequest('local', 0);
+
+                            // Cancel the pending API response
+                            if (dataChannel.current?.readyState === 'open') {
+                                dataChannel.current.send(JSON.stringify({ type: 'response.cancel' }));
+                            }
+                            break;
+                        } else {
+                            // Record the request type for analytics
+                            recordRequest(routingResult.tier, routingResult.estimatedCost);
+                        }
+                    }
+                }
+                break;
             case 'response.done':
                 setVoiceState('listening'); // Back to listening after response
                 if (event.response?.output) {
@@ -612,6 +674,43 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                 break;
             default:
                 break;
+        }
+    };
+
+    // Handle local tool calls without API
+    const handleLocalToolCall = (result: LocalCommandResult) => {
+        if (!result.toolName || !result.toolArgs) return;
+
+        console.log(`🚀 [LocalRouter] Executing: ${result.toolName}`, result.toolArgs);
+
+        // Execute the callback same as API tool calls
+        if (onToolCall) {
+            onToolCall(result.toolName, result.toolArgs);
+        }
+
+        // Special handling for stop_conversation
+        if (result.toolName === 'stop_conversation') {
+            disconnect();
+            return;
+        }
+
+        // Special handling for change_voice
+        if (result.toolName === 'change_voice') {
+            if (result.toolArgs.voice_id) {
+                changeVoice(result.toolArgs.voice_id);
+            } else {
+                const nextVoice = currentVoice === 'shimmer' ? 'ash' : 'shimmer';
+                changeVoice(nextVoice);
+            }
+        }
+
+        // Send a local text response (will be spoken by TTS if available)
+        if (result.response) {
+            setMessages(prev => [...prev, { role: 'assistant', content: result.response }]);
+            toast({
+                title: "Commande exécutée",
+                description: result.response,
+            });
         }
     };
 

@@ -49,7 +49,7 @@ export const ROUTE_MAP: RouteInfo[] = [
         description: 'Actualités municipales'
     },
     {
-        path: '/demo',
+        path: '/demo-portal',
         aliases: ['demo', 'démo', 'démonstration', 'portail démo', 'simulation', 'tester', 'essayer'],
         description: 'Portail de démonstration'
     },

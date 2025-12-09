@@ -314,7 +314,7 @@ User: "À quoi sert ce bouton ?" → call explain_context(element_id="submit-but
 **Routes disponibles** :
 - "/" : Accueil, page d'accueil
 - "/login" : Connexion, se connecter
-- "/demo" : Démo, démonstration, portail démo
+- "/demo-portal" : Démo, démonstration, portail démo
 - "/dashboard/citizen" : Espace citoyen, mes services, tableau de bord citoyen
 - "/dashboard/citizen/requests" : Mes demandes, suivi demandes
 - "/dashboard/citizen/documents" : Mes documents

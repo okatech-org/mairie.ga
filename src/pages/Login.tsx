@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TestTube2, Eye, EyeOff, ArrowRight, Landmark, Shield, ChevronRight, Building2, Mail, Key, Loader2, AlertCircle, Clock, MapPin, Sparkles, Users, CheckCircle2 } from "lucide-react";
+import { TestTube2, Eye, EyeOff, ArrowRight, Landmark, Shield, ChevronRight, Building2, Mail, Key, Loader2, AlertCircle, Clock, MapPin, Sparkles, Users, CheckCircle2, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
@@ -14,6 +14,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { PinCodeInput } from "@/components/auth/PinCodeInput";
 import { toast } from "sonner";
 import villeImage from "@/assets/ville-gabon.jpg";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { DemoUserCard } from "@/components/DemoUserCard";
+import { MOCK_USERS, DEMO_CITIZEN_ACCOUNTS } from "@/data/mock-users";
+import { MAIRIES_GABON } from "@/data/mock-mairies-network";
+import { MairieCard } from "@/components/MairieCard";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -21,16 +26,27 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  
+
   // Email/Password form
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
-  
+
   // PIN form
   const [pinEmail, setPinEmail] = useState("");
   const [pinCode, setPinCode] = useState("");
   const [activeTab, setActiveTab] = useState("email");
+
+  // Demo modal
+  const [showDemoModal, setShowDemoModal] = useState(false);
+
+  // Filtered demo data
+  const adminUser = useMemo(() => MOCK_USERS.find(u => u.role === 'ADMIN'), []);
+  const demoMairies = useMemo(() =>
+    MAIRIES_GABON.filter(m =>
+      m.id === 'estuaire-libreville-centrale' ||
+      m.id === 'ogoue-maritime-port-gentil'
+    ), []);
 
   // Check if user is already logged in
   useEffect(() => {
@@ -104,7 +120,7 @@ export default function Login() {
       if (data.authLink) {
         // Use the magic link to authenticate
         toast.success(`Bienvenue ${data.user.firstName} !`);
-        
+
         // Redirect to the auth link which will sign in the user
         window.location.href = data.authLink;
       } else {
@@ -176,8 +192,8 @@ export default function Login() {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <Label htmlFor="password" className="text-sm">Mot de passe</Label>
-                        <Link 
-                          to="/forgot-password" 
+                        <Link
+                          to="/forgot-password"
                           className="text-xs md:text-sm text-primary hover:underline"
                         >
                           Mot de passe oublié ?
@@ -204,8 +220,8 @@ export default function Login() {
                     </div>
 
                     <div className="flex items-center space-x-2">
-                      <Checkbox 
-                        id="remember" 
+                      <Checkbox
+                        id="remember"
                         checked={rememberMe}
                         onCheckedChange={(checked) => setRememberMe(checked as boolean)}
                       />
@@ -265,9 +281,9 @@ export default function Login() {
                       />
                     </div>
 
-                    <Button 
-                      className="w-full h-11 md:h-12 gap-2" 
-                      size="lg" 
+                    <Button
+                      className="w-full h-11 md:h-12 gap-2"
+                      size="lg"
                       disabled={loading || pinCode.length !== 6}
                     >
                       {loading ? (
@@ -309,7 +325,7 @@ export default function Login() {
               {isDev && (
                 <>
                   <Separator className="my-6" />
-                  
+
                   <Alert className="bg-accent/10 border-accent">
                     <TestTube2 className="h-4 w-4 text-accent" />
                     <AlertDescription className="text-sm">
@@ -317,15 +333,14 @@ export default function Login() {
                     </AlertDescription>
                   </Alert>
 
-                  <Link to="/demo-portal">
-                    <Button
-                      variant="outline"
-                      className="w-full mt-4 border-accent text-accent hover:bg-accent hover:text-accent-foreground h-11 md:h-12"
-                    >
-                      <TestTube2 className="mr-2 h-4 w-4" />
-                      Accès Démo Rapide
-                    </Button>
-                  </Link>
+                  <Button
+                    variant="outline"
+                    className="w-full mt-4 border-accent text-accent hover:bg-accent hover:text-accent-foreground h-11 md:h-12"
+                    onClick={() => setShowDemoModal(true)}
+                  >
+                    <TestTube2 className="mr-2 h-4 w-4" />
+                    Accès Démo Rapide
+                  </Button>
                 </>
               )}
 
@@ -343,9 +358,9 @@ export default function Login() {
       {/* Left Side - Visual */}
       <div className="hidden lg:flex w-1/2 relative overflow-hidden">
         {/* Background Image */}
-        <img 
-          src={villeImage} 
-          alt="Ville gabonaise" 
+        <img
+          src={villeImage}
+          alt="Ville gabonaise"
           className="absolute inset-0 w-full h-full object-cover"
         />
         {/* Theme-aware overlay like homepage */}
@@ -354,7 +369,7 @@ export default function Login() {
         <div className="relative z-10 flex items-center justify-center w-full px-8 xl:px-12">
           <div className="text-white max-w-lg">
             {/* Badge & Logo */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: "easeOut" }}
@@ -368,7 +383,7 @@ export default function Login() {
               </div>
             </motion.div>
 
-            <motion.h2 
+            <motion.h2
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
@@ -376,7 +391,7 @@ export default function Login() {
             >
               <span className="text-white dark:text-primary">MAIRIE.GA</span>
             </motion.h2>
-            <motion.p 
+            <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.15, ease: "easeOut" }}
@@ -384,13 +399,13 @@ export default function Login() {
             >
               Le Portail des Communes du Gabon
             </motion.p>
-            <motion.p 
+            <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
               className="text-white/80 text-base xl:text-lg mb-8 leading-relaxed"
             >
-              Accédez à vos services municipaux en ligne. État civil, urbanisme, 
+              Accédez à vos services municipaux en ligne. État civil, urbanisme,
               fiscalité locale — démarches simplifiées et sécurisées.
             </motion.p>
 
@@ -402,7 +417,7 @@ export default function Login() {
                 { icon: MapPin, title: "52 Communes", desc: "Réseau national" },
                 { icon: Sparkles, title: "Simplifié", desc: "100% en ligne" }
               ].map((feature, i) => (
-                <motion.div 
+                <motion.div
                   key={i}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -421,7 +436,7 @@ export default function Login() {
             </div>
 
             {/* Stats */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.6, ease: "easeOut" }}
@@ -432,8 +447,8 @@ export default function Login() {
                 { value: "2.3M", label: "Citoyens", icon: Users },
                 { value: "100%", label: "Gratuit", icon: CheckCircle2 },
               ].map((stat, i) => (
-                <motion.div 
-                  key={i} 
+                <motion.div
+                  key={i}
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.4, delay: 0.7 + i * 0.1, ease: "easeOut" }}
@@ -475,6 +490,63 @@ export default function Login() {
           </div>
         </div>
       </div>
+
+      {/* Demo Modal */}
+      <Dialog open={showDemoModal} onOpenChange={setShowDemoModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <TestTube2 className="h-5 w-5 text-accent" />
+              Accès Démo Rapide
+            </DialogTitle>
+            <DialogDescription>
+              Sélectionnez un compte pour tester l'application
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Super Admin */}
+            <div>
+              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <span className="text-red-500">🔴</span> Super Admin
+              </h3>
+              <div className="max-w-sm">
+                {adminUser && <DemoUserCard user={adminUser} />}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Comptes Usagers */}
+            <div>
+              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <Users className="h-4 w-4 text-primary" />
+                Comptes Usagers
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {DEMO_CITIZEN_ACCOUNTS.map(user => (
+                  <DemoUserCard key={user.id} user={user} />
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Mairies */}
+            <div>
+              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-primary" />
+                Mairies (Personnel)
+              </h3>
+              <div className="space-y-3">
+                {demoMairies.map(mairie => (
+                  <MairieCard key={mairie.id} mairie={mairie} />
+                ))}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
