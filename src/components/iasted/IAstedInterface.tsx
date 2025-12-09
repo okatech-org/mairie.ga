@@ -111,44 +111,61 @@ export default function IAstedInterface({
         // Si on a le prénom, on l'utilise pour personnaliser
         const firstName = userFirstName;
 
+        // Helper: check if firstName is actually a title (not a real first name)
+        const isFirstNameATitle = firstName && (
+            firstName.toLowerCase().includes('maire') ||
+            firstName.toLowerCase().includes('monsieur') ||
+            firstName.toLowerCase().includes('madame') ||
+            firstName.toLowerCase().includes('chef') ||
+            firstName.toLowerCase().includes('agent') ||
+            firstName.toLowerCase().includes('secrétaire') ||
+            firstName.toLowerCase() === 'm' ||
+            firstName.toLowerCase() === 'admin'
+        );
+
+        // For official titles, use only the honorific (not the first name)
+        const useFirstName = firstName && !isFirstNameATitle;
+
         switch (userRole) {
-            // Personnel municipal
+            // Personnel municipal - Hautes autorités (PAS de prénom, titre honorifique)
             case 'MAIRE':
             case 'maire':
-                return firstName ? `Monsieur le Maire ${firstName}` : 'Monsieur le Maire';
+                return 'Monsieur le Maire'; // Toujours avec le titre complet
             case 'MAIRE_ADJOINT':
             case 'maire_adjoint':
-                return firstName ? `Monsieur l'Adjoint ${firstName}` : 'Monsieur le Maire Adjoint';
+                return 'Monsieur le Maire Adjoint';
             case 'SECRETAIRE_GENERAL':
             case 'secretaire_general':
-                return firstName ? `Monsieur ${firstName}` : 'Monsieur le Secrétaire Général';
+                return 'Monsieur le Secrétaire Général';
+            // Personnel municipal - Cadres (prénom si disponible)
             case 'CHEF_SERVICE':
             case 'chef_service':
-                return firstName ? `Monsieur ${firstName}` : 'Monsieur le Chef de Service';
+                return useFirstName ? `Monsieur/Madame ${firstName}` : 'Monsieur le Chef de Service';
             case 'AGENT':
             case 'agent':
-                return firstName ? `Cher ${firstName}` : 'Cher collègue';
+                return useFirstName ? `Cher collègue ${firstName}` : 'Cher collègue';
+            // Administrateurs
             case 'super_admin':
             case 'SUPER_ADMIN':
-                return firstName ? `Monsieur ${firstName}` : 'Monsieur l\'Administrateur';
+                return useFirstName ? `Monsieur ${firstName}` : 'Monsieur l\'Administrateur';
             case 'admin':
             case 'ADMIN':
-                return firstName ? `Monsieur ${firstName}` : 'Monsieur le Directeur';
-            // Usagers - Citoyens
+                return useFirstName ? `Monsieur ${firstName}` : 'Monsieur le Directeur';
+            // Usagers - Citoyens (prénom bienvenu)
             case 'citizen':
             case 'CITIZEN':
             case 'resident':
-                return firstName ? `Cher ${firstName}` : 'Cher administré';
+                return useFirstName ? `Cher ${firstName}` : 'Cher administré';
             case 'citizen_other':
             case 'autre_commune':
-                return firstName ? `Cher ${firstName}` : 'Cher visiteur';
+                return useFirstName ? `Cher ${firstName}` : 'Cher visiteur';
             case 'foreigner':
             case 'etranger':
-                return firstName ? `Cher ${firstName}` : 'Cher résident';
+                return useFirstName ? `Cher ${firstName}` : 'Cher résident';
             case 'company':
             case 'entreprise':
             case 'association':
-                return firstName ? `Cher ${firstName}` : 'Cher partenaire';
+                return useFirstName ? `Cher ${firstName}` : 'Cher partenaire';
             // Non identifié (page d'accueil)
             default:
                 return 'Bonjour';
