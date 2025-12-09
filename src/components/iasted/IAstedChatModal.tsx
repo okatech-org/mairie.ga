@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from 'next-themes';
 import { generateOfficialPDFWithURL } from '@/utils/generateOfficialPDF';
 import { documentGenerationService } from '@/services/documentGenerationService';
+import { municipalDocumentService, MunicipalDocumentType } from '@/services/municipalDocumentService';
 import {
     Send,
     Loader2,
@@ -60,6 +61,84 @@ interface IAstedChatModalProps {
     onClearPendingDocument?: () => void;
     currentVoice?: 'echo' | 'ash' | 'shimmer';
     systemPrompt?: string;
+}
+
+/**
+ * Génère un contenu par défaut intelligent basé sur le type de document et le sujet
+ */
+function generateDefaultContent(type: string, subject: string, recipient?: string): string[] {
+    const normalizedType = type?.toLowerCase() || 'lettre';
+    const date = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    // Templates de contenu par type de document
+    const templates: Record<string, (subject: string, recipient?: string) => string[]> = {
+        'communique': (s) => [
+            `Le Maire de la Commune de Libreville porte à la connaissance de l'ensemble des citoyens et opérateurs économiques établis sur le domaine communal les informations suivantes concernant : ${s}.`,
+            `Cette mesure vise à améliorer le cadre de vie des populations et à renforcer la gouvernance locale.`,
+            `Les services municipaux compétents sont chargés de l'application et du suivi de la présente communication.`,
+            `Pour toute information complémentaire, les intéressés sont priés de se rapprocher du Cabinet du Maire.`
+        ],
+        'note_service': (s) => [
+            `La présente note a pour objet de porter à votre attention les dispositions relatives à : ${s}.`,
+            `Il est demandé à l'ensemble des agents concernés de prendre les mesures nécessaires pour la mise en application effective de ces dispositions.`,
+            `Les chefs de service veilleront à la stricte observation de ces instructions dans leurs entités respectives.`,
+            `J'attache du prix à la stricte application de la présente Note de Service.`
+        ],
+        'arrete': (s) => [
+            `Vu la Constitution ;`,
+            `Vu la Loi Organique relative à la décentralisation ;`,
+            `Vu le Code Général des Collectivités Locales ;`,
+            `Considérant la nécessité de réglementer : ${s} ;`,
+            ``,
+            `ARRÊTE :`,
+            ``,
+            `Article 1. – Les dispositions relatives à ${s.toLowerCase()} sont définies conformément aux termes du présent arrêté.`,
+            `Article 2. – Les contrevenants aux dispositions du présent arrêté s'exposent aux sanctions prévues par les textes en vigueur.`,
+            `Article 3. – Le présent arrêté sera enregistré, publié et communiqué partout où besoin sera.`
+        ],
+        'lettre': (s, r) => [
+            `${r ? `Monsieur/Madame ${r},` : 'Monsieur le Destinataire,'}`,
+            ``,
+            `J'ai l'honneur de vous adresser la présente correspondance relative à : ${s}.`,
+            ``,
+            `Cette démarche s'inscrit dans le cadre de nos attributions et vise à renforcer notre collaboration institutionnelle.`,
+            ``,
+            `Je reste à votre disposition pour tout complément d'information que vous jugerez nécessaire.`,
+            ``,
+            `Je vous prie d'agréer, ${r ? `Monsieur/Madame ${r}` : 'Monsieur le Destinataire'}, l'expression de ma haute considération.`
+        ],
+        'courrier': (s, r) => [
+            `${r ? `Monsieur/Madame ${r},` : 'Monsieur le Destinataire,'}`,
+            ``,
+            `J'ai l'honneur de vous adresser la présente correspondance relative à : ${s}.`,
+            ``,
+            `Cette démarche s'inscrit dans le cadre de nos attributions et vise à renforcer notre collaboration institutionnelle.`,
+            ``,
+            `Je reste à votre disposition pour tout complément d'information que vous jugerez nécessaire.`,
+            ``,
+            `Je vous prie d'agréer, ${r ? `Monsieur/Madame ${r}` : 'Monsieur le Destinataire'}, l'expression de ma haute considération.`
+        ],
+        'convocation': (s, r) => [
+            `${r ? `Monsieur/Madame ${r},` : 'Monsieur le Destinataire,'}`,
+            ``,
+            `Vous êtes convié(e) à une réunion portant sur : ${s}.`,
+            ``,
+            `Votre présence est vivement souhaitée et contribuera à la réussite de cette rencontre.`,
+            ``,
+            `En cas d'empêchement, veuillez nous en informer dans les plus brefs délais.`
+        ],
+        'attestation': (s) => [
+            `Je soussigné, Maire de la Commune de Libreville,`,
+            ``,
+            `Atteste que : ${s}.`,
+            ``,
+            `La présente attestation est délivrée pour servir et valoir ce que de droit.`
+        ]
+    };
+
+    // Utiliser le template correspondant ou le template générique
+    const generator = templates[normalizedType] || templates['lettre'];
+    return generator(subject, recipient);
 }
 
 const MessageBubble: React.FC<{
@@ -773,71 +852,178 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                     try {
                         let blob: Blob, url: string, filename: string;
 
+                        // Générer un contenu par défaut si content_points est vide
+                        let contentPoints: string[] = args.content_points || [];
+                        if (contentPoints.length === 0 && args.subject) {
+                            // Générer un contenu intelligent basé sur le sujet
+                            contentPoints = generateDefaultContent(args.type, args.subject, args.recipient);
+                            console.log('📝 [generateDocument] Contenu généré automatiquement:', contentPoints);
+                        }
+
+                        // Mapper le type vers MunicipalDocumentType
+                        const municipalTypeMap: Record<string, MunicipalDocumentType> = {
+                            'communique': 'communique',
+                            'communiqué': 'communique',
+                            'note': 'note_service',
+                            'note_service': 'note_service',
+                            'note de service': 'note_service',
+                            'arrete': 'arrete',
+                            'arrêté': 'arrete',
+                            'decision': 'decision',
+                            'décision': 'decision',
+                            'convocation': 'convocation',
+                            'attestation': 'attestation',
+                            'lettre': 'lettre',
+                            'courrier': 'lettre',
+                            'correspondance': 'lettre'
+                        };
+
+                        const municipalType = municipalTypeMap[args.type?.toLowerCase()] || 'lettre';
+                        const isMunicipalDocument = Object.keys(municipalTypeMap).includes(args.type?.toLowerCase());
+
                         if (requestedFormat === 'docx') {
-                            // Génération DOCX locale sans upload vers Supabase
+                            // Génération DOCX locale
                             console.log('📄 [generateDOCX] Génération locale du DOCX');
 
-                            const { Document, Paragraph, AlignmentType, HeadingLevel, Packer } = await import('docx');
+                            const { Document, Paragraph, AlignmentType, HeadingLevel, Packer, TextRun, Table, TableRow, TableCell, WidthType, BorderStyle } = await import('docx');
 
-                            const title = `${args.type} - ${args.recipient}`;
-                            const contentPoints = args.content_points || [];
-
+                            // Créer un DOCX conforme à la charte municipale
                             const doc = new Document({
                                 sections: [{
                                     properties: {},
                                     children: [
+                                        // En-tête tripartite simulé
                                         new Paragraph({
-                                            text: "RÉPUBLIQUE GABONAISE",
-                                            heading: HeadingLevel.HEADING_1,
-                                            alignment: AlignmentType.CENTER,
+                                            children: [
+                                                new TextRun({ text: "PROVINCE DE L'ESTUAIRE", size: 20 }),
+                                            ],
+                                            alignment: AlignmentType.LEFT,
                                         }),
                                         new Paragraph({
-                                            text: title,
-                                            heading: HeadingLevel.HEADING_2,
-                                            alignment: AlignmentType.CENTER,
-                                            spacing: { before: 400, after: 400 },
+                                            children: [
+                                                new TextRun({ text: "COMMUNE DE LIBREVILLE", size: 20 }),
+                                            ],
+                                            alignment: AlignmentType.LEFT,
                                         }),
                                         new Paragraph({
-                                            text: `Destinataire: ${args.recipient}`,
-                                            spacing: { before: 200, after: 200 },
-                                        }),
-                                        new Paragraph({
-                                            text: `Objet: ${args.subject}`,
+                                            children: [
+                                                new TextRun({ text: "CABINET DU MAIRE", size: 20, bold: true }),
+                                            ],
+                                            alignment: AlignmentType.LEFT,
                                             spacing: { after: 200 },
                                         }),
                                         new Paragraph({
-                                            text: `Date: ${new Date().toLocaleDateString('fr-FR')}`,
+                                            children: [
+                                                new TextRun({ text: "REPUBLIQUE GABONAISE", size: 24, bold: true }),
+                                            ],
+                                            alignment: AlignmentType.RIGHT,
+                                        }),
+                                        new Paragraph({
+                                            children: [
+                                                new TextRun({ text: "Union - Travail - Justice", size: 20, italics: true }),
+                                            ],
+                                            alignment: AlignmentType.RIGHT,
                                             spacing: { after: 400 },
                                         }),
+                                        // Titre
+                                        new Paragraph({
+                                            children: [
+                                                new TextRun({ text: municipalType.toUpperCase().replace('_', ' DE '), size: 32, bold: true, underline: {} }),
+                                            ],
+                                            alignment: AlignmentType.CENTER,
+                                            spacing: { before: 400, after: 400 },
+                                        }),
+                                        // Objet si présent
+                                        ...(args.subject ? [
+                                            new Paragraph({
+                                                children: [
+                                                    new TextRun({ text: "Objet : ", bold: true }),
+                                                    new TextRun({ text: args.subject, italics: true }),
+                                                ],
+                                                spacing: { after: 300 },
+                                            })
+                                        ] : []),
+                                        // Contenu
                                         ...contentPoints.map((point: string) =>
                                             new Paragraph({
                                                 text: point,
+                                                alignment: AlignmentType.JUSTIFIED,
                                                 spacing: { before: 200, after: 200 },
                                             })
                                         ),
+                                        // Signature
+                                        new Paragraph({
+                                            text: `Fait à Libreville, le ${new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}`,
+                                            alignment: AlignmentType.RIGHT,
+                                            spacing: { before: 600 },
+                                        }),
+                                        new Paragraph({
+                                            children: [
+                                                new TextRun({ text: "Le Maire de la Commune de Libreville,", bold: true }),
+                                            ],
+                                            alignment: AlignmentType.RIGHT,
+                                            spacing: { before: 200 },
+                                        }),
+                                        new Paragraph({
+                                            text: "",
+                                            spacing: { before: 600 },
+                                        }),
+                                        new Paragraph({
+                                            children: [
+                                                new TextRun({ text: "Eugène MBA", bold: true, underline: {} }),
+                                            ],
+                                            alignment: AlignmentType.RIGHT,
+                                        }),
                                     ],
                                 }],
                             });
 
                             blob = await Packer.toBlob(doc);
-                            filename = `${args.type}_${args.recipient.replace(/\s+/g, '_')}_${Date.now()}.docx`;
+                            filename = `${municipalType}_${Date.now()}.docx`;
                             url = URL.createObjectURL(blob);
 
                             console.log('✅ [generateDOCX] Document généré:', filename);
                         } else {
-                            // Génération PDF existante
-                            const pdfResult = await generateOfficialPDFWithURL({
-                                type: args.type,
-                                recipient: args.recipient,
-                                subject: args.subject,
-                                content_points: args.content_points || [],
-                                signature_authority: args.signature_authority,
-                                serviceContext: args.service_context
-                            });
+                            // Génération PDF avec le nouveau service municipal
+                            if (isMunicipalDocument) {
+                                console.log('📄 [generatePDF] Utilisation du service municipal');
+                                
+                                const pdfResult = await municipalDocumentService.generateWithURL({
+                                    type: municipalType,
+                                    reference: `${Math.floor(Math.random() * 99999).toString().padStart(5, '0')}/PE/CL/CAB`,
+                                    objet: args.subject,
+                                    contenu: contentPoints,
+                                    signataire: {
+                                        fonction: 'Le Maire de la Commune de Libreville',
+                                        nom: args.signature_authority || 'Eugène MBA'
+                                    },
+                                    ampliations: municipalType === 'note_service' ? [
+                                        'Madame et Messieurs les Adjoints au Maire',
+                                        'Monsieur le Secrétaire Général',
+                                        'Mesdames et Messieurs les Directeurs Généraux',
+                                        'Intéressés',
+                                        'Affichage'
+                                    ] : undefined
+                                });
 
-                            blob = pdfResult.blob;
-                            url = pdfResult.url;
-                            filename = pdfResult.filename;
+                                blob = pdfResult.blob;
+                                url = pdfResult.url;
+                                filename = pdfResult.filename;
+                            } else {
+                                // Fallback sur l'ancien service pour les autres types
+                                const pdfResult = await generateOfficialPDFWithURL({
+                                    type: args.type,
+                                    recipient: args.recipient,
+                                    subject: args.subject,
+                                    content_points: contentPoints,
+                                    signature_authority: args.signature_authority,
+                                    serviceContext: args.service_context
+                                });
+
+                                blob = pdfResult.blob;
+                                url = pdfResult.url;
+                                filename = pdfResult.filename;
+                            }
 
                             console.log('✅ [generatePDF] Document généré:', filename);
                         }
@@ -846,13 +1032,13 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                         const docPreview = {
                             id: crypto.randomUUID(),
                             name: filename,
-                            url: url,  // URL blob pour téléchargement
+                            url: url,
                             type: requestedFormat === 'docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'application/pdf',
                         };
 
                         // Créer un message assistant dédié avec le document attaché
                         const now = new Date().toISOString();
-                        const content = `Document généré, Excellence.\n\n📄 ${args.type.toUpperCase()} pour ${args.recipient}\nObjet : ${args.subject}`;
+                        const content = `Document généré avec succès.\n\n📄 **${args.type?.toUpperCase() || 'DOCUMENT'}**\n${args.recipient ? `Destinataire : ${args.recipient}\n` : ''}${args.subject ? `Objet : ${args.subject}` : ''}`;
                         const docMessage: Message = {
                             id: crypto.randomUUID(),
                             role: 'assistant',
@@ -869,12 +1055,11 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                         // Toast de succès
                         toast({
                             title: "📄 Document généré",
-                            description: `${args.type.toUpperCase()} pour ${args.recipient}`,
+                            description: `${args.type?.toUpperCase() || 'Document'} créé avec succès`,
                             duration: 3000,
                         });
 
-                        // Télécharger automatiquement le PDF au lieu de l'ouvrir (évite ERR_BLOCKED_BY_CLIENT)
-                        // Si on est en mode vocal (connecté), on télécharge auto
+                        // Télécharger automatiquement si en mode vocal
                         if (openaiRTC.isConnected) {
                             console.log('🔊 [generatePDF] Téléchargement automatique (demande vocale)');
                             setTimeout(() => {
@@ -888,10 +1073,10 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                         }
 
                     } catch (error) {
-                        console.error('❌ [generatePDF] Erreur:', error);
+                        console.error('❌ [generateDocument] Erreur:', error);
                         toast({
                             title: "Erreur de génération",
-                            description: "Impossible de créer le document PDF",
+                            description: "Impossible de créer le document",
                             variant: "destructive",
                         });
                     }
