@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Records a login attempt in the database
+ * Records a login attempt in the database and triggers security alert if needed
  */
 export async function recordLoginAttempt(
   email: string,
@@ -20,9 +20,37 @@ export async function recordLoginAttempt(
     if (error) {
       console.error("Failed to record login attempt:", error);
     }
+
+    // If login failed, check for suspicious activity and trigger alert
+    if (!success) {
+      checkAndTriggerSecurityAlert(email, ipAddress);
+    }
   } catch (err) {
     // Don't throw - logging should not break the login flow
     console.error("Error recording login attempt:", err);
+  }
+}
+
+/**
+ * Checks for suspicious activity and triggers security alert if needed
+ * This runs in the background and doesn't block the login flow
+ */
+async function checkAndTriggerSecurityAlert(email: string, ipAddress?: string): Promise<void> {
+  try {
+    const { data, error } = await supabase.functions.invoke('security-alert-login', {
+      body: { email, ip_address: ipAddress }
+    });
+
+    if (error) {
+      console.error("Error calling security alert function:", error);
+      return;
+    }
+
+    if (data?.alert_sent) {
+      console.log("Security alert sent for email:", email);
+    }
+  } catch (err) {
+    console.error("Error triggering security alert:", err);
   }
 }
 
