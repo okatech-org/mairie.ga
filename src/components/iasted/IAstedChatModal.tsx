@@ -60,6 +60,7 @@ interface IAstedChatModalProps {
     onClearPendingDocument?: () => void;
     currentVoice?: 'echo' | 'ash' | 'shimmer';
     systemPrompt?: string;
+    userRole?: string;
 }
 
 const MessageBubble: React.FC<{

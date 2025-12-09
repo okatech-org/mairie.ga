@@ -1279,6 +1279,7 @@ export default function IAstedInterface({
                 systemPrompt={formattedSystemPrompt}
                 pendingDocument={pendingDocument}
                 onClearPendingDocument={() => setPendingDocument(null)}
+                userRole={userRole}
             />
         </>
     );
