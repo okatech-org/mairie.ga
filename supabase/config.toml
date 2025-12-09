@@ -20,3 +20,6 @@ verify_jwt = true
 
 [functions.security-alert-login]
 verify_jwt = false
+
+[functions.new-device-alert]
+verify_jwt = false
