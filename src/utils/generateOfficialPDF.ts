@@ -1,7 +1,16 @@
+/**
+ * Génère des documents PDF officiels pour la Mairie de Libreville
+ * Respecte la charte graphique municipale gabonaise
+ * 
+ * Structure du Header (Tripartite) :
+ * - Gauche: PROVINCE DE L'ESTUAIRE / COMMUNE DE LIBREVILLE / CABINET DU MAIRE + N° Référence
+ * - Centre: Logo/Armoiries de Libreville
+ * - Droite: RÉPUBLIQUE GABONAISE / Union - Travail - Justice
+ */
+
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import { supabase } from '@/integrations/supabase/client';
-// import emblemGabon from '@/assets/emblem_gabon.png'; // Commented out as asset might be missing
 
 // Flag pour s'assurer qu'on initialise qu'une seule fois
 let fontsInitialized = false;
@@ -11,7 +20,7 @@ async function getBase64ImageFromURL(url: string): Promise<string> {
     return new Promise((resolve, reject) => {
         const timeoutId = setTimeout(() => {
             reject(new Error(`Image load timeout for ${url}`));
-        }, 5000); // 5s timeout
+        }, 5000);
 
         const img = new Image();
         img.setAttribute('crossOrigin', 'anonymous');
@@ -44,21 +53,15 @@ async function getBase64ImageFromURL(url: string): Promise<string> {
 // Fonction pour initialiser les fonts de manière lazy
 function initializeFonts() {
     if (!fontsInitialized) {
-        // Debug logging
         console.log('Initializing PDFMake fonts...');
 
         let vfs: any = undefined;
 
-        // Check if pdfFonts IS the vfs (contains font files directly)
         if (pdfFonts && Object.keys(pdfFonts).some(k => k.endsWith('.ttf'))) {
             vfs = pdfFonts;
-        }
-        // Check if pdfFonts.default IS the vfs
-        else if ((pdfFonts as any).default && Object.keys((pdfFonts as any).default).some((k: string) => k.endsWith('.ttf'))) {
+        } else if ((pdfFonts as any).default && Object.keys((pdfFonts as any).default).some((k: string) => k.endsWith('.ttf'))) {
             vfs = (pdfFonts as any).default;
-        }
-        // Standard paths
-        else {
+        } else {
             vfs = (pdfFonts as any).pdfMake?.vfs
                 || (pdfFonts as any).vfs
                 || (pdfFonts as any).default?.pdfMake?.vfs
@@ -68,9 +71,8 @@ function initializeFonts() {
 
         if (vfs) {
             (pdfMake as any).vfs = vfs;
-            console.log('PDFMake VFS assigned successfully. Keys:', Object.keys(vfs).slice(0, 3));
+            console.log('PDFMake VFS assigned successfully.');
 
-            // Configuration des polices
             (pdfMake as any).fonts = {
                 Roboto: {
                     normal: 'Roboto-Regular.ttf',
@@ -78,7 +80,6 @@ function initializeFonts() {
                     italics: 'Roboto-Italic.ttf',
                     bolditalics: 'Roboto-MediumItalic.ttf'
                 },
-                // Mapping de Times vers Roboto (fallback)
                 Times: {
                     normal: 'Roboto-Regular.ttf',
                     bold: 'Roboto-Medium.ttf',
@@ -89,85 +90,91 @@ function initializeFonts() {
 
             fontsInitialized = true;
         } else {
-            console.error('CRITICAL: Failed to find PDFMake VFS. Fonts may not load. pdfFonts keys:', Object.keys(pdfFonts));
+            console.error('CRITICAL: Failed to find PDFMake VFS.');
         }
     }
 }
 
-interface DocumentData {
-    type: 'lettre' | 'decret' | 'rapport' | 'circulaire' | 'note' | 'nomination' | 'communique';
-    recipient: string;
+// Types de documents municipaux
+export interface DocumentData {
+    type: 'lettre' | 'communique' | 'note_service' | 'arrete' | 'deliberation' | 'rapport' | 'attestation' | 'certificat' | 'convocation' | 'note' | 'decret' | 'circulaire' | 'nomination';
+    recipient?: string;
+    recipientOrg?: string;
     subject: string;
+    object?: string;
     content_points?: string[];
     signature_authority?: string;
+    signature_name?: string;
     reference?: string;
     date?: string;
-    serviceContext?: string; // e.g., 'president', 'admin', 'courrier'
-    templateStyle?: 'standard_modern' | 'executive_dynamic' | 'solemn_prestige'; // New parameter
+    serviceContext?: string;
+    ampliations?: string[];
 }
 
-interface ServiceSettings {
-    header_text: string;
-    sub_header_text: string;
-    footer_text: string;
+interface MunicipalSettings {
+    province: string;
+    commune: string;
+    cabinet: string;
+    republic: string;
+    motto: string;
+    signature_default_title: string;
+    footer_address: string;
+    footer_email: string;
     logo_url: string;
-    margins: { top: number; bottom: number; left: number; right: number };
     primary_color: string;
-    secondary_color: string;
 }
 
-const DEFAULT_SETTINGS: ServiceSettings = {
-    header_text: 'RÉPUBLIQUE GABONAISE',
-    sub_header_text: 'Unité - Travail - Justice',
-    footer_text: 'Avenue Président Omar Bongo Ondimba - BP 546 - Libreville - Gabon',
-    logo_url: '',
-    margins: { top: 60, bottom: 60, left: 60, right: 60 },
-    primary_color: '#1e3a8a',
-    secondary_color: '#64748b'
+const DEFAULT_MUNICIPAL_SETTINGS: MunicipalSettings = {
+    province: 'PROVINCE DE L\'ESTUAIRE',
+    commune: 'COMMUNE DE LIBREVILLE',
+    cabinet: 'CABINET DU MAIRE',
+    republic: 'RÉPUBLIQUE GABONAISE',
+    motto: 'Union - Travail - Justice',
+    signature_default_title: 'Le Maire de la Commune de Libreville',
+    footer_address: 'BP : 44 Boulevard Triomphal/LBV',
+    footer_email: 'E-mail : mairiedelibreville@gmail.com',
+    logo_url: '/assets/logo_libreville.png',
+    primary_color: '#1e3a8a'
 };
 
-async function fetchServiceSettings(serviceRole: string): Promise<ServiceSettings> {
+async function fetchMunicipalSettings(serviceRole: string): Promise<MunicipalSettings> {
     try {
-        const { data, error } = await supabase
+        const { data } = await supabase
             .from('service_document_settings' as any)
             .select('*')
             .eq('service_role', serviceRole)
             .single();
 
         if (data) {
-            const settings = data as any;
+            const s = data as any;
             return {
-                header_text: settings.header_text || DEFAULT_SETTINGS.header_text,
-                sub_header_text: settings.sub_header_text || DEFAULT_SETTINGS.sub_header_text,
-                footer_text: settings.footer_text || DEFAULT_SETTINGS.footer_text,
-                logo_url: settings.logo_url || '',
-                margins: settings.margins ? {
-                    top: Number(settings.margins.top) * 2.83, // Convert mm to points (approx)
-                    bottom: Number(settings.margins.bottom) * 2.83,
-                    left: Number(settings.margins.left) * 2.83,
-                    right: Number(settings.margins.right) * 2.83
-                } : DEFAULT_SETTINGS.margins,
-                primary_color: settings.primary_color || DEFAULT_SETTINGS.primary_color,
-                secondary_color: settings.secondary_color || DEFAULT_SETTINGS.secondary_color
+                province: s.province || DEFAULT_MUNICIPAL_SETTINGS.province,
+                commune: s.commune || DEFAULT_MUNICIPAL_SETTINGS.commune,
+                cabinet: s.cabinet || DEFAULT_MUNICIPAL_SETTINGS.cabinet,
+                republic: s.republic || DEFAULT_MUNICIPAL_SETTINGS.republic,
+                motto: s.motto || DEFAULT_MUNICIPAL_SETTINGS.motto,
+                signature_default_title: s.signature_title || DEFAULT_MUNICIPAL_SETTINGS.signature_default_title,
+                footer_address: s.footer_address || DEFAULT_MUNICIPAL_SETTINGS.footer_address,
+                footer_email: s.footer_email || DEFAULT_MUNICIPAL_SETTINGS.footer_email,
+                logo_url: s.logo_url || DEFAULT_MUNICIPAL_SETTINGS.logo_url,
+                primary_color: s.primary_color || DEFAULT_MUNICIPAL_SETTINGS.primary_color
             };
         }
     } catch (e) {
-        console.warn('Failed to fetch service settings, using defaults', e);
+        console.warn('Using default municipal settings');
     }
-    return DEFAULT_SETTINGS;
+    return DEFAULT_MUNICIPAL_SETTINGS;
 }
 
 /**
- * Génère un document officiel PDF pour la Présidence Gabonaise
- * Utilise les paramètres de personnalisation du service et les styles améliorés
+ * Génère un document officiel PDF pour la Mairie de Libreville
+ * Utilise le format tripartite en-tête conforme à la charte graphique
  */
 export async function generateOfficialPDF(data: DocumentData): Promise<Blob> {
-    // Initialiser les fonts au premier appel
     initializeFonts();
 
-    const serviceRole = data.serviceContext || 'president';
-    const settings = await fetchServiceSettings(serviceRole);
-    const templateStyle = data.templateStyle || 'standard_modern'; // Default to modern
+    const serviceRole = data.serviceContext || 'maire';
+    const settings = await fetchMunicipalSettings(serviceRole);
 
     const currentDate = data.date || new Date().toLocaleDateString('fr-FR', {
         day: 'numeric',
@@ -175,310 +182,289 @@ export async function generateOfficialPDF(data: DocumentData): Promise<Blob> {
         year: 'numeric'
     });
 
-    // --- CONFIGURATION DES STYLES SELON LE TEMPLATE ---
-    let docStyles: any = {};
-    let watermark: any = null;
-    let background: any = null;
+    const referenceNum = data.reference || `N° ${Math.floor(Math.random() * 99999).toString().padStart(5, '0')}/PE/CL/CAB-DC`;
 
-    // 1. Le Républicain Moderne (Standard Amélioré)
-    if (templateStyle === 'standard_modern') {
-        docStyles = {
-            header: { fontSize: 14, bold: true, color: settings.primary_color, font: 'Roboto' },
-            subheader: { fontSize: 10, italics: true, color: settings.secondary_color, font: 'Roboto' },
-            documentType: { fontSize: 18, bold: true, alignment: 'center', margin: [0, 20, 0, 20], decoration: 'underline', color: settings.primary_color, font: 'Roboto' },
-            bodyText: { fontSize: 12, lineHeight: 1.5, alignment: 'justify', margin: [0, 10, 0, 10], font: 'Times' },
-            listItem: { fontSize: 12, lineHeight: 1.5, margin: [0, 5, 0, 5], font: 'Times' },
-            signature: { fontSize: 12, bold: true, margin: [0, 40, 0, 5], font: 'Roboto' }
-        };
-    }
-    // 2. L'Exécutif Dynamique (Style Note)
-    else if (templateStyle === 'executive_dynamic') {
-        docStyles = {
-            header: { fontSize: 12, bold: true, color: '#009E60', font: 'Roboto' }, // Vert Gabon
-            subheader: { fontSize: 9, italics: true, color: '#333333', font: 'Roboto' },
-            documentType: { fontSize: 16, bold: true, alignment: 'left', margin: [0, 10, 0, 10], color: '#009E60', font: 'Roboto' },
-            bodyText: { fontSize: 11, lineHeight: 1.3, alignment: 'left', margin: [0, 8, 0, 8], font: 'Roboto' },
-            listItem: { fontSize: 11, margin: [0, 4, 0, 4], font: 'Roboto' },
-            signature: { fontSize: 11, bold: true, margin: [0, 30, 0, 5], font: 'Roboto' }
-        };
-        // Bandeau latéral couleur drapeau (simulé par background ou marge)
-        // Pour simplifier, on mettra une ligne colorée dans le header
-    }
-    // 3. Le Solennel Prestige (Décrets)
-    else if (templateStyle === 'solemn_prestige') {
-        docStyles = {
-            header: { fontSize: 16, bold: true, color: '#000000', alignment: 'center', font: 'Times' },
-            subheader: { fontSize: 11, italics: true, color: '#444444', alignment: 'center', font: 'Times' },
-            documentType: { fontSize: 22, bold: true, alignment: 'center', margin: [0, 30, 0, 30], font: 'Times' },
-            bodyText: { fontSize: 13, lineHeight: 1.6, alignment: 'justify', margin: [0, 12, 0, 12], font: 'Times' },
-            listItem: { fontSize: 13, lineHeight: 1.6, margin: [0, 6, 0, 6], font: 'Times' },
-            signature: { fontSize: 13, bold: true, margin: [0, 50, 0, 10], alignment: 'center', font: 'Times' }
-        };
-        // Filigrane (Watermark)
-        watermark = { text: 'RÉPUBLIQUE GABONAISE', color: 'gray', opacity: 0.1, bold: true, italics: false };
-    }
-
-    // Préparer le logo (convertir en base64)
-    let logoBase64 = null;
+    // Charger le logo
+    let logoBase64: string | null = null;
     try {
-        // Utiliser le logo personnalisé s'il existe, sinon l'emblème par défaut
-        const logoUrl = settings.logo_url || ''; // emblemGabon;
-        if (logoUrl) {
-            logoBase64 = await getBase64ImageFromURL(logoUrl);
+        if (settings.logo_url) {
+            logoBase64 = await getBase64ImageFromURL(settings.logo_url);
         }
     } catch (e) {
-        console.warn('Impossible de charger le logo', e);
+        console.warn('Could not load municipal logo:', e);
     }
 
-    // --- CONSTRUCTION DU HEADER ---
-    const header = {
+    // === CONSTRUCTION DU HEADER TRIPARTITE ===
+    const buildHeader = (): any => ({
         columns: [
+            // GAUCHE: Hiérarchie administrative
             {
                 width: '*',
                 stack: [
-                    // Logo centré
-                    logoBase64 ? {
-                        image: logoBase64,
-                        width: 60,
-                        alignment: 'center',
-                        margin: [0, 0, 0, 5]
-                    } : {},
-                    { text: settings.header_text, style: 'header', alignment: templateStyle === 'executive_dynamic' ? 'left' : 'center' },
-                    { text: settings.sub_header_text, style: 'subheader', alignment: templateStyle === 'executive_dynamic' ? 'left' : 'center', margin: [0, 2, 0, 10] },
-                    templateStyle === 'executive_dynamic'
-                        ? { canvas: [{ type: 'line', x1: 0, y1: 5, x2: 515, y2: 5, lineWidth: 3, lineColor: '#FCD116' }] } // Jaune
-                        : { text: '________', alignment: 'center', margin: [0, 0, 0, 5], color: settings.primary_color },
+                    { text: settings.province, style: 'headerLeft', alignment: 'center' },
+                    { text: settings.commune, style: 'headerLeft', alignment: 'center' },
+                    { text: settings.cabinet, style: 'headerLeftBold', alignment: 'center' },
+                    { text: '', margin: [0, 8, 0, 0] },
+                    { text: referenceNum, style: 'reference', alignment: 'center' }
+                ]
+            },
+            // CENTRE: Logo/Armoiries
+            {
+                width: 100,
+                stack: logoBase64 ? [
+                    { image: logoBase64, width: 65, alignment: 'center', margin: [0, 0, 0, 0] }
+                ] : [
+                    { text: '', margin: [0, 20, 0, 20] }
+                ]
+            },
+            // DROITE: République
+            {
+                width: '*',
+                stack: [
+                    { text: settings.republic, style: 'headerRightBold', alignment: 'center' },
+                    { text: settings.motto, style: 'headerRightItalic', alignment: 'center' }
                 ]
             }
         ],
-        margin: [0, 20, 0, 30]
-    };
+        columnGap: 15,
+        margin: [0, 0, 0, 25]
+    });
 
-    // --- CONSTRUCTION DU FOOTER ---
-    const footer = (currentPage: number, pageCount: number) => {
-        return {
-            columns: [
-                { text: settings.footer_text, style: 'footer', alignment: 'center' },
-            ],
-            margin: [40, 10, 40, 20]
-        };
-    };
-
-    let documentDefinition: any = {
-        pageSize: 'A4',
-        pageMargins: [
-            settings.margins.left,
-            settings.margins.top,
-            settings.margins.right,
-            settings.margins.bottom
-        ],
-        header: header,
-        footer: footer,
-        watermark: watermark,
-        content: [],
-        styles: {
-            ...docStyles,
-            reference: {
-                fontSize: 10,
-                italics: true,
-                color: settings.secondary_color,
-                margin: [0, 0, 0, 15]
-            },
-            metaInfo: {
-                fontSize: 11,
-                margin: [0, 5, 0, 5]
-            },
-            footer: {
-                fontSize: 8,
-                color: '#94a3b8'
+    // === CONSTRUCTION DU FOOTER ===
+    const buildFooter = () => (currentPage: number, pageCount: number) => ({
+        stack: [
+            { canvas: [{ type: 'line', x1: 40, y1: 0, x2: 555, y2: 0, lineWidth: 0.5, lineColor: '#cccccc' }] },
+            {
+                text: `${settings.footer_address}\n${settings.footer_email}`,
+                alignment: 'center',
+                style: 'footer',
+                margin: [40, 8, 40, 0]
             }
-        }
-    };
+        ]
+    });
 
-    // Construction selon le type de document (Contenu)
-    // Le contenu reste le même, seul le style change
+    // === CONTENU SELON LE TYPE ===
+    let content: any[] = [buildHeader()];
+
     switch (data.type) {
-        case 'lettre':
-            documentDefinition.content = [
-                { text: 'LETTRE D\'INSTRUCTION', style: 'documentType' },
-                { text: data.reference || `Réf: ${serviceRole.toUpperCase().substring(0, 3)}/${new Date().getFullYear()}/${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`, style: 'reference', alignment: templateStyle === 'executive_dynamic' ? 'left' : 'right' },
-                { text: `Libreville, le ${currentDate}`, style: 'metaInfo', alignment: 'right' },
-                { text: '\n' },
-                { text: settings.sub_header_text || 'L\'Expéditeur', style: 'metaInfo', bold: true },
-                { text: `à`, style: 'metaInfo', margin: [0, 5, 0, 5] },
-                { text: data.recipient, style: 'metaInfo', bold: true },
-                { text: '\n' },
-                { text: `Objet : ${data.subject}`, style: 'metaInfo', bold: true },
-                { text: '\n' },
-                {
-                    text: data.content_points && data.content_points.length > 0
-                        ? `J'ai l'honneur de vous transmettre les instructions suivantes :`
-                        : `J'ai l'honneur de vous adresser cette correspondance concernant ${data.subject}.`,
-                    style: 'bodyText'
-                },
-                ...(data.content_points || []).map((point, index) => ({
-                    text: `${index + 1}. ${point}`,
-                    style: 'listItem',
-                    margin: [20, 5, 0, 5]
-                })),
-                { text: '\n' },
-                { text: `Je vous prie d'agréer, ${data.recipient}, l'expression de ma haute considération.`, style: 'bodyText' },
-                { text: '\n\n' },
-                { text: data.signature_authority || settings.sub_header_text, style: 'signature', alignment: templateStyle === 'executive_dynamic' ? 'left' : 'right' },
-            ];
-            break;
-
-        case 'decret':
-            documentDefinition.content = [
-                { text: 'DÉCRET', style: 'documentType' },
-                { text: data.reference || `N° ${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}/PR/${new Date().getFullYear()}`, style: 'reference', alignment: 'center' },
-                { text: currentDate, style: 'metaInfo', alignment: 'center' },
-                { text: '\n' },
-                { text: (data.subject || 'OBJET DU DÉCRET').toUpperCase(), style: 'metaInfo', bold: true, alignment: 'center' },
-                { text: '\n' },
-                { text: 'LE PRÉSIDENT DE LA RÉPUBLIQUE,', style: 'bodyText', bold: true, alignment: 'center' },
-                { text: '\n' },
-                { text: 'Vu la Constitution ;', style: 'listItem', margin: [20, 0, 0, 5] },
-                { text: 'Vu les textes en vigueur ;', style: 'listItem', margin: [20, 0, 0, 5] },
-                { text: '\n' },
-                { text: 'DÉCRÈTE :', style: 'bodyText', bold: true, alignment: 'center' },
-                { text: '\n' },
-                ...(data.content_points || ['Article 1. Le contenu du décret est inséré ici.']).map((point, index) => ({
-                    text: point.startsWith('Article') ? point : `Article ${index + 1}. ${point}`,
-                    style: 'listItem',
-                    margin: [0, 8, 0, 8],
-                    bold: true
-                })),
-                { text: '\n\n' },
-                { text: 'Fait à Libreville, le ' + currentDate, style: 'metaInfo', alignment: 'center' },
-                { text: '\n' },
-                { text: data.signature_authority || 'Le Président de la République', style: 'signature', alignment: 'center' },
-            ];
-            break;
-
         case 'communique':
-            documentDefinition.content = [
-                { text: 'COMMUNIQUÉ', style: 'documentType' },
-                { text: currentDate, style: 'metaInfo', alignment: 'right' },
-                { text: '\n' },
-                { text: (data.subject || 'TITRE DU COMMUNIQUÉ').toUpperCase(), style: 'header', alignment: 'center', margin: [0, 10, 0, 20] },
-                { text: '\n' },
-                ...(data.content_points || ['Texte du communiqué...']).map((point) => ({
-                    text: point,
-                    style: 'bodyText',
-                    alignment: 'justify',
-                    margin: [0, 5, 0, 5]
-                })),
-                { text: '\n\n' },
-                { text: 'La Présidence de la République', style: 'signature', alignment: 'center' },
-            ];
+            content.push({ text: 'COMMUNIQUÉ', style: 'documentTitle', decoration: 'underline' });
+            content.push({ text: '\n' });
+            if (data.content_points && data.content_points.length > 0) {
+                data.content_points.forEach(point => {
+                    content.push({ text: point, style: 'bodyText', alignment: 'justify', margin: [0, 5, 0, 5] });
+                });
+            }
+            content.push({ text: `\n\nFait à Libreville, le ${currentDate}`, alignment: 'right', style: 'bodyText' });
+            content.push({ text: '\n' });
+            content.push({ text: data.signature_authority || settings.signature_default_title + ',', alignment: 'right', style: 'signatureTitle' });
+            content.push({ text: '\n\n\n' });
+            content.push({ text: data.signature_name || '', alignment: 'right', style: 'signatureName' });
+            break;
+
+        case 'note_service':
+        case 'note':
+            content.push({ text: 'NOTE DE SERVICE', style: 'documentTitle', decoration: 'underline' });
+            content.push({ text: '\n' });
+            content.push({ text: [{ text: 'Objet : ', bold: true }, data.object || data.subject], style: 'objectLine' });
+            content.push({ text: '\n' });
+            if (data.content_points && data.content_points.length > 0) {
+                data.content_points.forEach(point => {
+                    content.push({ text: point, style: 'bodyText', alignment: 'justify', margin: [0, 5, 0, 5] });
+                });
+            }
+            content.push({ text: '\n' });
+            content.push({ text: 'J\'attache du prix à la stricte application de la présente Note de Service.', style: 'bodyText', italics: true });
+            content.push({ text: `\n\nFait à Libreville, le ${currentDate}`, alignment: 'right', style: 'bodyText' });
+            content.push({ text: '\n' });
+            content.push({ text: data.signature_authority || settings.signature_default_title + ',', alignment: 'right', style: 'signatureTitle' });
+            content.push({ text: '\n\n\n' });
+            content.push({ text: data.signature_name || '', alignment: 'right', style: 'signatureName' });
+            // Ampliations
+            if (data.ampliations && data.ampliations.length > 0) {
+                content.push({ text: '\n\nAmpliations :', style: 'ampliationsTitle' });
+                content.push({ ul: data.ampliations.map(a => ({ text: a, style: 'ampliationsItem' })), margin: [20, 5, 0, 0] });
+            }
+            break;
+
+        case 'lettre':
+        case 'circulaire':
+            content.push({ text: `Libreville, le ${currentDate}`, alignment: 'right', style: 'dateLine', margin: [0, 0, 0, 15] });
+            if (data.recipient) {
+                content.push({
+                    stack: [
+                        { text: `À l'attention de ${data.recipient}`, bold: true },
+                        data.recipientOrg ? { text: data.recipientOrg, italics: true } : {}
+                    ],
+                    margin: [0, 0, 0, 15]
+                });
+            }
+            content.push({ text: [{ text: 'Objet : ', bold: true }, data.subject], style: 'objectLine', margin: [0, 0, 0, 15] });
+            content.push({ text: 'Monsieur/Madame,', margin: [0, 0, 0, 10] });
+            if (data.content_points && data.content_points.length > 0) {
+                data.content_points.forEach(point => {
+                    content.push({ text: point, style: 'bodyText', alignment: 'justify', margin: [0, 5, 0, 5] });
+                });
+            }
+            content.push({ text: '\nVeuillez agréer, Monsieur/Madame, l\'expression de ma haute considération.', style: 'bodyText' });
+            content.push({ text: '\n\n' });
+            content.push({ text: data.signature_authority || settings.signature_default_title, alignment: 'right', style: 'signatureTitle' });
+            content.push({ text: '\n\n\n' });
+            content.push({ text: data.signature_name || '', alignment: 'right', style: 'signatureName' });
+            break;
+
+        case 'attestation':
+        case 'certificat':
+            content.push({ text: data.type === 'certificat' ? 'CERTIFICAT' : 'ATTESTATION', style: 'documentTitle', decoration: 'underline' });
+            content.push({ text: '\n\n' });
+            content.push({ text: 'Je soussigné, Maire de la Commune de Libreville, atteste que :', style: 'bodyText' });
+            content.push({ text: '\n' });
+            if (data.content_points && data.content_points.length > 0) {
+                data.content_points.forEach(point => {
+                    content.push({ text: point, style: 'bodyText', alignment: 'justify', margin: [0, 5, 0, 5] });
+                });
+            }
+            content.push({ text: '\n' });
+            content.push({ text: 'En foi de quoi, la présente attestation est délivrée pour servir et valoir ce que de droit.', style: 'bodyText', italics: true });
+            content.push({ text: `\n\nFait à Libreville, le ${currentDate}`, alignment: 'right', style: 'bodyText' });
+            content.push({ text: '\n' });
+            content.push({ text: data.signature_authority || settings.signature_default_title, alignment: 'right', style: 'signatureTitle' });
+            content.push({ text: '\n\n\n' });
+            content.push({ text: data.signature_name || '', alignment: 'right', style: 'signatureName' });
+            break;
+
+        case 'arrete':
+        case 'decret':
+        case 'deliberation':
+            content.push({ text: data.type === 'deliberation' ? 'DÉLIBÉRATION' : (data.type === 'decret' ? 'DÉCRET' : 'ARRÊTÉ'), style: 'documentTitle', decoration: 'underline' });
+            content.push({ text: '\n' });
+            content.push({ text: (data.subject || '').toUpperCase(), alignment: 'center', style: 'bodyText', bold: true });
+            content.push({ text: '\n' });
+            content.push({ text: 'LE MAIRE DE LA COMMUNE DE LIBREVILLE,', style: 'bodyText', bold: true, alignment: 'center' });
+            content.push({ text: '\n' });
+            content.push({ text: 'Vu la Constitution ;', style: 'listItem', margin: [20, 0, 0, 5] });
+            content.push({ text: 'Vu la loi organique relative à l\'administration territoriale ;', style: 'listItem', margin: [20, 0, 0, 5] });
+            content.push({ text: '\n' });
+            content.push({ text: 'ARRÊTE :', style: 'bodyText', bold: true, alignment: 'center' });
+            content.push({ text: '\n' });
+            if (data.content_points && data.content_points.length > 0) {
+                data.content_points.forEach((point, index) => {
+                    content.push({
+                        text: point.startsWith('Article') ? point : `Article ${index + 1}. ${point}`,
+                        style: 'listItem',
+                        margin: [0, 8, 0, 8],
+                        bold: true
+                    });
+                });
+            }
+            content.push({ text: `\n\nFait à Libreville, le ${currentDate}`, alignment: 'center', style: 'bodyText' });
+            content.push({ text: '\n' });
+            content.push({ text: data.signature_authority || settings.signature_default_title, alignment: 'center', style: 'signatureTitle' });
             break;
 
         case 'rapport':
-            documentDefinition.content = [
-                { text: 'RAPPORT', style: 'documentType' },
-                { text: data.subject.toUpperCase(), style: 'metaInfo', bold: true, alignment: 'center' },
-                { text: '\n' },
-                { text: `Date : ${currentDate}`, style: 'metaInfo' },
-                { text: `Destinataire : ${data.recipient}`, style: 'metaInfo' },
-                { text: '\n' },
-                { text: 'SYNTHÈSE EXÉCUTIVE', style: 'bodyText', bold: true },
-                { text: '\n' },
-                ...(data.content_points || []).map((point, index) => ({
-                    text: point,
-                    style: 'bodyText',
-                    margin: [0, 10, 0, 10]
-                })),
-                { text: '\n\n' },
-                { text: 'CONCLUSION', style: 'bodyText', bold: true },
-                { text: '\n' },
-                { text: `Ce rapport a été établi pour l'information de ${data.recipient}.`, style: 'bodyText' },
-                { text: '\n\n' },
-                { text: data.signature_authority || settings.sub_header_text, style: 'signature', alignment: 'right' },
-            ];
+            content.push({ text: 'RAPPORT', style: 'documentTitle', decoration: 'underline' });
+            content.push({ text: data.subject.toUpperCase(), alignment: 'center', style: 'bodyText', bold: true, margin: [0, 10, 0, 10] });
+            content.push({ text: `Date : ${currentDate}`, style: 'dateLine' });
+            if (data.recipient) {
+                content.push({ text: `Destinataire : ${data.recipient}`, style: 'dateLine' });
+            }
+            content.push({ text: '\n' });
+            if (data.content_points && data.content_points.length > 0) {
+                data.content_points.forEach(point => {
+                    content.push({ text: point, style: 'bodyText', alignment: 'justify', margin: [0, 10, 0, 10] });
+                });
+            }
+            content.push({ text: '\n' });
+            content.push({ text: data.signature_authority || settings.signature_default_title, alignment: 'right', style: 'signatureTitle' });
             break;
 
-        case 'circulaire':
-            documentDefinition.content = [
-                { text: 'CIRCULAIRE', style: 'documentType' },
-                { text: data.reference || `N° ${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}/PR/CIRC/${new Date().getFullYear()}`, style: 'reference' },
-                { text: currentDate, style: 'metaInfo', alignment: 'right' },
-                { text: '\n' },
-                { text: `Objet : ${data.subject}`, style: 'metaInfo', bold: true },
-                { text: `Destinataires : ${data.recipient}`, style: 'metaInfo' },
-                { text: '\n' },
-                {
-                    text: data.content_points && data.content_points.length > 0
-                        ? `Il est porté à votre connaissance les dispositions suivantes :`
-                        : `La présente circulaire a pour objet de ${data.subject}.`,
-                    style: 'bodyText'
-                },
-                { text: '\n' },
-                ...(data.content_points || []).map((point, index) => ({
-                    text: `${index + 1}. ${point}`,
-                    style: 'listItem',
-                    margin: [20, 5, 0, 5]
-                })),
-                { text: '\n\n' },
-                { text: `Ces dispositions entrent en vigueur à compter de la date de signature de la présente circulaire.`, style: 'bodyText' },
-                { text: '\n\n' },
-                { text: data.signature_authority || settings.sub_header_text, style: 'signature', alignment: 'right' },
-            ];
-            break;
-
-        case 'note':
-            documentDefinition.content = [
-                { text: 'NOTE À L\'ATTENTION DE', style: 'documentType' },
-                { text: data.recipient.toUpperCase(), style: 'metaInfo', bold: true, alignment: 'center' },
-                { text: '\n' },
-                { text: `Objet : ${data.subject}`, style: 'metaInfo', bold: true },
-                { text: `Date : ${currentDate}`, style: 'metaInfo' },
-                { text: '\n' },
-                ...(data.content_points || []).map((point) => ({
-                    text: point,
-                    style: 'bodyText'
-                })),
-                { text: '\n\n' },
-                { text: data.signature_authority || settings.sub_header_text, style: 'signature', alignment: 'right' },
-            ];
+        case 'convocation':
+            content.push({ text: 'CONVOCATION', style: 'documentTitle', decoration: 'underline' });
+            content.push({ text: '\n' });
+            if (data.recipient) {
+                content.push({ text: `À l'attention de : ${data.recipient}`, style: 'bodyText', bold: true });
+            }
+            content.push({ text: [{ text: 'Objet : ', bold: true }, data.subject], style: 'objectLine', margin: [0, 10, 0, 10] });
+            if (data.content_points && data.content_points.length > 0) {
+                data.content_points.forEach(point => {
+                    content.push({ text: point, style: 'bodyText', alignment: 'justify', margin: [0, 5, 0, 5] });
+                });
+            }
+            content.push({ text: `\n\nFait à Libreville, le ${currentDate}`, alignment: 'right', style: 'bodyText' });
+            content.push({ text: '\n' });
+            content.push({ text: data.signature_authority || settings.signature_default_title, alignment: 'right', style: 'signatureTitle' });
             break;
 
         case 'nomination':
-            documentDefinition.content = [
-                { text: 'DÉCRET DE NOMINATION', style: 'documentType' },
-                { text: data.reference || `N° ${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}/PR/NOM/${new Date().getFullYear()}`, style: 'reference', alignment: 'center' },
-                { text: currentDate, style: 'metaInfo', alignment: 'center' },
-                { text: '\n' },
-                { text: 'LE PRÉSIDENT DE LA RÉPUBLIQUE,', style: 'bodyText', bold: true, alignment: 'center' },
-                { text: '\n' },
-                { text: 'Vu la Constitution ;', style: 'listItem', margin: [20, 0, 0, 5] },
-                { text: '\n' },
-                { text: 'DÉCRÈTE :', style: 'bodyText', bold: true, alignment: 'center' },
-                { text: '\n' },
-                { text: `Article 1. ${data.recipient} est nommé(e) ${data.subject}.`, style: 'bodyText', bold: true },
-                { text: '\n' },
-                ...(data.content_points || []).map((point, index) => ({
-                    text: `Article ${index + 2}. ${point}`,
-                    style: 'listItem',
-                    margin: [0, 8, 0, 8]
-                })),
-                { text: '\n\n' },
-                { text: 'Fait à Libreville, le ' + currentDate, style: 'metaInfo', alignment: 'center' },
-                { text: '\n' },
-                { text: data.signature_authority || 'Le Président de la République', style: 'signature', alignment: 'center' },
-            ];
+            content.push({ text: 'ARRÊTÉ DE NOMINATION', style: 'documentTitle', decoration: 'underline' });
+            content.push({ text: '\n' });
+            content.push({ text: 'LE MAIRE DE LA COMMUNE DE LIBREVILLE,', style: 'bodyText', bold: true, alignment: 'center' });
+            content.push({ text: '\n' });
+            content.push({ text: 'Vu la Constitution ;', style: 'listItem', margin: [20, 0, 0, 5] });
+            content.push({ text: '\n' });
+            content.push({ text: 'ARRÊTE :', style: 'bodyText', bold: true, alignment: 'center' });
+            content.push({ text: '\n' });
+            content.push({ text: `Article 1. ${data.recipient || ''} est nommé(e) ${data.subject}.`, style: 'bodyText', bold: true });
+            if (data.content_points && data.content_points.length > 0) {
+                data.content_points.forEach((point, index) => {
+                    content.push({
+                        text: `Article ${index + 2}. ${point}`,
+                        style: 'listItem',
+                        margin: [0, 8, 0, 8]
+                    });
+                });
+            }
+            content.push({ text: `\n\nFait à Libreville, le ${currentDate}`, alignment: 'center', style: 'bodyText' });
+            content.push({ text: '\n' });
+            content.push({ text: data.signature_authority || settings.signature_default_title, alignment: 'center', style: 'signatureTitle' });
             break;
+
+        default:
+            // Format lettre par défaut
+            content.push({ text: data.subject, style: 'documentTitle' });
+            if (data.content_points && data.content_points.length > 0) {
+                data.content_points.forEach(point => {
+                    content.push({ text: point, style: 'bodyText', margin: [0, 5, 0, 5] });
+                });
+            }
+            content.push({ text: `\n\nFait à Libreville, le ${currentDate}`, alignment: 'right' });
     }
 
-    // Générer le PDF et retourner le Blob avec timeout
+    // === DOCUMENT DEFINITION ===
+    const documentDefinition: any = {
+        pageSize: 'A4',
+        pageMargins: [60, 40, 60, 80],
+        content: content,
+        footer: buildFooter(),
+        styles: {
+            headerLeft: { fontSize: 9, font: 'Roboto' },
+            headerLeftBold: { fontSize: 9, bold: true, font: 'Roboto' },
+            headerRightBold: { fontSize: 11, bold: true, font: 'Roboto' },
+            headerRightItalic: { fontSize: 9, italics: true, font: 'Roboto' },
+            reference: { fontSize: 10, color: '#000080', font: 'Roboto' },
+            documentTitle: { fontSize: 16, bold: true, alignment: 'center', margin: [0, 15, 0, 15], font: 'Roboto' },
+            objectLine: { fontSize: 12, margin: [0, 5, 0, 10], font: 'Roboto' },
+            dateLine: { fontSize: 11, font: 'Roboto' },
+            bodyText: { fontSize: 12, lineHeight: 1.4, font: 'Times' },
+            listItem: { fontSize: 12, lineHeight: 1.4, font: 'Times' },
+            signatureTitle: { fontSize: 12, bold: true, font: 'Roboto' },
+            signatureName: { fontSize: 12, bold: true, font: 'Roboto' },
+            ampliationsTitle: { fontSize: 10, bold: true, font: 'Roboto' },
+            ampliationsItem: { fontSize: 9, font: 'Roboto' },
+            footer: { fontSize: 9, color: '#666666', font: 'Roboto' }
+        },
+        defaultStyle: {
+            font: 'Roboto'
+        }
+    };
+
+    // Générer le PDF
     return new Promise((resolve, reject) => {
-        const timeoutId = setTimeout(() => {
-            reject(new Error('PDF generation timeout'));
-        }, 10000); // 10s timeout
+        const timeoutId = setTimeout(() => reject(new Error('PDF generation timeout')), 15000);
 
         try {
             const pdfDocGenerator = pdfMake.createPdf(documentDefinition);
-
             pdfDocGenerator.getBlob((blob) => {
                 clearTimeout(timeoutId);
                 resolve(blob);
@@ -497,9 +483,20 @@ export async function generateOfficialPDFWithURL(data: DocumentData): Promise<{ 
     const blob = await generateOfficialPDF(data);
     const url = URL.createObjectURL(blob);
 
-    // Générer un nom de fichier descriptif avec null-safety
-    const safeRecipient = (data.recipient || 'document').replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
-    const filename = `${data.type || 'doc'}_${safeRecipient}_${new Date().getTime()}.pdf`;
+    const typeLabels: Record<string, string> = {
+        communique: 'Communique',
+        note_service: 'Note_Service',
+        lettre: 'Lettre',
+        arrete: 'Arrete',
+        deliberation: 'Deliberation',
+        rapport: 'Rapport',
+        attestation: 'Attestation',
+        certificat: 'Certificat',
+        convocation: 'Convocation'
+    };
+
+    const safeSubject = (data.subject || 'document').replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '').substring(0, 30);
+    const filename = `${typeLabels[data.type] || 'Document'}_${safeSubject}_${new Date().getTime()}.pdf`;
 
     return { blob, url, filename };
 }
