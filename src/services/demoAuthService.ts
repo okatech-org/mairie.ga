@@ -7,6 +7,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { DemoUser } from '@/types/roles';
+import { recordLoginAttempt } from '@/services/loginAttemptService';
 
 // Standard demo password for all demo accounts
 const DEMO_PASSWORD = 'DemoGabon2025!';
@@ -87,6 +88,7 @@ export const loginDemoUser = async (user: DemoUser): Promise<{ success: boolean;
 
         if (signUpError) {
           console.error('Error creating demo account:', signUpError);
+          await recordLoginAttempt(email, false);
           return { success: false, error: 'Impossible de créer le compte démo' };
         }
 
@@ -97,6 +99,7 @@ export const loginDemoUser = async (user: DemoUser): Promise<{ success: boolean;
         });
 
         if (retryError) {
+          await recordLoginAttempt(email, false);
           // If email confirmation is required
           if (retryError.message.includes('Email not confirmed')) {
             return { 
@@ -106,19 +109,28 @@ export const loginDemoUser = async (user: DemoUser): Promise<{ success: boolean;
           }
           return { success: false, error: retryError.message };
         }
+        
+        // Success after signup
+        await recordLoginAttempt(email, true);
       } else if (signInError.message.includes('Email not confirmed')) {
+        await recordLoginAttempt(email, false);
         return { 
           success: false, 
           error: 'Email non confirmé. Désactivez "Confirm email" dans les paramètres Auth.' 
         };
       } else {
+        await recordLoginAttempt(email, false);
         return { success: false, error: signInError.message };
       }
+    } else {
+      // Successful direct login
+      await recordLoginAttempt(email, true);
     }
 
     return { success: true };
   } catch (error: any) {
     console.error('Demo login error:', error);
+    await recordLoginAttempt(email, false);
     return { success: false, error: error.message || 'Erreur de connexion' };
   }
 };
