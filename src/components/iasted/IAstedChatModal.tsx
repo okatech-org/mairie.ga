@@ -987,17 +987,26 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                             // Génération PDF avec le nouveau service municipal
                             if (isMunicipalDocument) {
                                 console.log('📄 [generatePDF] Utilisation du service municipal');
+                                console.log('📝 [generatePDF] Données:', { 
+                                    type: municipalType, 
+                                    subject: args.subject, 
+                                    contentPoints,
+                                    contentLength: contentPoints.length 
+                                });
+                                
+                                // S'assurer que contentPoints n'est pas vide
+                                const finalContent = contentPoints.length > 0 ? contentPoints : generateDefaultContent(municipalType, args.subject || 'Document officiel');
                                 
                                 const pdfResult = await municipalDocumentService.generateWithURL({
                                     type: municipalType,
                                     reference: `${Math.floor(Math.random() * 99999).toString().padStart(5, '0')}/PE/CL/CAB`,
-                                    objet: args.subject,
-                                    contenu: contentPoints,
+                                    objet: args.subject || 'Document officiel',
+                                    contenu: finalContent,
                                     signataire: {
                                         fonction: 'Le Maire de la Commune de Libreville',
                                         nom: args.signature_authority || 'Eugène MBA'
                                     },
-                                    ampliations: municipalType === 'note_service' ? [
+                                    ampliations: ['note_service', 'arrete', 'decision'].includes(municipalType) ? [
                                         'Madame et Messieurs les Adjoints au Maire',
                                         'Monsieur le Secrétaire Général',
                                         'Mesdames et Messieurs les Directeurs Généraux',
@@ -1009,6 +1018,8 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                                 blob = pdfResult.blob;
                                 url = pdfResult.url;
                                 filename = pdfResult.filename;
+                                
+                                console.log('✅ [generatePDF] Blob size:', blob.size, 'URL:', url);
                             } else {
                                 // Fallback sur l'ancien service pour les autres types
                                 const pdfResult = await generateOfficialPDFWithURL({
