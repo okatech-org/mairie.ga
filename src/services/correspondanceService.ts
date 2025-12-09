@@ -51,11 +51,22 @@ export interface SendCorrespondanceParams {
     attachmentPath?: string;
 }
 
-// Authorized roles for correspondance features
+// Authorized roles for CORRESPONDANCE features (inter-administration mail)
+// Only municipal staff can use this - NOT citizens/foreigners/visitors
 export const CORRESPONDANCE_AUTHORIZED_ROLES = [
     'MAIRE',
+    'maire',
     'MAIRE_ADJOINT',
+    'maire_adjoint',
     'SECRETAIRE_GENERAL',
+    'secretaire_general',
+    'CHEF_SERVICE',
+    'chef_service',
+    'AGENT',
+    'agent',
+    'SUPER_ADMIN',
+    'super_admin',
+    'admin',
 ];
 
 class CorrespondanceService {
