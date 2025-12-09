@@ -627,6 +627,48 @@ export type Database = {
           },
         ]
       }
+      session_history: {
+        Row: {
+          browser: string | null
+          created_at: string
+          device_info: string | null
+          id: string
+          ip_address: string | null
+          location: string | null
+          login_at: string
+          logout_at: string | null
+          os: string | null
+          session_token: string | null
+          user_id: string
+        }
+        Insert: {
+          browser?: string | null
+          created_at?: string
+          device_info?: string | null
+          id?: string
+          ip_address?: string | null
+          location?: string | null
+          login_at?: string
+          logout_at?: string | null
+          os?: string | null
+          session_token?: string | null
+          user_id: string
+        }
+        Update: {
+          browser?: string | null
+          created_at?: string
+          device_info?: string | null
+          id?: string
+          ip_address?: string | null
+          location?: string | null
+          login_at?: string
+          logout_at?: string | null
+          os?: string | null
+          session_token?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
