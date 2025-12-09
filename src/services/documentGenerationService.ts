@@ -451,8 +451,8 @@ class DocumentGenerationService {
         params.onProgress?.(50, 'Génération du PDF...');
 
         const documentDefinition = {
-            pageSize: 'A4',
-            pageMargins: [60, 40, 60, 80],
+            pageSize: 'A4' as const,
+            pageMargins: [60, 40, 60, 80] as [number, number, number, number],
             content: content,
             footer: this.buildFooter(),
             styles: {
@@ -461,8 +461,8 @@ class DocumentGenerationService {
                 headerRightBold: { fontSize: 11, bold: true, font: 'Roboto' },
                 headerRightItalic: { fontSize: 9, italics: true, font: 'Roboto' },
                 reference: { fontSize: 10, color: '#000080', font: 'Roboto' }, // Blue like stamp
-                documentTitle: { fontSize: 16, bold: true, alignment: 'center', margin: [0, 20, 0, 20], font: 'Roboto' },
-                objectLine: { fontSize: 12, margin: [0, 5, 0, 10], font: 'Roboto' },
+                documentTitle: { fontSize: 16, bold: true, alignment: 'center' as const, margin: [0, 20, 0, 20] as [number, number, number, number], font: 'Roboto' },
+                objectLine: { fontSize: 12, margin: [0, 5, 0, 10] as [number, number, number, number], font: 'Roboto' },
                 dateLine: { fontSize: 11, font: 'Roboto' },
                 bodyText: { fontSize: 12, lineHeight: 1.4, font: 'Times' },
                 signatureTitle: { fontSize: 12, bold: true, font: 'Roboto' },
