@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from 'next-themes';
 import { generateOfficialPDFWithURL } from '@/utils/generateOfficialPDF';
 import { documentGenerationService } from '@/services/documentGenerationService';
+import { canUseCorrespondance } from '@/config/iasted-prompt-lite';
 import {
     Send,
     Loader2,
@@ -441,7 +442,8 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
     pendingDocument,
     onClearPendingDocument,
     currentVoice,
-    systemPrompt
+    systemPrompt,
+    userRole = 'unknown'
 }) => {
     const [inputText, setInputText] = useState('');
     const [messages, setMessages] = useState<Message[]>([]);
@@ -745,9 +747,22 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
     const executeToolCall = async (toolCall: any) => {
         try {
             const args = JSON.parse(toolCall.function.arguments);
-            console.log('🔧 [executeToolCall]', toolCall.function.name, args);
+            const toolName = toolCall.function.name;
+            console.log('🔧 [executeToolCall]', toolName, args);
 
-            switch (toolCall.function.name) {
+            // Access control: Block correspondance tools for non-municipal staff
+            const CORRESPONDANCE_TOOLS = ['read_correspondence', 'file_correspondence', 'create_correspondence', 'send_correspondence'];
+            if (CORRESPONDANCE_TOOLS.includes(toolName) && !canUseCorrespondance(userRole)) {
+                console.warn(`🚫 [executeToolCall] Access denied for ${toolName} - role: ${userRole}`);
+                toast({
+                    title: "Accès refusé",
+                    description: "La fonctionnalité Correspondances est réservée au personnel municipal.",
+                    variant: "destructive",
+                });
+                return;
+            }
+
+            switch (toolName) {
                 case 'navigate_app':
                     toast({
                         title: "Navigation",
@@ -1055,7 +1070,7 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                     break;
 
                 default:
-                    console.warn('⚠️ [executeToolCall] Outil non reconnu:', toolCall.function.name);
+                    console.warn('⚠️ [executeToolCall] Outil non reconnu:', toolName);
             }
         } catch (error) {
             console.error('❌ [executeToolCall] Erreur:', error);
