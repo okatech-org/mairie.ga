@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { LogoutConfirmDialog } from "@/components/auth/LogoutConfirmDialog";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,40 +66,61 @@ export const Header = () => {
             {t('header.news')}
           </Link>
 
-          {isSimulating && currentUser && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center gap-2 cursor-pointer group">
-                  <Badge 
-                    variant="outline" 
-                    className="bg-amber-500/10 border-amber-500/50 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 transition-colors animate-pulse"
-                  >
-                    <TestTube2 className="h-3.5 w-3.5 mr-1.5" />
-                    <span className="font-medium">DÉMO</span>
-                    <span className="mx-1.5 text-amber-500/50">|</span>
-                    <span>{currentUser.badge}</span>
-                    <span className="ml-1">{currentUser.name}</span>
-                  </Badge>
-                  <button 
-                    onClick={clearSimulation}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded-full"
-                  >
-                    <XCircle className="h-4 w-4 text-destructive" />
-                  </button>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-xs">
-                <div className="text-sm">
-                  <p className="font-medium">Mode Démonstration Actif</p>
-                  <p className="text-muted-foreground text-xs mt-1">
-                    Rôle: {currentUser.role}
-                    {currentEntity && ` • ${currentEntity.metadata?.city || currentEntity.name}`}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">Cliquez sur ✕ pour quitter</p>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          )}
+          <AnimatePresence mode="wait">
+            {isSimulating && currentUser && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8, x: 20 }}
+                animate={{ opacity: 1, scale: 1, x: 0 }}
+                exit={{ opacity: 0, scale: 0.8, x: -20 }}
+                transition={{ 
+                  type: "spring", 
+                  stiffness: 300, 
+                  damping: 25,
+                  duration: 0.3 
+                }}
+              >
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-2 cursor-pointer group">
+                      <Badge 
+                        variant="outline" 
+                        className="bg-amber-500/10 border-amber-500/50 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
+                      >
+                        <motion.div
+                          animate={{ rotate: [0, -10, 10, -10, 0] }}
+                          transition={{ duration: 0.5, delay: 0.3 }}
+                        >
+                          <TestTube2 className="h-3.5 w-3.5 mr-1.5" />
+                        </motion.div>
+                        <span className="font-medium">DÉMO</span>
+                        <span className="mx-1.5 text-amber-500/50">|</span>
+                        <span>{currentUser.badge}</span>
+                        <span className="ml-1">{currentUser.name}</span>
+                      </Badge>
+                      <motion.button 
+                        onClick={clearSimulation}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded-full"
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                      >
+                        <XCircle className="h-4 w-4 text-destructive" />
+                      </motion.button>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-xs">
+                    <div className="text-sm">
+                      <p className="font-medium">Mode Démonstration Actif</p>
+                      <p className="text-muted-foreground text-xs mt-1">
+                        Rôle: {currentUser.role}
+                        {currentEntity && ` • ${currentEntity.metadata?.city || currentEntity.name}`}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">Cliquez sur ✕ pour quitter</p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {authUser ? (
             <DropdownMenu>
@@ -167,27 +189,44 @@ export const Header = () => {
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-border/40 bg-background/95 backdrop-blur-sm">
           <nav className="container mx-auto py-4 flex flex-col gap-4">
-            {isSimulating && currentUser && (
-              <div className="flex items-center justify-between gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-                <div className="flex items-center gap-2 text-sm">
-                  <TestTube2 className="h-4 w-4 text-amber-600" />
-                  <span className="font-medium text-amber-700 dark:text-amber-400">DÉMO</span>
-                  <span className="text-amber-600">{currentUser.badge}</span>
-                  <span className="font-medium">{currentUser.name}</span>
-                  {currentEntity && (
-                    <span className="text-xs text-muted-foreground">
-                      • 🇬🇦 {currentEntity.metadata?.city || currentEntity.name}
-                    </span>
-                  )}
-                </div>
-                <button 
-                  onClick={() => { clearSimulation(); setMobileMenuOpen(false); }}
-                  className="p-1 hover:bg-destructive/10 rounded-full"
+            <AnimatePresence mode="wait">
+              {isSimulating && currentUser && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                  animate={{ opacity: 1, height: "auto", marginBottom: 16 }}
+                  exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  className="overflow-hidden"
                 >
-                  <XCircle className="h-4 w-4 text-destructive" />
-                </button>
-              </div>
-            )}
+                  <div className="flex items-center justify-between gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                    <div className="flex items-center gap-2 text-sm">
+                      <motion.div
+                        animate={{ rotate: [0, -10, 10, -10, 0] }}
+                        transition={{ duration: 0.5, delay: 0.2 }}
+                      >
+                        <TestTube2 className="h-4 w-4 text-amber-600" />
+                      </motion.div>
+                      <span className="font-medium text-amber-700 dark:text-amber-400">DÉMO</span>
+                      <span className="text-amber-600">{currentUser.badge}</span>
+                      <span className="font-medium">{currentUser.name}</span>
+                      {currentEntity && (
+                        <span className="text-xs text-muted-foreground">
+                          • 🇬🇦 {currentEntity.metadata?.city || currentEntity.name}
+                        </span>
+                      )}
+                    </div>
+                    <motion.button 
+                      onClick={() => { clearSimulation(); setMobileMenuOpen(false); }}
+                      className="p-1 hover:bg-destructive/10 rounded-full"
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                    >
+                      <XCircle className="h-4 w-4 text-destructive" />
+                    </motion.button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
             <Link
               to="/services"
               className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-2"
