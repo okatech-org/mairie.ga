@@ -147,8 +147,8 @@ export async function registerSession(userId: string, sessionToken: string, user
       console.error('Error registering active session:', error);
     }
 
-    // Insert into session history
-    const { error: historyError } = await supabase
+    // Insert into session history (using any to bypass type generation delay)
+    const { error: historyError } = await (supabase as any)
       .from('session_history')
       .insert({
         user_id: userId,
@@ -200,7 +200,7 @@ export async function getUserSessions(userId: string): Promise<ActiveSession[]> 
 
 // Get session history for a user
 export async function getSessionHistory(userId: string): Promise<SessionHistoryItem[]> {
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from('session_history')
     .select('*')
     .eq('user_id', userId)
@@ -211,7 +211,7 @@ export async function getSessionHistory(userId: string): Promise<SessionHistoryI
     return [];
   }
 
-  return data as SessionHistoryItem[];
+  return (data || []) as SessionHistoryItem[];
 }
 
 // Get all active sessions (for super admin)
@@ -241,7 +241,7 @@ export async function terminateSession(sessionId: string): Promise<boolean> {
 
   if (sessionData) {
     // Mark as logged out in history
-    await supabase
+    await (supabase as any)
       .from('session_history')
       .update({ logout_at: new Date().toISOString() })
       .eq('session_token', sessionData.session_token);
@@ -271,7 +271,7 @@ export async function terminateOtherSessions(userId: string, currentSessionToken
 
   if (otherSessions && otherSessions.length > 0) {
     const tokens = otherSessions.map(s => s.session_token);
-    await supabase
+    await (supabase as any)
       .from('session_history')
       .update({ logout_at: new Date().toISOString() })
       .in('session_token', tokens);
@@ -295,7 +295,7 @@ export async function terminateOtherSessions(userId: string, currentSessionToken
 export async function removeCurrentSession(sessionToken: string): Promise<void> {
   try {
     // Update history with logout time
-    await supabase
+    await (supabase as any)
       .from('session_history')
       .update({ logout_at: new Date().toISOString() })
       .eq('session_token', sessionToken);
