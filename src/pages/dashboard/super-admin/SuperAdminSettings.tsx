@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Save, AlertTriangle, Bell, Shield, Database, Mail, RefreshCw, XCircle, CheckCircle2, Bot } from "lucide-react";
+import { Save, AlertTriangle, Bell, Shield, Database, Mail, RefreshCw, XCircle, CheckCircle2, Bot, Clock } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { IAstedOptimizerStats } from "@/components/iasted/IAstedOptimizerStats";
+import { useSessionConfigStore, InactivityTimeout } from "@/stores/sessionConfigStore";
+import { toast as sonnerToast } from "sonner";
+
+const INACTIVITY_OPTIONS: { value: InactivityTimeout; label: string }[] = [
+    { value: 0, label: 'Désactivé' },
+    { value: 5, label: '5 minutes' },
+    { value: 15, label: '15 minutes' },
+    { value: 30, label: '30 minutes' },
+    { value: 60, label: '1 heure' },
+];
 
 // Types
 interface SettingsState {
@@ -56,6 +66,7 @@ const ROLES_MATRIX = [
 
 export default function SuperAdminSettings() {
     const { toast } = useToast();
+    const { inactivityTimeout, setInactivityTimeout } = useSessionConfigStore();
 
     // State
     const [settings, setSettings] = useState<SettingsState>(INITIAL_SETTINGS);
@@ -64,6 +75,16 @@ export default function SuperAdminSettings() {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [isDirty, setIsDirty] = useState(false);
+
+    const handleInactivityChange = (value: string) => {
+        const timeout = parseInt(value) as InactivityTimeout;
+        setInactivityTimeout(timeout);
+        sonnerToast.success("Paramètre de session mis à jour", {
+            description: timeout === 0 
+                ? "La déconnexion automatique est désactivée." 
+                : `Déconnexion automatique après ${timeout} minutes d'inactivité.`
+        });
+    };
 
     // Check for changes
     useEffect(() => {
@@ -260,6 +281,39 @@ export default function SuperAdminSettings() {
                             </div>
                         </div>
 
+                        {/* SESSION MANAGEMENT */}
+                        <div className="neu-raised p-6 rounded-xl space-y-6">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="neu-inset p-2 rounded-full text-purple-600">
+                                    <Clock className="w-6 h-6" />
+                                </div>
+                                <h2 className="text-xl font-bold">Gestion de Session</h2>
+                            </div>
+
+                            <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50/50">
+                                <div className="space-y-0.5">
+                                    <Label className="text-base font-bold">Déconnexion automatique</Label>
+                                    <p className="text-sm text-muted-foreground">
+                                        Déconnecter les utilisateurs après une période d'inactivité pour sécuriser les comptes.
+                                    </p>
+                                </div>
+                                <Select 
+                                    value={inactivityTimeout.toString()} 
+                                    onValueChange={handleInactivityChange}
+                                >
+                                    <SelectTrigger className="w-[150px]">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {INACTIVITY_OPTIONS.map(option => (
+                                            <SelectItem key={option.value} value={option.value.toString()}>
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
                         {/* SECURITY & BACKUP */}
                         <div className="neu-raised p-6 rounded-xl space-y-6">
                             <div className="flex items-center gap-3 mb-4">
