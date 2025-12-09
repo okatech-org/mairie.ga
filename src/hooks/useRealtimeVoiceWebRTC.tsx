@@ -185,6 +185,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                 updateSession(voice, systemPrompt); // Send initial config
 
                 // Trigger iAsted to speak first (auto-greeting)
+                // Reduced latency for immediate feedback (50ms)
                 setTimeout(() => {
                     if (dc.readyState === 'open') {
                         console.log('🎙️ Triggering auto-greeting...');
@@ -656,6 +657,13 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                 instructions: fullSystemPrompt,
                 input_audio_transcription: {
                     model: 'whisper-1',
+                },
+                // VAD optimization for natural conversation (0-2s latency)
+                turn_detection: {
+                    type: 'server_vad',
+                    threshold: 0.6,
+                    prefix_padding_ms: 300,
+                    silence_duration_ms: 400
                 },
                 tools: filteredTools
             }
