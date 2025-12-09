@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import { MailSidebar } from '@/components/mail/MailSidebar';
 import { MailList } from '@/components/mail/MailList';
@@ -7,39 +7,203 @@ import { MailView } from '@/components/mail/MailView';
 import { MailComposer } from '@/components/mail/MailComposer';
 import { MOCK_CONVERSATIONS } from '@/data/mock-messages';
 import { Button } from '@/components/ui/button';
-import { Plus, Search, Menu, Mail, FolderOpen } from 'lucide-react';
+import { Plus, Search, Menu, Mail, FolderOpen, Loader2, X, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Conversation } from '@/types/messaging';
+import { toast } from 'sonner';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+// Types for filter
+type MailType = 'all' | 'OFFICIAL' | 'COMMERCIAL' | 'ASSOCIATION';
 
 export default function MessagingPage() {
     const navigate = useNavigate();
+    const location = useLocation();
+
+    // Core states
     const [currentFolder, setCurrentFolder] = useState('inbox');
     const [selectedMailId, setSelectedMailId] = useState<string | null>(null);
     const [isComposerOpen, setIsComposerOpen] = useState(false);
     const [replyTo, setReplyTo] = useState<{ subject: string; recipient: string } | undefined>(undefined);
 
-    // Filter mails based on folder (Mock Logic)
-    const mails = MOCK_CONVERSATIONS.filter(mail => {
-        if (currentFolder === 'inbox') return true; // Show all for demo
-        if (currentFolder === 'sent') return mail.lastMessage.senderId === 'current-user'; // Mock check
-        return false;
-    });
+    // Search and filter states
+    const [searchQuery, setSearchQuery] = useState('');
+    const [typeFilter, setTypeFilter] = useState<MailType>('all');
+    const [isSearching, setIsSearching] = useState(false);
 
-    const selectedMail = selectedMailId ? mails.find(m => m.id === selectedMailId) || null : null;
+    // Loading state
+    const [isLoading, setIsLoading] = useState(true);
+    const [conversations, setConversations] = useState<Conversation[]>([]);
 
-    const handleReply = () => {
+    // Initialize conversations
+    useEffect(() => {
+        const loadConversations = async () => {
+            setIsLoading(true);
+            try {
+                // Simulate API call - in production, fetch from Supabase
+                await new Promise(resolve => setTimeout(resolve, 500));
+                setConversations(MOCK_CONVERSATIONS);
+            } catch (error) {
+                console.error('Error loading conversations:', error);
+                toast.error('Erreur lors du chargement des messages');
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        loadConversations();
+    }, []);
+
+    // Handle navigation state (from iAsted or other pages)
+    useEffect(() => {
+        const state = location.state as {
+            compose?: boolean;
+            recipient?: string;
+            subject?: string;
+            body?: string;
+            openMail?: string;
+            search?: string;
+        } | null;
+
+        if (state?.compose) {
+            setIsComposerOpen(true);
+            if (state.recipient) {
+                setReplyTo({
+                    subject: state.subject || '',
+                    recipient: state.recipient,
+                });
+            }
+        }
+
+        if (state?.openMail) {
+            const mailToOpen = conversations.find(m => m.id === state.openMail);
+            if (mailToOpen) {
+                setSelectedMailId(mailToOpen.id);
+            }
+        }
+
+        if (state?.search) {
+            setSearchQuery(state.search);
+        }
+
+        // Clear location state after processing
+        if (state) {
+            window.history.replaceState({}, document.title);
+        }
+    }, [location.state, conversations]);
+
+    // Calculate unread count
+    const unreadCount = useMemo(() => {
+        return conversations.filter(c => c.unreadCount > 0).length;
+    }, [conversations]);
+
+    // Filter mails based on folder, search, and type
+    const filteredMails = useMemo(() => {
+        let mails = [...conversations];
+
+        // Filter by folder
+        switch (currentFolder) {
+            case 'inbox':
+                // All incoming messages
+                break;
+            case 'sent':
+                mails = mails.filter(mail => mail.lastMessage.senderId === 'current-user');
+                break;
+            case 'drafts':
+                // In production, filter by draft status
+                mails = [];
+                break;
+            case 'archive':
+                // In production, filter by archived status
+                mails = [];
+                break;
+            case 'trash':
+                // In production, filter by deleted status
+                mails = [];
+                break;
+            case 'spam':
+                // In production, filter by spam status
+                mails = mails.filter(mail => mail.lastMessage.isPromotional);
+                break;
+        }
+
+        // Filter by type
+        if (typeFilter !== 'all') {
+            mails = mails.filter(mail => mail.type === typeFilter);
+        }
+
+        // Filter by search query
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase().trim();
+            mails = mails.filter(mail =>
+                mail.subject.toLowerCase().includes(query) ||
+                mail.lastMessage.senderName.toLowerCase().includes(query) ||
+                mail.lastMessage.content.toLowerCase().includes(query)
+            );
+        }
+
+        return mails;
+    }, [conversations, currentFolder, searchQuery, typeFilter]);
+
+    const selectedMail = useMemo(() => {
+        if (!selectedMailId) return null;
+        return filteredMails.find(m => m.id === selectedMailId) || null;
+    }, [selectedMailId, filteredMails]);
+
+    // Handlers
+    const handleReply = useCallback(() => {
         if (selectedMail) {
             setReplyTo({
                 subject: selectedMail.subject,
-                recipient: selectedMail.lastMessage.senderName // Should be email in real app
+                recipient: `${selectedMail.lastMessage.senderId}@exemple.com`
             });
             setIsComposerOpen(true);
         }
-    };
+    }, [selectedMail]);
 
-    const handleCompose = () => {
+    const handleCompose = useCallback(() => {
         setReplyTo(undefined);
         setIsComposerOpen(true);
+    }, []);
+
+    const handleSearch = useCallback((value: string) => {
+        setSearchQuery(value);
+        setIsSearching(value.length > 0);
+    }, []);
+
+    const clearSearch = useCallback(() => {
+        setSearchQuery('');
+        setIsSearching(false);
+    }, []);
+
+    const handleSelectFolder = useCallback((folder: string) => {
+        setCurrentFolder(folder);
+        setSelectedMailId(null);
+        clearSearch();
+    }, [clearSearch]);
+
+    const handleSelectMail = useCallback((id: string) => {
+        setSelectedMailId(id);
+
+        // Mark as read (update local state - in production, call API)
+        setConversations(prev => prev.map(conv =>
+            conv.id === id ? { ...conv, unreadCount: 0 } : conv
+        ));
+    }, []);
+
+    // Type filter labels
+    const typeFilterLabels: Record<MailType, string> = {
+        'all': 'Tous les types',
+        'OFFICIAL': 'Officiels',
+        'COMMERCIAL': 'Commerciaux',
+        'ASSOCIATION': 'Associations',
     };
 
     return (
@@ -76,8 +240,8 @@ export default function MessagingPage() {
                                     </Button>
                                     <MailSidebar
                                         currentFolder={currentFolder}
-                                        onSelectFolder={setCurrentFolder}
-                                        unreadCount={2}
+                                        onSelectFolder={handleSelectFolder}
+                                        unreadCount={unreadCount}
                                     />
                                 </div>
                             </SheetContent>
@@ -88,14 +252,28 @@ export default function MessagingPage() {
                         </div>
                     </div>
 
+                    {/* Search Bar with clear button */}
                     <div className="flex-1 max-w-xl mx-4 relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
+                            value={searchQuery}
+                            onChange={(e) => handleSearch(e.target.value)}
                             placeholder="Rechercher dans tous les messages..."
-                            className="pl-10 bg-background/50 border-none shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 transition-all hover:bg-background/80"
+                            className="pl-10 pr-10 bg-background/50 border-none shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 transition-all hover:bg-background/80"
                         />
+                        {isSearching && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                                onClick={clearSearch}
+                            >
+                                <X className="w-4 h-4" />
+                            </Button>
+                        )}
                     </div>
 
+                    {/* Correspondance Button */}
                     <Button
                         className="gap-2 hidden md:flex neu-raised hover:translate-y-[-2px] transition-transform text-amber-600 font-bold relative mr-2"
                         onClick={() => navigate('/correspondance')}
@@ -107,6 +285,7 @@ export default function MessagingPage() {
                         </span>
                     </Button>
 
+                    {/* New Message Button */}
                     <Button className="gap-2 hidden md:flex neu-raised hover:text-primary" onClick={handleCompose}>
                         <Plus className="w-4 h-4" />
                         <span className="hidden lg:inline">Nouveau Message</span>
@@ -120,14 +299,17 @@ export default function MessagingPage() {
                     <div className="hidden md:flex w-48 flex-col border-r bg-background/30 p-3 gap-3">
                         {/* Action Buttons */}
                         <div className="flex flex-col gap-2">
-                            <Button className="w-full gap-2 neu-raised hover:translate-y-[-2px] transition-transform text-primary font-bold text-sm" onClick={handleCompose}>
+                            <Button
+                                className="w-full gap-2 neu-raised hover:translate-y-[-2px] transition-transform text-primary font-bold text-sm"
+                                onClick={handleCompose}
+                            >
                                 <Plus className="w-4 h-4" /> <span className="truncate">Nouveau</span>
                             </Button>
                         </div>
                         <MailSidebar
                             currentFolder={currentFolder}
-                            onSelectFolder={setCurrentFolder}
-                            unreadCount={2}
+                            onSelectFolder={handleSelectFolder}
+                            unreadCount={unreadCount}
                         />
                     </div>
 
@@ -135,17 +317,73 @@ export default function MessagingPage() {
                     <div className={`${selectedMailId ? 'hidden lg:flex' : 'flex'} w-full lg:w-[260px] xl:w-[280px] flex-col border-r bg-background/10`}>
                         <div className="p-3 border-b flex justify-between items-center bg-background/20">
                             <span className="text-sm font-medium text-muted-foreground">
-                                {mails.length} message{mails.length > 1 ? 's' : ''}
+                                {isLoading ? (
+                                    <span className="flex items-center gap-2">
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Chargement...
+                                    </span>
+                                ) : (
+                                    <>
+                                        {filteredMails.length} message{filteredMails.length > 1 ? 's' : ''}
+                                        {searchQuery && ` pour "${searchQuery}"`}
+                                    </>
+                                )}
                             </span>
-                            <Button variant="ghost" size="sm" className="h-8 text-xs">
-                                Filtrer
-                            </Button>
+
+                            {/* Filter Dropdown */}
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="h-8 text-xs gap-1">
+                                        <Filter className="w-3 h-3" />
+                                        {typeFilter !== 'all' && (
+                                            <span className="hidden sm:inline">{typeFilterLabels[typeFilter]}</span>
+                                        )}
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuLabel>Filtrer par type</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    {(Object.keys(typeFilterLabels) as MailType[]).map((type) => (
+                                        <DropdownMenuItem
+                                            key={type}
+                                            onClick={() => setTypeFilter(type)}
+                                            className={typeFilter === type ? 'bg-accent' : ''}
+                                        >
+                                            {typeFilterLabels[type]}
+                                        </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
-                        <MailList
-                            mails={mails}
-                            selectedId={selectedMailId}
-                            onSelect={setSelectedMailId}
-                        />
+
+                        {isLoading ? (
+                            <div className="flex-1 flex items-center justify-center">
+                                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                            </div>
+                        ) : filteredMails.length === 0 ? (
+                            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-2 p-4">
+                                <Mail className="w-10 h-10 opacity-20" />
+                                <p className="text-sm text-center">
+                                    {searchQuery
+                                        ? `Aucun résultat pour "${searchQuery}"`
+                                        : currentFolder === 'inbox'
+                                            ? 'Aucun message'
+                                            : `Aucun message dans ${currentFolder}`
+                                    }
+                                </p>
+                                {searchQuery && (
+                                    <Button variant="link" size="sm" onClick={clearSearch}>
+                                        Effacer la recherche
+                                    </Button>
+                                )}
+                            </div>
+                        ) : (
+                            <MailList
+                                mails={filteredMails}
+                                selectedId={selectedMailId}
+                                onSelect={handleSelectMail}
+                            />
+                        )}
                     </div>
 
                     {/* Pane 3: Reading View */}
@@ -172,13 +410,13 @@ export default function MessagingPage() {
                         )}
                     </div>
                 </div>
-            </div >
+            </div>
 
             <MailComposer
                 isOpen={isComposerOpen}
                 onClose={() => setIsComposerOpen(false)}
                 replyTo={replyTo}
             />
-        </DashboardLayout >
+        </DashboardLayout>
     );
 }
