@@ -1,7 +1,7 @@
 // @ts-ignore - Deno imports
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
 // @ts-ignore - Deno imports
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1"
 
 // Deno type declarations for Edge Functions
 declare const Deno: {
@@ -38,7 +38,10 @@ serve(async (req: Request) => {
     try {
         // SECURITY: Verify user is authenticated and has permission
         const authHeader = req.headers.get('Authorization')
+        console.log('📨 Request received, auth header present:', !!authHeader)
+        
         if (!authHeader) {
+            console.error('❌ No authorization header')
             return new Response(JSON.stringify({ success: false, error: 'Non autorisé - authentification requise' }), {
                 status: 401,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -51,8 +54,7 @@ serve(async (req: Request) => {
         // Extract the JWT token from the Authorization header
         const token = authHeader.replace('Bearer ', '').trim()
         
-        console.log('🔐 Token received, length:', token.length)
-        console.log('🔐 Token prefix:', token.substring(0, 20) + '...')
+        console.log('🔐 Token length:', token.length)
         
         // Create admin client with service role key
         const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
@@ -63,15 +65,20 @@ serve(async (req: Request) => {
         })
 
         // Verify the user's JWT token using admin privileges
-        console.log('🔍 Verifying user token...')
-        const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
-        if (authError || !user) {
-            console.error('Auth error:', authError)
+        console.log('🔍 Verifying user token with admin client...')
+        const { data: userData, error: authError } = await supabaseAdmin.auth.getUser(token)
+        
+        console.log('🔍 Auth result - user:', userData?.user?.id, 'error:', authError?.message)
+        
+        if (authError || !userData?.user) {
+            console.error('❌ Auth error:', authError?.message || 'No user found')
             return new Response(JSON.stringify({ success: false, error: 'Non autorisé - session invalide' }), {
                 status: 401,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             })
         }
+        
+        const user = userData.user
 
         // Check user roles with the same admin client
         const { data: roles, error: rolesError } = await supabaseAdmin
