@@ -18,12 +18,14 @@ import {
 export const Header = () => {
   const { t } = useTranslation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { currentUser, currentEntity, isSimulating } = useDemo();
+  const { currentUser, currentEntity, isSimulating, clearSimulation } = useDemo();
   const { user: authUser, signOut } = useAuth();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
+    // Clear both Supabase auth AND demo simulation context
     await signOut();
+    clearSimulation();
     navigate("/");
   };
 
