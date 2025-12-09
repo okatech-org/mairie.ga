@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, lazy, Suspense, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,12 +26,19 @@ import {
   MessageSquare,
   Calendar,
   Navigation,
-  Headphones
+  Headphones,
+  TestTube2
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { IAstedDemoButton } from "@/components/iasted/IAstedDemoButton";
 import { IAstedGuideInline } from "@/components/iasted/IAstedGuideInline";
 import { GabonMairiesSection } from "@/components/home/GabonMairiesSection";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
+import { DemoUserCard } from "@/components/DemoUserCard";
+import { MairieCard } from "@/components/MairieCard";
+import { MOCK_USERS, DEMO_CITIZEN_ACCOUNTS } from "@/data/mock-users";
+import { MAIRIES_GABON } from "@/data/mock-mairies-network";
 import heroImage from "@/assets/mairie-accueil.jpg";
 import serviceImage from "@/assets/service-municipal.jpg";
 import familleImage from "@/assets/famille-acte-naissance.jpg";
@@ -42,6 +49,15 @@ const GabonMairiesMap = lazy(() => import("@/components/home/GabonMairiesMap"));
 
 export default function Home() {
   const [scrollY, setScrollY] = useState(0);
+  const [showDemoModal, setShowDemoModal] = useState(false);
+
+  // Demo data
+  const adminUser = useMemo(() => MOCK_USERS.find(u => u.role === 'ADMIN'), []);
+  const demoMairies = useMemo(() =>
+    MAIRIES_GABON.filter(m =>
+      m.id === 'estuaire-libreville-centrale' ||
+      m.id === 'ogoue-maritime-port-gentil'
+    ), []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -213,12 +229,15 @@ export default function Home() {
                       Nos Services
                     </Button>
                   </Link>
-                  <Link to="/demo-portal">
-                    <Button size="lg" variant="outline" className="w-full sm:w-auto min-w-[180px] gap-2 h-12 text-base bg-amber-500/20 border-amber-400/40 text-white hover:bg-amber-500/30 backdrop-blur-sm">
-                      <Briefcase className="h-5 w-5" />
-                      Démo
-                    </Button>
-                  </Link>
+                  <Button 
+                    size="lg" 
+                    variant="outline" 
+                    className="w-full sm:w-auto min-w-[180px] gap-2 h-12 text-base bg-amber-500/20 border-amber-400/40 text-white hover:bg-amber-500/30 backdrop-blur-sm"
+                    onClick={() => setShowDemoModal(true)}
+                  >
+                    <TestTube2 className="h-5 w-5" />
+                    Démo
+                  </Button>
                   <a href="#iasted-section">
                     <Button size="lg" variant="outline" className="w-full sm:w-auto min-w-[180px] gap-2 h-12 text-base bg-violet-500/20 border-violet-400/40 text-white hover:bg-violet-500/30 backdrop-blur-sm animate-pulse hover:animate-none">
                       <Mic className="h-5 w-5" />
@@ -601,6 +620,76 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Demo Modal */}
+      <Dialog open={showDemoModal} onOpenChange={setShowDemoModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <TestTube2 className="h-5 w-5 text-amber-500" />
+              Accès Démo Rapide
+            </DialogTitle>
+            <DialogDescription>
+              Sélectionnez un compte pour tester l'application
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Super Admin */}
+            <div>
+              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <span className="text-red-500">🔴</span> Super Admin
+              </h3>
+              <div className="max-w-sm">
+                {adminUser && <DemoUserCard user={adminUser} />}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Comptes Usagers */}
+            <div>
+              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <Users className="h-4 w-4 text-primary" />
+                Comptes Usagers
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {DEMO_CITIZEN_ACCOUNTS.map(user => (
+                  <DemoUserCard key={user.id} user={user} />
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Mairies */}
+            <div>
+              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-primary" />
+                Mairies (Personnel)
+              </h3>
+              <div className="space-y-3">
+                {demoMairies.map(mairie => (
+                  <MairieCard key={mairie.id} mairie={mairie} />
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Link to full portal */}
+            <div className="text-center">
+              <Link to="/demo-portal" onClick={() => setShowDemoModal(false)}>
+                <Button variant="outline" className="gap-2">
+                  <Landmark className="h-4 w-4" />
+                  Voir toutes les mairies
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
