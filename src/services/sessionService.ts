@@ -45,23 +45,67 @@ function getDeviceInfo(): string {
   return 'Desktop';
 }
 
-// Get client IP (simplified, will be filled by edge function or API)
-async function getClientIP(): Promise<string> {
+// Get client IP and location
+async function getClientIPWithLocation(): Promise<{ ip: string; location: string | null }> {
   try {
     const response = await fetch('https://api.ipify.org?format=json');
     const data = await response.json();
-    return data.ip;
+    return { ip: data.ip, location: null };
   } catch {
-    return 'Unknown';
+    return { ip: 'Unknown', location: null };
+  }
+}
+
+// Check for new device and send alert
+async function checkNewDeviceAndAlert(
+  userId: string,
+  userEmail: string,
+  deviceInfo: string,
+  browser: string,
+  os: string,
+  ipAddress: string
+): Promise<{ isNew: boolean; location: string | null }> {
+  try {
+    const { data, error } = await supabase.functions.invoke('new-device-alert', {
+      body: {
+        user_id: userId,
+        user_email: userEmail,
+        device_info: deviceInfo,
+        browser,
+        os,
+        ip_address: ipAddress
+      }
+    });
+
+    if (error) {
+      console.error('Error checking new device:', error);
+      return { isNew: false, location: null };
+    }
+
+    console.log('New device check result:', data);
+    return { 
+      isNew: data?.is_new_device || false, 
+      location: data?.location || null 
+    };
+  } catch (err) {
+    console.error('Error in checkNewDeviceAndAlert:', err);
+    return { isNew: false, location: null };
   }
 }
 
 // Register a new session after login
-export async function registerSession(userId: string, sessionToken: string): Promise<void> {
+export async function registerSession(userId: string, sessionToken: string, userEmail?: string): Promise<void> {
   try {
     const { browser, os } = getBrowserInfo();
     const deviceInfo = getDeviceInfo();
-    const ipAddress = await getClientIP();
+    const { ip: ipAddress } = await getClientIPWithLocation();
+
+    // Check for new device and get location (also sends alert if new device)
+    let location: string | null = null;
+    if (userEmail) {
+      const result = await checkNewDeviceAndAlert(userId, userEmail, deviceInfo, browser, os, ipAddress);
+      location = result.location;
+    }
 
     // First, mark all other sessions as not current
     await supabase
@@ -79,6 +123,7 @@ export async function registerSession(userId: string, sessionToken: string): Pro
         ip_address: ipAddress,
         browser,
         os,
+        location,
         is_current: true,
         last_activity: new Date().toISOString(),
       }, {

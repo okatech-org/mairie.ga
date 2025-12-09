@@ -63,9 +63,9 @@ export function useAuth() {
             if (session?.user) {
                 setTimeout(() => {
                     fetchUserRole(session.user.id);
-                    // Register session on login
+                    // Register session on login with email for new device alerts
                     if (event === 'SIGNED_IN' && session.access_token) {
-                        registerSession(session.user.id, session.access_token);
+                        registerSession(session.user.id, session.access_token, session.user.email);
                     }
                 }, 0);
             } else {
