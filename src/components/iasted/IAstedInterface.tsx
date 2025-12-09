@@ -3,6 +3,7 @@ import { IAstedChatModal } from '@/components/iasted/IAstedChatModal';
 import IAstedPresentationWrapper from "@/components/iasted/IAstedPresentationWrapper";
 import { useRealtimeVoiceWebRTC } from '@/hooks/useRealtimeVoiceWebRTC';
 import { IASTED_SYSTEM_PROMPT } from '@/config/iasted-config';
+import { buildContextualPrompt } from '@/config/iasted-prompt-lite';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useTheme } from 'next-themes';
@@ -161,42 +162,42 @@ export default function IAstedInterface({
         : location.pathname.includes('/etranger') ? 'etranger'
             : 'choice';
 
-    // Format system prompt with context
+    // Format system prompt with full user context
     const formattedSystemPrompt = useMemo(() => {
         // Détermine si l'utilisateur est identifié ou non
         const isIdentified = userRole && userRole !== 'user' && userRole !== 'unknown';
-        const displayTitle = isIdentified ? userTitle : '';
-        const identificationMode = isIdentified ? 'DÉSACTIVÉ' : 'ACTIVÉ';
 
-        // Contexte de page actuelle
-        let pageContext = `\n\n## CONTEXTE ACTUEL\n**Page actuelle**: ${location.pathname}\n`;
+        // Build the contextualized prompt using the new function
+        let prompt = buildContextualPrompt({
+            userTitle: isIdentified ? userTitle : 'Visiteur',
+            userRole: userRole || 'unknown',
+            isConnected: isIdentified,
+            currentPage: location.pathname,
+            timeOfDay: timeOfDay,
+            userFirstName: userFirstName
+        });
 
-        // Contexte d'assistance au formulaire
+        // Add form assistance context if on registration page
         if (isOnRegistrationPage) {
             const currentStep = formAssistantStore.getCurrentStep();
             const formData = formAssistantStore.getFormData();
             const filledFields = Object.keys(formData).filter(k => formData[k]);
 
-            pageContext += `**Type de formulaire**: ${registrationFormType}\n`;
-            pageContext += `**Étape actuelle**: ${currentStep}/6\n`;
-            pageContext += `**Champs remplis**: ${filledFields.length > 0 ? filledFields.join(', ') : 'aucun'}\n`;
-            pageContext += `**Données actuelles**: ${JSON.stringify(formData)}\n\n`;
-            pageContext += `MODE ASSISTANCE FORMULAIRE ACTIF - Guidez l'utilisateur pour remplir le formulaire étape par étape.\n`;
-            pageContext += `Pour remplir: fill_form_field(field, value)\n`;
-            pageContext += `Pour naviguer: navigate_form_step(direction="next"|"previous"|"goto", step=1-6)\n`;
+            prompt += `\n\n## CONTEXTE FORMULAIRE\n`;
+            prompt += `**Type de formulaire**: ${registrationFormType}\n`;
+            prompt += `**Étape actuelle**: ${currentStep}/6\n`;
+            prompt += `**Champs remplis**: ${filledFields.length > 0 ? filledFields.join(', ') : 'aucun'}\n`;
+            prompt += `MODE ASSISTANCE FORMULAIRE ACTIF - Guidez l'utilisateur pour remplir le formulaire.\n`;
         } else if (isOnHomePage) {
-            pageContext += `\n**Mode**: Page d'accueil - L'utilisateur n'est pas encore sur un formulaire.\n`;
-            pageContext += `Si l'utilisateur veut s'inscrire, utilisez start_registration_flow(citizen_type) pour le guider vers le bon formulaire.\n`;
+            prompt += `\n\n## CONTEXTE PAGE D'ACCUEIL\n`;
+            prompt += `L'utilisateur est sur la page d'accueil. Proposez-lui les services disponibles.\n`;
         }
 
-        return IASTED_SYSTEM_PROMPT
-            .replace(/{USER_TITLE}/g, displayTitle)
-            .replace(/{CURRENT_TIME_OF_DAY}/g, timeOfDay)
-            .replace(/{APPELLATION_COURTE}/g, isIdentified ? (userTitle.split(' ').slice(-1)[0] || '') : '')
-            .replace(/{IDENTIFICATION_MODE}/g, identificationMode)
-            .replace(/{QUESTIONS_REMAINING}/g, String(questionsRemaining))
-            + pageContext;
-    }, [timeOfDay, userTitle, userRole, questionsRemaining, isOnRegistrationPage, isOnHomePage, registrationFormType, location.pathname]);
+        // Also include the full system prompt for complete tool definitions
+        prompt += `\n\n${IASTED_SYSTEM_PROMPT}`;
+
+        return prompt;
+    }, [timeOfDay, userTitle, userRole, userFirstName, isOnRegistrationPage, isOnHomePage, registrationFormType, location.pathname]);
 
     // Initialize OpenAI RTC with tool call handler
     const openaiRTC = useRealtimeVoiceWebRTC(async (toolName, args) => {

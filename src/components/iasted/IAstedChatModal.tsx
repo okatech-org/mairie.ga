@@ -462,18 +462,19 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
     const navigate = useNavigate();
     const { setTheme } = useTheme();
 
-    // Auto-start voice when modal opens
+    // Auto-start voice when modal opens - WITH CONTEXT
     useEffect(() => {
         if (isOpen) {
             // Petit délai pour laisser l'UI se monter
             const timer = setTimeout(() => {
                 if (!openaiRTC.isConnected) {
-                    openaiRTC.connect(selectedVoice);
+                    // Pass the systemPrompt so iAsted knows the user context immediately
+                    openaiRTC.connect(selectedVoice, systemPrompt);
                 }
             }, 500);
             return () => clearTimeout(timer);
         }
-    }, [isOpen, selectedVoice]); // Reconnect if voice changes while open? Maybe not automatically, let user decide.
+    }, [isOpen, selectedVoice, systemPrompt]); // Include systemPrompt in dependencies
 
     // Sync messages from OpenAI WebRTC
     useEffect(() => {
