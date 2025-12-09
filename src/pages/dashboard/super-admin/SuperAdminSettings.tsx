@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { IAstedOptimizerStats } from "@/components/iasted/IAstedOptimizerStats";
 import { useSessionConfigStore, InactivityTimeout } from "@/stores/sessionConfigStore";
 import { toast as sonnerToast } from "sonner";
+import { ActiveSessionsManager } from "@/components/auth/ActiveSessionsManager";
 
 const INACTIVITY_OPTIONS: { value: InactivityTimeout; label: string }[] = [
     { value: 0, label: 'Désactivé' },
@@ -427,7 +428,7 @@ export default function SuperAdminSettings() {
                             </div>
                         </div>
 
-                        {/* Active Sessions Info */}
+                        {/* Active Sessions Manager */}
                         <div className="neu-raised p-6 rounded-xl space-y-6">
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="neu-inset p-2 rounded-full text-orange-600">
@@ -436,11 +437,7 @@ export default function SuperAdminSettings() {
                                 <h2 className="text-xl font-bold">Sessions actives</h2>
                             </div>
 
-                            <div className="text-center py-8 text-muted-foreground">
-                                <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                                <p className="font-medium">Fonctionnalité à venir</p>
-                                <p className="text-sm">La gestion des sessions actives sera disponible prochainement.</p>
-                            </div>
+                            <ActiveSessionsManager isAdmin={true} />
                         </div>
                     </TabsContent>
 
