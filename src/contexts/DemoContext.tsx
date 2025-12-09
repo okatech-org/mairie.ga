@@ -132,7 +132,17 @@ export function DemoProvider({ children }: { children: ReactNode }) {
 export function useDemo() {
   const context = useContext(DemoContext);
   if (context === undefined) {
-    throw new Error('useDemo must be used within a DemoProvider');
+    // Return a default context instead of throwing
+    // This allows the hook to be used before the provider is mounted
+    return {
+      currentUser: null,
+      currentEntity: null,
+      currentMairie: null,
+      availableServices: [],
+      simulateUser: () => {},
+      clearSimulation: () => {},
+      isSimulating: false
+    };
   }
   return context;
 }
