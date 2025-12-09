@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      active_sessions: {
+        Row: {
+          browser: string | null
+          created_at: string
+          device_info: string | null
+          id: string
+          ip_address: string | null
+          is_current: boolean | null
+          last_activity: string
+          location: string | null
+          os: string | null
+          session_token: string
+          user_id: string
+        }
+        Insert: {
+          browser?: string | null
+          created_at?: string
+          device_info?: string | null
+          id?: string
+          ip_address?: string | null
+          is_current?: boolean | null
+          last_activity?: string
+          location?: string | null
+          os?: string | null
+          session_token: string
+          user_id: string
+        }
+        Update: {
+          browser?: string | null
+          created_at?: string
+          device_info?: string | null
+          id?: string
+          ip_address?: string | null
+          is_current?: boolean | null
+          last_activity?: string
+          location?: string | null
+          os?: string | null
+          session_token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       appointments: {
         Row: {
           agent_id: string | null
@@ -611,6 +653,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_old_sessions: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

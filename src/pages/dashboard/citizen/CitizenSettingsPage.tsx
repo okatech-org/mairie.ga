@@ -3,9 +3,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { User, Bell, Shield, Save, Clock } from 'lucide-react';
+import { User, Bell, Shield, Save, Clock, Monitor } from 'lucide-react';
 import { useSessionConfigStore, InactivityTimeout } from '@/stores/sessionConfigStore';
 import { toast } from 'sonner';
+import { ActiveSessionsManager } from '@/components/auth/ActiveSessionsManager';
 
 const timeoutOptions: { value: InactivityTimeout; label: string }[] = [
     { value: 0, label: 'Désactivé' },
@@ -103,6 +104,20 @@ export default function CitizenSettingsPage() {
                                 </SelectContent>
                             </Select>
                         </div>
+                    </div>
+
+                    {/* Active Sessions */}
+                    <div className="border-t pt-6">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                                <Monitor className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold">Appareils connectés</h3>
+                                <p className="text-sm text-muted-foreground">Gérez vos sessions actives sur tous vos appareils.</p>
+                            </div>
+                        </div>
+                        <ActiveSessionsManager />
                     </div>
                 </div>
 

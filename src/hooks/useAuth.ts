@@ -4,6 +4,7 @@ import { Session, User } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
 import { getDashboardRouteByRole, roleLabels } from "@/utils/role-routing";
 import { useDemo } from "@/contexts/DemoContext";
+import { registerSession, removeCurrentSession } from "@/services/sessionService";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
 
@@ -54,7 +55,7 @@ export function useAuth() {
         // Listen for changes
         const {
             data: { subscription },
-        } = supabase.auth.onAuthStateChange((_event, session) => {
+        } = supabase.auth.onAuthStateChange((event, session) => {
             setSession(session);
             setUser(session?.user ?? null);
             setLoading(false);
@@ -62,6 +63,10 @@ export function useAuth() {
             if (session?.user) {
                 setTimeout(() => {
                     fetchUserRole(session.user.id);
+                    // Register session on login
+                    if (event === 'SIGNED_IN' && session.access_token) {
+                        registerSession(session.user.id, session.access_token);
+                    }
                 }, 0);
             } else {
                 setUserRole(null);
@@ -73,6 +78,10 @@ export function useAuth() {
     }, []);
 
     const signOut = async () => {
+        // Remove session from active_sessions before signing out
+        if (session?.access_token) {
+            await removeCurrentSession(session.access_token);
+        }
         clearSimulation(); // Clear demo simulation on logout
         await supabase.auth.signOut();
         setUserRole(null);
