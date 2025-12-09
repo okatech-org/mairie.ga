@@ -5,6 +5,7 @@ import { GlobalSettings } from "@/components/GlobalSettings";
 import { useDemo } from "@/contexts/DemoContext";
 import { SidebarAppearance } from "@/components/SidebarAppearance";
 import { MunicipalRole } from "@/types/municipal-roles";
+import { LogoutConfirmDialog } from "@/components/auth/LogoutConfirmDialog";
 
 type NavItem = { label: string; icon: React.ElementType; path: string };
 type NavGroup = { title: string; items: NavItem[] };
@@ -376,13 +377,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     {/* Footer Sidebar */}
                     <div className="pt-4 border-t border-border/40 mt-auto space-y-3">
                         <SidebarAppearance />
-                        <button
-                            onClick={() => navigate('/')}
-                            className="neu-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-destructive hover:text-destructive transition-all"
-                        >
-                            <LogOut className="w-4 h-4 flex-shrink-0" />
-                            <span>Déconnexion</span>
-                        </button>
+                        <LogoutConfirmDialog>
+                            <button
+                                className="neu-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-destructive hover:text-destructive transition-all"
+                            >
+                                <LogOut className="w-4 h-4 flex-shrink-0" />
+                                <span>Déconnexion</span>
+                            </button>
+                        </LogoutConfirmDialog>
                     </div>
                 </aside>
 
