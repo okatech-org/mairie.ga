@@ -6,6 +6,7 @@ import { useDemo } from "@/contexts/DemoContext";
 import { GlobalSettings } from "@/components/GlobalSettings";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
+import { LogoutConfirmDialog } from "@/components/auth/LogoutConfirmDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,11 +23,8 @@ export const Header = () => {
   const { user: authUser, signOut, roleLabel } = useAuth();
   const navigate = useNavigate();
 
-  const handleSignOut = async () => {
-    // Clear both Supabase auth AND demo simulation context
-    await signOut();
-    clearSimulation();
-    navigate("/");
+  const handleMobileMenuSignOut = () => {
+    setMobileMenuOpen(false);
   };
 
   return (
@@ -107,10 +105,12 @@ export const Header = () => {
                   Tableau de bord
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Déconnexion
-                </DropdownMenuItem>
+                <LogoutConfirmDialog>
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive cursor-pointer">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Déconnexion
+                  </DropdownMenuItem>
+                </LogoutConfirmDialog>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
@@ -195,10 +195,12 @@ export const Header = () => {
                     Mon Tableau de bord
                   </Button>
                 </Link>
-                <Button variant="outline" className="w-full gap-2 text-destructive border-destructive/50 hover:bg-destructive/10" onClick={() => { handleSignOut(); setMobileMenuOpen(false); }}>
-                  <LogOut className="h-4 w-4" />
-                  Déconnexion
-                </Button>
+                <LogoutConfirmDialog>
+                  <Button variant="outline" className="w-full gap-2 text-destructive border-destructive/50 hover:bg-destructive/10" onClick={handleMobileMenuSignOut}>
+                    <LogOut className="h-4 w-4" />
+                    Déconnexion
+                  </Button>
+                </LogoutConfirmDialog>
               </>
             ) : (
               <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
