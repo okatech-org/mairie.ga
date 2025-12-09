@@ -10,17 +10,29 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Building2, Clock, Globe, Shield, Save, MapPin, Info, CheckCircle2 } from "lucide-react";
 import { MOCK_SERVICES } from "@/data/mock-services";
 import { MOCK_ORGANIZATIONS } from "@/data/mock-organizations";
 import { COUNTRY_FLAGS } from "@/types/entity";
 import { Organization, CountrySettings } from "@/types/organization";
 import { useToast } from "@/components/ui/use-toast";
+import { useSessionConfigStore, InactivityTimeout } from "@/stores/sessionConfigStore";
+import { toast as sonnerToast } from "sonner";
+
+const INACTIVITY_OPTIONS: { value: InactivityTimeout; label: string }[] = [
+    { value: 0, label: 'Désactivé' },
+    { value: 5, label: '5 minutes' },
+    { value: 15, label: '15 minutes' },
+    { value: 30, label: '30 minutes' },
+    { value: 60, label: '1 heure' },
+];
 
 export default function OrganizationSettingsPage() {
     const [searchParams] = useSearchParams();
     const orgId = searchParams.get("orgId");
     const { toast } = useToast();
+    const { inactivityTimeout, setInactivityTimeout } = useSessionConfigStore();
 
     const [organization, setOrganization] = useState<Organization | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -29,6 +41,16 @@ export default function OrganizationSettingsPage() {
 
     // Form state
     const [formData, setFormData] = useState<Partial<Organization>>({});
+
+    const handleInactivityChange = (value: string) => {
+        const timeout = parseInt(value) as InactivityTimeout;
+        setInactivityTimeout(timeout);
+        sonnerToast.success("Paramètre de session mis à jour", {
+            description: timeout === 0 
+                ? "La déconnexion automatique est désactivée." 
+                : `Déconnexion automatique après ${timeout} minutes d'inactivité.`
+        });
+    };
 
     useEffect(() => {
         if (orgId) {
@@ -206,6 +228,42 @@ export default function OrganizationSettingsPage() {
                                             </p>
                                         </div>
                                     </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Session Management Card */}
+                        <Card className="neu-raised">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Clock className="w-5 h-5 text-primary" />
+                                    Gestion de Session
+                                </CardTitle>
+                                <CardDescription>Configurez les paramètres de sécurité de session</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                                    <div className="space-y-0.5">
+                                        <Label className="text-base font-semibold">Déconnexion automatique</Label>
+                                        <p className="text-sm text-muted-foreground">
+                                            Déconnecter les utilisateurs après une période d'inactivité.
+                                        </p>
+                                    </div>
+                                    <Select 
+                                        value={inactivityTimeout.toString()} 
+                                        onValueChange={handleInactivityChange}
+                                    >
+                                        <SelectTrigger className="w-[150px]">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {INACTIVITY_OPTIONS.map(option => (
+                                                <SelectItem key={option.value} value={option.value.toString()}>
+                                                    {option.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             </CardContent>
                         </Card>
