@@ -113,7 +113,7 @@ const DEFAULT_MUNICIPAL_CONFIG: MunicipalDocumentConfig = {
     signature_title: 'Le Maire de la Commune de Libreville',
     signature_name: '', // Will be filled dynamically
     footer_address: 'BP : 44 Boulevard Triomphal/LBV',
-    footer_email: 'E-mail : mairiedelibreville@gmail.com',
+    footer_email: 'E-mail : libreville@mairie.ga',
     logo_url: '/assets/logo_libreville.png'
 };
 

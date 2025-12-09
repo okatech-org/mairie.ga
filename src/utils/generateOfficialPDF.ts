@@ -132,7 +132,7 @@ const DEFAULT_MUNICIPAL_SETTINGS: MunicipalSettings = {
     motto: 'Union - Travail - Justice',
     signature_default_title: 'Le Maire de la Commune de Libreville',
     footer_address: 'BP : 44 Boulevard Triomphal/LBV',
-    footer_email: 'E-mail : mairiedelibreville@gmail.com',
+    footer_email: 'E-mail : libreville@mairie.ga',
     logo_url: '/assets/logo_libreville.png',
     primary_color: '#1e3a8a'
 };

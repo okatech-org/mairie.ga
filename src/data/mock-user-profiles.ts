@@ -71,7 +71,7 @@ export const MOCK_USER_PROFILES: UserProfile[] = [
     firstName: 'Claire',
     lastName: 'Martin',
     nationality: 'Française',
-    email: 'claire.martin@gmail.com',
+    email: 'claire_martin@mairie.ga',
     phone: '+33 6 56 78 90 12',
     status: 'PENDING',
     visaStatus: 'SUBMITTED',
@@ -214,7 +214,7 @@ export const MOCK_USER_PROFILES: UserProfile[] = [
     firstName: 'Paul',
     lastName: 'Ango',
     nationality: 'Gabonaise',
-    email: 'paul.ango@gmail.com',
+    email: 'paul_ango@mairie.ga',
     phone: '+221 70 345 6789',
     status: 'ACTIVE',
     createdAt: '2025-11-15',
@@ -283,14 +283,14 @@ export const getUserProfileById = (id: string): UserProfile | undefined => {
 
 export const getProfileCountsByEntity = (entityId: string) => {
   const profiles = getUserProfilesByEntity(entityId);
-  
-  const gabonese = profiles.filter(p => 
+
+  const gabonese = profiles.filter(p =>
     ['RESIDENT_PERMANENT', 'ETUDIANT', 'TRAVAILLEUR', 'MINEUR', 'VISITEUR_GABONAIS'].includes(p.profileType)
   ).length;
-  
-  const visaRequests = profiles.filter(p => 
+
+  const visaRequests = profiles.filter(p =>
     p.profileType.startsWith('VISA_')
   ).length;
-  
+
   return { gabonese, visaRequests, total: profiles.length };
 };

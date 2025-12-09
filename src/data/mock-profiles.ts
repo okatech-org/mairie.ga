@@ -129,7 +129,7 @@ export const MOCK_PROFILES: MockProfile[] = [
         user_id: "user-3-uuid",
         first_name: "Paul",
         last_name: "Moussavou",
-        email: "paul.moussavou@gmail.com",
+        email: "paul_moussavou@mairie.ga",
         role: "citizen",
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
