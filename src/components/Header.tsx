@@ -19,7 +19,7 @@ export const Header = () => {
   const { t } = useTranslation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { currentUser, currentEntity, isSimulating, clearSimulation } = useDemo();
-  const { user: authUser, signOut } = useAuth();
+  const { user: authUser, signOut, roleLabel } = useAuth();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -87,13 +87,18 @@ export const Header = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
+                  <div className="flex flex-col space-y-1.5">
                     <p className="text-sm font-medium leading-none">
                       {currentUser?.name || 'Utilisateur'}
                     </p>
                     <p className="text-xs leading-none text-muted-foreground">
                       {authUser.email}
                     </p>
+                    {roleLabel && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary w-fit">
+                        {roleLabel}
+                      </span>
+                    )}
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
