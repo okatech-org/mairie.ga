@@ -14,6 +14,19 @@ export interface ActiveSession {
   is_current: boolean;
 }
 
+export interface SessionHistoryItem {
+  id: string;
+  user_id: string;
+  session_token: string | null;
+  login_at: string;
+  logout_at: string | null;
+  device_info: string | null;
+  ip_address: string | null;
+  location: string | null;
+  browser: string | null;
+  os: string | null;
+}
+
 // Detect browser info
 function getBrowserInfo(): { browser: string; os: string } {
   const ua = navigator.userAgent;
@@ -83,9 +96,9 @@ async function checkNewDeviceAndAlert(
     }
 
     console.log('New device check result:', data);
-    return { 
-      isNew: data?.is_new_device || false, 
-      location: data?.location || null 
+    return {
+      isNew: data?.is_new_device || false,
+      location: data?.location || null
     };
   } catch (err) {
     console.error('Error in checkNewDeviceAndAlert:', err);
@@ -113,7 +126,7 @@ export async function registerSession(userId: string, sessionToken: string, user
       .update({ is_current: false })
       .eq('user_id', userId);
 
-    // Insert new session
+    // Insert new active session
     const { error } = await supabase
       .from('active_sessions')
       .upsert({
@@ -131,8 +144,27 @@ export async function registerSession(userId: string, sessionToken: string, user
       });
 
     if (error) {
-      console.error('Error registering session:', error);
+      console.error('Error registering active session:', error);
     }
+
+    // Insert into session history
+    const { error: historyError } = await supabase
+      .from('session_history')
+      .insert({
+        user_id: userId,
+        session_token: sessionToken,
+        device_info: deviceInfo,
+        ip_address: ipAddress,
+        browser,
+        os,
+        location,
+        login_at: new Date().toISOString()
+      });
+
+    if (historyError) {
+      console.error('Error registering session history:', historyError);
+    }
+
   } catch (err) {
     console.error('Error in registerSession:', err);
   }
@@ -145,6 +177,7 @@ export async function updateSessionActivity(sessionToken: string): Promise<void>
       .from('active_sessions')
       .update({ last_activity: new Date().toISOString() })
       .eq('session_token', sessionToken);
+    // Note: We don't update session_history here to avoid excessive writes
   } catch (err) {
     console.error('Error updating session activity:', err);
   }
@@ -166,6 +199,22 @@ export async function getUserSessions(userId: string): Promise<ActiveSession[]> 
   return data as ActiveSession[];
 }
 
+// Get session history for a user
+export async function getSessionHistory(userId: string): Promise<SessionHistoryItem[]> {
+  const { data, error } = await supabase
+    .from('session_history')
+    .select('*')
+    .eq('user_id', userId)
+    .order('login_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching session history:', error);
+    return [];
+  }
+
+  return data as SessionHistoryItem[];
+}
+
 // Get all active sessions (for super admin)
 export async function getAllSessions(): Promise<ActiveSession[]> {
   const { data, error } = await supabase
@@ -184,6 +233,21 @@ export async function getAllSessions(): Promise<ActiveSession[]> {
 
 // Terminate a specific session
 export async function terminateSession(sessionId: string): Promise<boolean> {
+  // First get the session token to update history
+  const { data: sessionData } = await supabase
+    .from('active_sessions')
+    .select('session_token')
+    .eq('id', sessionId)
+    .single();
+
+  if (sessionData) {
+    // Mark as logged out in history
+    await supabase
+      .from('session_history')
+      .update({ logout_at: new Date().toISOString() })
+      .eq('session_token', sessionData.session_token);
+  }
+
   const { error } = await supabase
     .from('active_sessions')
     .delete()
@@ -199,6 +263,21 @@ export async function terminateSession(sessionId: string): Promise<boolean> {
 
 // Terminate all sessions except current
 export async function terminateOtherSessions(userId: string, currentSessionToken: string): Promise<boolean> {
+  // Get all other sessions to update history
+  const { data: otherSessions } = await supabase
+    .from('active_sessions')
+    .select('session_token')
+    .eq('user_id', userId)
+    .neq('session_token', currentSessionToken);
+
+  if (otherSessions && otherSessions.length > 0) {
+    const tokens = otherSessions.map(s => s.session_token);
+    await supabase
+      .from('session_history')
+      .update({ logout_at: new Date().toISOString() })
+      .in('session_token', tokens);
+  }
+
   const { error } = await supabase
     .from('active_sessions')
     .delete()
@@ -216,6 +295,13 @@ export async function terminateOtherSessions(userId: string, currentSessionToken
 // Remove current session on logout
 export async function removeCurrentSession(sessionToken: string): Promise<void> {
   try {
+    // Update history
+    await supabase
+      .from('session_history')
+      .update({ logout_at: new Date().toISOString() })
+      .eq('session_token', sessionToken);
+
+    // Remove active session
     await supabase
       .from('active_sessions')
       .delete()

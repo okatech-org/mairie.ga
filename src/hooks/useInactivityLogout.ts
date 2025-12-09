@@ -12,12 +12,13 @@ export function useInactivityLogout() {
   const { user, signOut } = useAuth();
   const { clearSimulation } = useDemo();
   const { inactivityTimeout } = useSessionConfigStore();
-  
+
   const INACTIVITY_TIMEOUT = inactivityTimeout * 60 * 1000; // Convert minutes to ms
-  
+
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const warningRef = useRef<NodeJS.Timeout | null>(null);
   const warningShownRef = useRef(false);
+  const lastActivityRef = useRef<number>(Date.now());
 
   const handleLogout = useCallback(async () => {
     await signOut();
@@ -39,10 +40,13 @@ export function useInactivityLogout() {
   }, []);
 
   const resetTimer = useCallback(() => {
+    // Update last activity timestamp
+    lastActivityRef.current = Date.now();
+
     // Clear existing timers
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     if (warningRef.current) clearTimeout(warningRef.current);
-    
+
     warningShownRef.current = false;
 
     // Only set timers if user is logged in and timeout is enabled
@@ -105,5 +109,9 @@ export function useInactivityLogout() {
     };
   }, [user, inactivityTimeout, resetTimer]);
 
-  return { resetTimer };
+  const getLastActivity = useCallback(() => {
+    return lastActivityRef.current;
+  }, []);
+
+  return { resetTimer, getLastActivity };
 }

@@ -15,6 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { SessionTimer } from "@/components/auth/SessionTimer";
 
 export const Header = () => {
   const { t } = useTranslation();
@@ -120,6 +121,7 @@ export const Header = () => {
           )}
 
           <GlobalSettings />
+          <SessionTimer />
         </nav>
 
         {/* Mobile Menu Button */}
