@@ -73,7 +73,7 @@ import Sensibilisation from "./pages/Sensibilisation";
 import MentionsLegales from "./pages/MentionsLegales";
 import PolitiqueConfidentialite from "./pages/PolitiqueConfidentialite";
 import CGU from "./pages/CGU";
-
+import { InactivityHandler } from "@/components/auth/InactivityHandler";
 
 const queryClient = new QueryClient();
 
@@ -88,6 +88,7 @@ const App = () => (
                 <Toaster />
                 <Sonner />
                 <BrowserRouter>
+                  <InactivityHandler />
                   <Routes>
                     {/* PUBLIC PORTAL (Citizens) */}
                     <Route element={<PublicLayout />}>
