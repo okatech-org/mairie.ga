@@ -49,12 +49,21 @@ serve(async (req: Request) => {
         const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
         // Extract the JWT token from the Authorization header
-        const token = authHeader.replace('Bearer ', '')
+        const token = authHeader.replace('Bearer ', '').trim()
         
-        // Use service role client to verify the token
-        const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+        console.log('🔐 Token received, length:', token.length)
+        console.log('🔐 Token prefix:', token.substring(0, 20) + '...')
+        
+        // Create admin client with service role key
+        const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+            auth: {
+                autoRefreshToken: false,
+                persistSession: false
+            }
+        })
 
-        // Verify the user's JWT token
+        // Verify the user's JWT token using admin privileges
+        console.log('🔍 Verifying user token...')
         const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
         if (authError || !user) {
             console.error('Auth error:', authError)
