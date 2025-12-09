@@ -1,9 +1,10 @@
 import { DemoUser } from '@/types/roles';
 import { MunicipalRole, EmploymentStatus } from '@/types/municipal-roles';
 import { UserFunction, BillingFeature } from '@/types/user-management';
-import { MOCK_MAIRIES_NETWORK, MairieInfo } from './mock-mairies-network';
+import { MAIRIES_GABON, MOCK_MAIRIES_NETWORK, MairieInfo } from './mock-mairies-network';
 import { MOCK_GABONAIS_CITIZENS } from './mock-citizens';
 import { MOCK_FOREIGNERS } from './mock-foreigners';
+import { Organization } from '@/types/organization';
 
 // --- STATIC USERS (Admin & Citizens) ---
 
@@ -27,19 +28,19 @@ const ADMIN_USER: DemoUser = {
   quotas: { maxDailyFiles: 9999, maxStorageGB: 1000, canExportData: true }
 };
 
-// --- DYNAMIC STAFF GENERATION FOR MAIRIES ---
+// --- DYNAMIC STAFF GENERATION FOR MAIRIES (using full Organization data) ---
 
-const generateStaffForMairie = (mairie: MairieInfo): DemoUser[] => {
+const generateStaffForOrganization = (org: Organization): DemoUser[] => {
   const staff: DemoUser[] = [];
-  const city = mairie.name;
-  const idPrefix = mairie.id;
+  const city = org.city || org.name;
+  const idPrefix = org.id;
 
   // 1. MAIRE
   staff.push({
     id: `${idPrefix}-maire`,
     role: MunicipalRole.MAIRE,
-    name: `M. le Maire de ${city}`,
-    entityId: mairie.id,
+    name: org.maire_name || `M. le Maire de ${city}`,
+    entityId: org.id,
     hierarchyLevel: 1,
     employmentStatus: EmploymentStatus.FONCTIONNAIRE,
     permissions: ['Supervision globale', 'Direction stratégique', 'Signature actes officiels', 'Gestion budget'],
@@ -54,7 +55,7 @@ const generateStaffForMairie = (mairie: MairieInfo): DemoUser[] => {
     id: `${idPrefix}-maire-adjoint`,
     role: MunicipalRole.MAIRE_ADJOINT,
     name: `Maire Adjoint (${city})`,
-    entityId: mairie.id,
+    entityId: org.id,
     hierarchyLevel: 2,
     employmentStatus: EmploymentStatus.FONCTIONNAIRE,
     permissions: ['Délégation Maire', 'Supervision services', 'Validation demandes'],
@@ -67,7 +68,7 @@ const generateStaffForMairie = (mairie: MairieInfo): DemoUser[] => {
     id: `${idPrefix}-sg`,
     role: MunicipalRole.SECRETAIRE_GENERAL,
     name: `Secrétaire Général (${city})`,
-    entityId: mairie.id,
+    entityId: org.id,
     hierarchyLevel: 3,
     employmentStatus: EmploymentStatus.FONCTIONNAIRE,
     permissions: ['Coordination administrative', 'Gestion RH', 'Suivi dossiers'],
@@ -80,7 +81,7 @@ const generateStaffForMairie = (mairie: MairieInfo): DemoUser[] => {
     id: `${idPrefix}-chef-ec`,
     role: MunicipalRole.CHEF_SERVICE,
     name: `Chef Service État Civil (${city})`,
-    entityId: mairie.id,
+    entityId: org.id,
     hierarchyLevel: 4,
     employmentStatus: EmploymentStatus.FONCTIONNAIRE,
     permissions: ['Gestion état civil', 'Validation actes', 'Encadrement agents'],
@@ -93,7 +94,7 @@ const generateStaffForMairie = (mairie: MairieInfo): DemoUser[] => {
     id: `${idPrefix}-chef-urb`,
     role: MunicipalRole.CHEF_SERVICE,
     name: `Chef Service Urbanisme (${city})`,
-    entityId: mairie.id,
+    entityId: org.id,
     hierarchyLevel: 4,
     employmentStatus: EmploymentStatus.FONCTIONNAIRE,
     permissions: ['Gestion urbanisme', 'Permis construire', 'Validation technique'],
@@ -106,7 +107,7 @@ const generateStaffForMairie = (mairie: MairieInfo): DemoUser[] => {
     id: `${idPrefix}-oec-1`,
     role: MunicipalRole.AGENT_ETAT_CIVIL,
     name: `Officier État Civil 1 (${city})`,
-    entityId: mairie.id,
+    entityId: org.id,
     hierarchyLevel: 6,
     employmentStatus: EmploymentStatus.FONCTIONNAIRE,
     permissions: ['Établissement actes', 'Célébration mariages', 'Registres'],
@@ -119,7 +120,7 @@ const generateStaffForMairie = (mairie: MairieInfo): DemoUser[] => {
     id: `${idPrefix}-oec-2`,
     role: MunicipalRole.AGENT_ETAT_CIVIL,
     name: `Officier État Civil 2 (${city})`,
-    entityId: mairie.id,
+    entityId: org.id,
     hierarchyLevel: 6,
     employmentStatus: EmploymentStatus.FONCTIONNAIRE,
     permissions: ['Établissement actes', 'Copies actes', 'Registres'],
@@ -132,7 +133,7 @@ const generateStaffForMairie = (mairie: MairieInfo): DemoUser[] => {
     id: `${idPrefix}-agent-1`,
     role: MunicipalRole.AGENT_MUNICIPAL,
     name: `Agent Municipal (${city})`,
-    entityId: mairie.id,
+    entityId: org.id,
     hierarchyLevel: 6,
     employmentStatus: EmploymentStatus.CONTRACTUEL,
     permissions: ['Traitement dossiers', 'Guichet virtuel', 'Saisie données'],
@@ -145,7 +146,7 @@ const generateStaffForMairie = (mairie: MairieInfo): DemoUser[] => {
     id: `${idPrefix}-accueil`,
     role: MunicipalRole.AGENT_ACCUEIL,
     name: `Agent Accueil (${city})`,
-    entityId: mairie.id,
+    entityId: org.id,
     hierarchyLevel: 7,
     employmentStatus: EmploymentStatus.CONTRACTUEL,
     permissions: ['Accueil usagers', 'Orientation', 'Information'],
@@ -158,7 +159,7 @@ const generateStaffForMairie = (mairie: MairieInfo): DemoUser[] => {
     id: `${idPrefix}-stagiaire`,
     role: MunicipalRole.STAGIAIRE,
     name: `Stagiaire (${city})`,
-    entityId: mairie.id,
+    entityId: org.id,
     hierarchyLevel: 7,
     employmentStatus: EmploymentStatus.STAGIAIRE,
     permissions: ['Support traitement', 'Saisie données', 'Apprentissage'],
@@ -169,8 +170,8 @@ const generateStaffForMairie = (mairie: MairieInfo): DemoUser[] => {
   return staff;
 };
 
-// Generate staff for all mairies
-const GENERATED_STAFF = MOCK_MAIRIES_NETWORK.flatMap(mairie => generateStaffForMairie(mairie));
+// Generate staff for all mairies using complete Organization data
+const GENERATED_STAFF = MAIRIES_GABON.flatMap(mairie => generateStaffForOrganization(mairie));
 
 // --- CITIZENS MAPPING ---
 

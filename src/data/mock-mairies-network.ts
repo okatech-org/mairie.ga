@@ -41,6 +41,7 @@ export const MOCK_MAIRIES_NETWORK: MairieInfo[] = [
     { id: 'nyanga-tchibanga', name: 'Tchibanga', province: GabonProvince.NYANGA, city: 'Tchibanga', population: 25000, isCapital: true, type: OrganizationType.MAIRIE_CENTRALE },
     // OGOOUÉ-IVINDO
     { id: 'ogoue-ivindo-makokou', name: 'Makokou', province: GabonProvince.OGOOUE_IVINDO, city: 'Makokou', population: 20000, isCapital: true, type: OrganizationType.MAIRIE_CENTRALE },
+    { id: 'ogoue-ivindo-booue', name: 'Booué', province: GabonProvince.OGOOUE_IVINDO, city: 'Booué', population: 8000, type: OrganizationType.MAIRIE_COMMUNE },
     // OGOOUÉ-LOLO
     { id: 'ogoue-lolo-koulamoutou', name: 'Koulamoutou', province: GabonProvince.OGOOUE_LOLO, city: 'Koulamoutou', population: 20000, isCapital: true, type: OrganizationType.MAIRIE_CENTRALE },
     // OGOOUÉ-MARITIME
