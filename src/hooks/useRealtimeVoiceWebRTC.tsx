@@ -97,6 +97,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
     const dataChannel = useRef<RTCDataChannel | null>(null);
     const audioContext = useRef<AudioContext | null>(null);
     const analyser = useRef<AnalyserNode | null>(null);
+    const audioElement = useRef<HTMLAudioElement | null>(null); // Keep reference to prevent GC
     const animationFrame = useRef<number | null>(null);
     const { toast } = useToast();
     const location = useLocation();
@@ -171,8 +172,12 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             // Audio Element for output
             const audioEl = document.createElement('audio');
             audioEl.autoplay = true;
+            audioElement.current = audioEl; // Store ref
+
             pc.ontrack = (e) => {
+                console.log('🔊 [WebRTC] Audio track received');
                 audioEl.srcObject = e.streams[0];
+                audioEl.play().catch(err => console.error('⚠️ Autoplay failed:', err));
             };
 
             // Data Channel
@@ -222,6 +227,24 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
 
+            // Wait for ICE candidates (crucial for some networks)
+            // Race condition: wait max 1s for candidates or 'complete' state
+            // await new Promise<void>(resolve => {
+            //     if (pc.iceGatheringState === 'complete') return resolve();
+            //     const check = () => {
+            //         if (pc.iceGatheringState === 'complete') {
+            //             pc.removeEventListener('icegatheringstatechange', check);
+            //             resolve();
+            //         }
+            //     };
+            //     pc.addEventListener('icegatheringstatechange', check);
+            //     setTimeout(() => {
+            //         pc.removeEventListener('icegatheringstatechange', check);
+            //         resolve();
+            //     }, 800); 
+            // });
+            // Note: OpenAI Realtime usually works with single REST offer, but waiting helps stability.
+
             // 5. Exchange SDP with OpenAI
             const baseUrl = 'https://api.openai.com/v1/realtime';
             const model = 'gpt-4o-realtime-preview-2024-12-17';
@@ -229,7 +252,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
 
             const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
                 method: 'POST',
-                body: offer.sdp,
+                body: offer.sdp, // Uses the updated SDP with candidates if waited (or partial)
                 headers: {
                     Authorization: `Bearer ${EPHEMERAL_KEY}`,
                     'Content-Type': 'application/sdp',
@@ -259,7 +282,12 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                 description: err.message,
                 variant: "destructive"
             });
-            setVoiceState('idle');
+        }
+        setVoiceState('idle');
+        // Cleanup on error
+        if (audioElement.current) {
+            audioElement.current.srcObject = null;
+            audioElement.current = null;
         }
     };
 
@@ -850,6 +878,13 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             dataChannel.current.close();
             dataChannel.current = null;
         }
+        if (audioElement.current) {
+            audioElement.current.pause();
+            audioElement.current.srcObject = null;
+            audioElement.current = null;
+        }
+
+        setIsMicrophoneAllowed(false);
         setVoiceState('idle');
     };
 
