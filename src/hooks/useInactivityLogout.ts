@@ -3,14 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from './useAuth';
 import { useDemo } from '@/contexts/DemoContext';
 import { toast } from 'sonner';
+import { useSessionConfigStore } from '@/stores/sessionConfigStore';
 
-const INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 15 minutes
 const WARNING_BEFORE_LOGOUT = 60 * 1000; // 1 minute warning
 
 export function useInactivityLogout() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { clearSimulation } = useDemo();
+  const { inactivityTimeout } = useSessionConfigStore();
+  
+  const INACTIVITY_TIMEOUT = inactivityTimeout * 60 * 1000; // Convert minutes to ms
   
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const warningRef = useRef<NodeJS.Timeout | null>(null);
@@ -42,8 +45,8 @@ export function useInactivityLogout() {
     
     warningShownRef.current = false;
 
-    // Only set timers if user is logged in
-    if (user) {
+    // Only set timers if user is logged in and timeout is enabled
+    if (user && inactivityTimeout > 0) {
       // Set warning timer
       warningRef.current = setTimeout(() => {
         showWarning();
@@ -54,10 +57,15 @@ export function useInactivityLogout() {
         handleLogout();
       }, INACTIVITY_TIMEOUT);
     }
-  }, [user, handleLogout, showWarning]);
+  }, [user, inactivityTimeout, INACTIVITY_TIMEOUT, handleLogout, showWarning]);
 
   useEffect(() => {
-    if (!user) return;
+    // If disabled or no user, cleanup and return
+    if (!user || inactivityTimeout === 0) {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (warningRef.current) clearTimeout(warningRef.current);
+      return;
+    }
 
     // Events that reset the timer
     const events = [
@@ -95,7 +103,7 @@ export function useInactivityLogout() {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       if (warningRef.current) clearTimeout(warningRef.current);
     };
-  }, [user, resetTimer]);
+  }, [user, inactivityTimeout, resetTimer]);
 
   return { resetTimer };
 }
