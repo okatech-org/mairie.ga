@@ -1,12 +1,14 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Landmark, Menu, X, MapPin, FileText, Heart, LogOut, User } from "lucide-react";
+import { Landmark, Menu, X, MapPin, FileText, Heart, LogOut, User, TestTube2, XCircle } from "lucide-react";
 import { useState } from "react";
 import { useDemo } from "@/contexts/DemoContext";
 import { GlobalSettings } from "@/components/GlobalSettings";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { LogoutConfirmDialog } from "@/components/auth/LogoutConfirmDialog";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,10 +66,38 @@ export const Header = () => {
           </Link>
 
           {isSimulating && currentUser && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full text-sm">
-              <span>{currentUser.badge}</span>
-              <span className="font-medium">{currentUser.role}</span>
-            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-2 cursor-pointer group">
+                  <Badge 
+                    variant="outline" 
+                    className="bg-amber-500/10 border-amber-500/50 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 transition-colors animate-pulse"
+                  >
+                    <TestTube2 className="h-3.5 w-3.5 mr-1.5" />
+                    <span className="font-medium">DÉMO</span>
+                    <span className="mx-1.5 text-amber-500/50">|</span>
+                    <span>{currentUser.badge}</span>
+                    <span className="ml-1">{currentUser.name}</span>
+                  </Badge>
+                  <button 
+                    onClick={clearSimulation}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded-full"
+                  >
+                    <XCircle className="h-4 w-4 text-destructive" />
+                  </button>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs">
+                <div className="text-sm">
+                  <p className="font-medium">Mode Démonstration Actif</p>
+                  <p className="text-muted-foreground text-xs mt-1">
+                    Rôle: {currentUser.role}
+                    {currentEntity && ` • ${currentEntity.metadata?.city || currentEntity.name}`}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">Cliquez sur ✕ pour quitter</p>
+                </div>
+              </TooltipContent>
+            </Tooltip>
           )}
 
           {authUser ? (
@@ -138,14 +168,24 @@ export const Header = () => {
         <div className="md:hidden border-t border-border/40 bg-background/95 backdrop-blur-sm">
           <nav className="container mx-auto py-4 flex flex-col gap-4">
             {isSimulating && currentUser && (
-              <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-lg text-sm">
-                <span>{currentUser.badge}</span>
-                <span className="font-medium">{currentUser.role}</span>
-                {currentEntity && (
-                  <span className="text-xs text-muted-foreground">
-                    - 🇬🇦 {currentEntity.metadata?.city || currentEntity.name}
-                  </span>
-                )}
+              <div className="flex items-center justify-between gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                <div className="flex items-center gap-2 text-sm">
+                  <TestTube2 className="h-4 w-4 text-amber-600" />
+                  <span className="font-medium text-amber-700 dark:text-amber-400">DÉMO</span>
+                  <span className="text-amber-600">{currentUser.badge}</span>
+                  <span className="font-medium">{currentUser.name}</span>
+                  {currentEntity && (
+                    <span className="text-xs text-muted-foreground">
+                      • 🇬🇦 {currentEntity.metadata?.city || currentEntity.name}
+                    </span>
+                  )}
+                </div>
+                <button 
+                  onClick={() => { clearSimulation(); setMobileMenuOpen(false); }}
+                  className="p-1 hover:bg-destructive/10 rounded-full"
+                >
+                  <XCircle className="h-4 w-4 text-destructive" />
+                </button>
               </div>
             )}
             <Link
