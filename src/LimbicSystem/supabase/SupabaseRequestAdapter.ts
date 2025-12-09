@@ -46,18 +46,21 @@ export class SupabaseRequestAdapter implements IRequestRepository {
     }
 
     async create(request: Omit<ServiceRequest, 'id' | 'createdAt' | 'updatedAt'>): Promise<ServiceRequest> {
+        const dbType = request.type as 'PASSPORT' | 'VISA' | 'CIVIL_REGISTRY' | 'LEGALIZATION' | 'CONSULAR_CARD' | 'ATTESTATION';
         const { data, error } = await supabase
             .from('requests')
-            .insert({
+            .insert([{
                 citizen_id: request.citizenId,
+                citizen_name: request.citizenId,
+                citizen_email: 'citizen@demo.ga',
                 service_id: request.serviceId,
                 organization_id: request.organizationId,
-                type: request.type,
+                type: dbType,
+                subject: request.subject || 'Nouvelle demande',
                 status: request.status,
                 priority: request.priority,
-                data: request.data,
-                notes: request.notes
-            })
+                description: request.notes
+            }])
             .select()
             .single();
 

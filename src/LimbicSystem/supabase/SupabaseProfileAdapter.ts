@@ -91,11 +91,15 @@ export class SupabaseProfileAdapter implements IProfileRepository {
 
         if (error) throw new Error(error.message);
 
-        // Update role if changed
+        // Update role if changed (map MunicipalRole to database app_role)
         if (profile.role) {
+            const roleStr = String(profile.role);
+            const isAdmin = roleStr === 'MAIRE' || roleStr === 'SECRETAIRE_GENERAL';
+            const isAgent = roleStr.includes('AGENT') || roleStr === 'CHEF_SERVICE' || roleStr === 'CHEF_BUREAU' || roleStr === 'MAIRE_ADJOINT';
+            const dbRole: 'super_admin' | 'admin' | 'agent' | 'citizen' = isAdmin ? 'admin' : isAgent ? 'agent' : 'citizen';
             await supabase
                 .from('user_roles')
-                .upsert({ user_id: profile.identity.userId, role: profile.role });
+                .upsert([{ user_id: profile.identity.userId, role: dbRole }]);
         }
 
         return this.toDomain(data, profile.role);

@@ -16,11 +16,12 @@ import { OrganizationType } from "@/types/organization";
 export default function DemoPortal() {
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
 
-  // Mairies filtrées pour la démo (seulement Libreville et Port-Gentil)
+  // Mairies filtrées pour la démo (Libreville, Port-Gentil et Booué)
   const DEMO_MAIRIES = useMemo(() =>
     MAIRIES_GABON.filter(m =>
       m.id === 'estuaire-libreville-centrale' ||
-      m.id === 'ogoue-maritime-port-gentil'
+      m.id === 'ogoue-maritime-port-gentil' ||
+      m.id === 'ogoue-ivindo-booue'
     ), []);
 
   // Grouper les mairies par province

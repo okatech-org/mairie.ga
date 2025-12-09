@@ -13,21 +13,17 @@ const getMockOrganizations = (): Organization[] => {
         return {
             id: `mock-${mairie.id}`,
             name: mairie.name,
-            type: mairie.isCapitalProvince ? 'MAIRIE_CENTRALE' : 'MAIRIE_ARRONDISSEMENT',
-            metadata: {
-                city: mairie.departement,
-                country: 'Gabon',
-                province: mairie.province,
-                population: mairie.population,
-                coordinates: mairie.coordinates,
-                isCapitalProvince: mairie.isCapitalProvince,
-                jurisdiction: [mairie.province],
-                color: province?.color || '#009e49'
-            },
-            parent_id: null,
+            type: (mairie.isCapitalProvince ? 'CONSULAT_GENERAL' : 'CONSULAT') as Organization['type'],
+            jurisdiction: [mairie.province],
+            address: mairie.departement,
+            city: mairie.departement,
+            country: 'Gabon',
+            country_code: 'GA',
+            province: mairie.province,
+            population: mairie.population,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
-        } as Organization;
+        } as unknown as Organization;
     });
 };
 
@@ -60,25 +56,20 @@ export const organizationService = {
             const mockId = id.replace('mock-', '');
             const mairie = mairiesGabon.find(m => m.id === mockId);
             if (mairie) {
-                const province = provinces.find(p => p.name === mairie.province);
                 return {
                     id: `mock-${mairie.id}`,
                     name: mairie.name,
-                    type: mairie.isCapitalProvince ? 'MAIRIE_CENTRALE' : 'MAIRIE_ARRONDISSEMENT',
-                    metadata: {
-                        city: mairie.departement,
-                        country: 'Gabon',
-                        province: mairie.province,
-                        population: mairie.population,
-                        coordinates: mairie.coordinates,
-                        isCapitalProvince: mairie.isCapitalProvince,
-                        jurisdiction: [mairie.province],
-                        color: province?.color || '#009e49'
-                    },
-                    parent_id: null,
+                    type: (mairie.isCapitalProvince ? 'CONSULAT_GENERAL' : 'CONSULAT') as Organization['type'],
+                    jurisdiction: [mairie.province],
+                    address: mairie.departement,
+                    city: mairie.departement,
+                    country: 'Gabon',
+                    country_code: 'GA',
+                    province: mairie.province,
+                    population: mairie.population,
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
-                } as Organization;
+                } as unknown as Organization;
             }
             return null;
         }

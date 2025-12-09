@@ -349,6 +349,25 @@ export const MAIRIES_GABON: Organization[] = [
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
     },
+    {
+        id: 'ogoue-ivindo-booue',
+        name: 'Mairie de Booué',
+        type: OrganizationType.MAIRIE_COMMUNE,
+        province: 'Ogooué-Ivindo',
+        departement: 'Lopé',
+        city: 'Booué',
+        country: 'Gabon',
+        country_code: 'GA',
+        jurisdiction: ['Booué', 'Lopé'],
+        population: 8000,
+        maire_name: 'M. le Maire de Booué',
+        contact_email: 'mairie.booue@gabon.ga',
+        contact_phone: '+241 01 66 40 00',
+        address: 'Centre-ville, Booué',
+        enabled_services: ['ACTE_NAISSANCE', 'CERTIFICAT_RESIDENCE'],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+    },
 
     // ========== OGOOUÉ-LOLO ==========
     {
