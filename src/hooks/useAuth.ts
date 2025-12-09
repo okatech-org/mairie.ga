@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
 import { getDashboardRouteByRole, roleLabels } from "@/utils/role-routing";
+import { useDemo } from "@/contexts/DemoContext";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
 
@@ -12,6 +13,7 @@ export function useAuth() {
     const [userRole, setUserRole] = useState<AppRole | null>(null);
     const [roleLabel, setRoleLabel] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const { clearSimulation } = useDemo();
 
     const fetchUserRole = async (userId: string) => {
         try {
@@ -71,6 +73,7 @@ export function useAuth() {
     }, []);
 
     const signOut = async () => {
+        clearSimulation(); // Clear demo simulation on logout
         await supabase.auth.signOut();
         setUserRole(null);
         setRoleLabel(null);
