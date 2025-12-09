@@ -12,7 +12,6 @@
 export { CommunicationSkills } from './CommunicationSkills';
 export { AdministrativeSkills } from './AdministrativeSkills';
 export { NavigationSkills } from './NavigationSkills';
-export { municipalDocumentSkill, MunicipalDocumentSkill } from './MunicipalDocumentSkills';
 
 // Types réutilisables
 export type {
@@ -34,8 +33,3 @@ export type {
     NavigationTarget,
     ScrollTarget
 } from './NavigationSkills';
-
-export type {
-    VoiceDocumentCommand,
-    DocumentGenerationResult
-} from './MunicipalDocumentSkills';
