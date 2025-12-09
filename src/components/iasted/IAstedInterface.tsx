@@ -193,9 +193,8 @@ export default function IAstedInterface({
             prompt += `L'utilisateur est sur la page d'accueil. Proposez-lui les services disponibles.\n`;
         }
 
-        // Also include the full system prompt for complete tool definitions
-        prompt += `\n\n${IASTED_SYSTEM_PROMPT}`;
-
+        // Note: We use only the lite contextual prompt to stay within Realtime API limits
+        // The tools are defined separately in updateSession()
         return prompt;
     }, [timeOfDay, userTitle, userRole, userFirstName, isOnRegistrationPage, isOnHomePage, registrationFormType, location.pathname]);
 
