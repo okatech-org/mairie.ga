@@ -213,6 +213,12 @@ export default function Home() {
                       Nos Services
                     </Button>
                   </Link>
+                  <Link to="/demo-portal">
+                    <Button size="lg" variant="outline" className="w-full sm:w-auto min-w-[180px] gap-2 h-12 text-base bg-amber-500/20 border-amber-400/40 text-white hover:bg-amber-500/30 backdrop-blur-sm">
+                      <Briefcase className="h-5 w-5" />
+                      Démo
+                    </Button>
+                  </Link>
                   <a href="#iasted-section">
                     <Button size="lg" variant="outline" className="w-full sm:w-auto min-w-[180px] gap-2 h-12 text-base bg-violet-500/20 border-violet-400/40 text-white hover:bg-violet-500/30 backdrop-blur-sm animate-pulse hover:animate-none">
                       <Mic className="h-5 w-5" />

@@ -14,6 +14,7 @@ export interface ActiveSession {
   is_current: boolean;
 }
 
+// Session history interface (for future use when table is created)
 export interface SessionHistoryItem {
   id: string;
   user_id: string;
@@ -147,23 +148,7 @@ export async function registerSession(userId: string, sessionToken: string, user
       console.error('Error registering active session:', error);
     }
 
-    // Insert into session history
-    const { error: historyError } = await supabase
-      .from('session_history')
-      .insert({
-        user_id: userId,
-        session_token: sessionToken,
-        device_info: deviceInfo,
-        ip_address: ipAddress,
-        browser,
-        os,
-        location,
-        login_at: new Date().toISOString()
-      });
-
-    if (historyError) {
-      console.error('Error registering session history:', historyError);
-    }
+    // Note: session_history table not yet created - active_sessions table stores current sessions
 
   } catch (err) {
     console.error('Error in registerSession:', err);
@@ -199,20 +184,11 @@ export async function getUserSessions(userId: string): Promise<ActiveSession[]> 
   return data as ActiveSession[];
 }
 
-// Get session history for a user
+// Get session history for a user (placeholder - table not yet created)
 export async function getSessionHistory(userId: string): Promise<SessionHistoryItem[]> {
-  const { data, error } = await supabase
-    .from('session_history')
-    .select('*')
-    .eq('user_id', userId)
-    .order('login_at', { ascending: false });
-
-  if (error) {
-    console.error('Error fetching session history:', error);
-    return [];
-  }
-
-  return data as SessionHistoryItem[];
+  // session_history table not yet created - return empty array
+  console.log('Session history requested for user:', userId);
+  return [];
 }
 
 // Get all active sessions (for super admin)
@@ -240,13 +216,7 @@ export async function terminateSession(sessionId: string): Promise<boolean> {
     .eq('id', sessionId)
     .single();
 
-  if (sessionData) {
-    // Mark as logged out in history
-    await supabase
-      .from('session_history')
-      .update({ logout_at: new Date().toISOString() })
-      .eq('session_token', sessionData.session_token);
-  }
+  // Note: session_history table not yet created
 
   const { error } = await supabase
     .from('active_sessions')
@@ -270,13 +240,7 @@ export async function terminateOtherSessions(userId: string, currentSessionToken
     .eq('user_id', userId)
     .neq('session_token', currentSessionToken);
 
-  if (otherSessions && otherSessions.length > 0) {
-    const tokens = otherSessions.map(s => s.session_token);
-    await supabase
-      .from('session_history')
-      .update({ logout_at: new Date().toISOString() })
-      .in('session_token', tokens);
-  }
+  // Note: session_history table not yet created
 
   const { error } = await supabase
     .from('active_sessions')
@@ -295,12 +259,7 @@ export async function terminateOtherSessions(userId: string, currentSessionToken
 // Remove current session on logout
 export async function removeCurrentSession(sessionToken: string): Promise<void> {
   try {
-    // Update history
-    await supabase
-      .from('session_history')
-      .update({ logout_at: new Date().toISOString() })
-      .eq('session_token', sessionToken);
-
+    // Note: session_history table not yet created
     // Remove active session
     await supabase
       .from('active_sessions')
