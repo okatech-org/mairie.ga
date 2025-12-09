@@ -175,6 +175,7 @@ class CorrespondanceService {
 
     /**
      * Create a new official correspondence as PDF
+     * Now with AI-powered content enrichment
      */
     async createCorrespondance(params: CreateCorrespondanceParams): Promise<{
         blob: Blob;
@@ -194,15 +195,44 @@ class CorrespondanceService {
             'attestation': 'attestation'
         };
 
+        const documentType = templateToType[template] || 'lettre';
+        let enrichedContentPoints = contentPoints;
+
+        // Enrich content using AI if content is minimal
+        const needsEnrichment = !contentPoints ||
+            contentPoints.length === 0 ||
+            contentPoints.every(p => p.length < 50);
+
+        if (needsEnrichment) {
+            console.log('[Correspondance] Content needs enrichment, calling AI...');
+            try {
+                const enrichedContent = await this.enrichContent({
+                    documentType,
+                    subject,
+                    userInput: contentPoints?.join(' ') || '',
+                    recipient,
+                    recipientOrg
+                });
+
+                if (enrichedContent.success && enrichedContent.contentPoints.length > 0) {
+                    enrichedContentPoints = enrichedContent.contentPoints;
+                    console.log('[Correspondance] Content enriched successfully:', enrichedContentPoints.length, 'paragraphs');
+                }
+            } catch (error) {
+                console.warn('[Correspondance] Could not enrich content, using original:', error);
+                // Fallback to original content
+            }
+        }
+
         // Generate PDF using documentGenerationService
         const result = await documentGenerationService.generateDocument({
             title: subject,
             content: '', // Not used anymore, we use contentPoints
-            template: (templateToType[template] || 'lettre') as any,
+            template: documentType as any,
             format: 'pdf',
             recipient: recipient,
             recipientOrg: recipientOrg,
-            contentPoints: contentPoints,
+            contentPoints: enrichedContentPoints,
             signatureAuthority: signatureAuthority,
             onProgress: (progress, status) => {
                 console.log(`[Correspondance] ${progress}% - ${status}`);
@@ -218,6 +248,44 @@ class CorrespondanceService {
             documentId: result.documentId,
             localUrl
         };
+    }
+
+    /**
+     * Enrich document content using AI
+     */
+    private async enrichContent(params: {
+        documentType: string;
+        subject: string;
+        userInput?: string;
+        recipient?: string;
+        recipientOrg?: string;
+    }): Promise<{ success: boolean; contentPoints: string[]; closingPhrase?: string }> {
+        try {
+            const { data, error } = await supabase.functions.invoke('enrich-document-content', {
+                body: {
+                    documentType: params.documentType,
+                    subject: params.subject,
+                    userInput: params.userInput,
+                    recipient: params.recipient,
+                    recipientOrg: params.recipientOrg,
+                    language: 'fr'
+                }
+            });
+
+            if (error) {
+                console.error('[enrichContent] Edge function error:', error);
+                return { success: false, contentPoints: [] };
+            }
+
+            return {
+                success: data?.success || false,
+                contentPoints: data?.contentPoints || [],
+                closingPhrase: data?.closingPhrase
+            };
+        } catch (error) {
+            console.error('[enrichContent] Error:', error);
+            return { success: false, contentPoints: [] };
+        }
     }
 
     /**
