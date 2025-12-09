@@ -75,12 +75,27 @@ export const Header = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="gap-2">
-                  <User className="h-4 w-4" />
-                  Mon Espace
+                  <div className="flex items-center gap-2">
+                    <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center">
+                      <User className="h-3.5 w-3.5 text-primary" />
+                    </div>
+                    <span className="max-w-[120px] truncate">
+                      {currentUser?.name || authUser.email?.split('@')[0] || 'Mon Espace'}
+                    </span>
+                  </div>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Mon Compte</DropdownMenuLabel>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">
+                      {currentUser?.name || 'Utilisateur'}
+                    </p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {authUser.email}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate('/dashboard/citizen')}>
                   <User className="mr-2 h-4 w-4" />
