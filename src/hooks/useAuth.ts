@@ -2,15 +2,9 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
+import { getDashboardRouteByRole, roleLabels } from "@/utils/role-routing";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
-
-const roleLabels: Record<AppRole, string> = {
-    super_admin: "Super Admin",
-    admin: "Administrateur",
-    agent: "Agent",
-    citizen: "Citoyen",
-};
 
 export function useAuth() {
     const [session, setSession] = useState<Session | null>(null);
@@ -89,5 +83,6 @@ export function useAuth() {
         roleLabel,
         loading,
         signOut,
+        getDashboardRoute: () => getDashboardRouteByRole(userRole),
     };
 }

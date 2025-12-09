@@ -48,19 +48,51 @@ export default function Login() {
       m.id === 'ogoue-maritime-port-gentil'
     ), []);
 
+  // Redirect based on role after login
+  const redirectToDashboard = async (userId: string) => {
+    try {
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      const role = roleData?.role || "citizen";
+      
+      switch (role) {
+        case "super_admin":
+          navigate("/dashboard/super-admin");
+          break;
+        case "admin":
+          navigate("/dashboard/maire");
+          break;
+        case "agent":
+          navigate("/dashboard/agent");
+          break;
+        default:
+          navigate("/dashboard/citizen");
+      }
+    } catch (error) {
+      console.error("Error fetching role:", error);
+      navigate("/dashboard/citizen");
+    }
+  };
+
   // Check if user is already logged in
   useEffect(() => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        navigate('/dashboard/citizen');
+        redirectToDashboard(session.user.id);
       }
     };
     checkSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
-        navigate('/dashboard/citizen');
+        setTimeout(() => {
+          redirectToDashboard(session.user.id);
+        }, 0);
       }
     });
 
