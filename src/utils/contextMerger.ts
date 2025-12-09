@@ -20,6 +20,7 @@ export function mergeRoleContexts(adminContext: RoleContext, targetRole: AppRole
     return {
         role: 'admin', // Keep technical role as admin for permissions
         defaultTitle: targetContext.defaultTitle, // Adopt target's title
+        appellationCourte: targetContext.appellationCourte, // Adopt target's short form
         tone: targetContext.tone, // Adopt target's tone
         accessLevel: 'full', // Keep full access
         availableTools: Array.from(new Set([
