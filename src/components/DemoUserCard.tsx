@@ -1,13 +1,17 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDemo } from "@/contexts/DemoContext";
 import { DemoUser } from "@/types/roles";
-import { MunicipalRole, MUNICIPAL_ROLE_MAPPING, getRoleLabel } from "@/types/municipal-roles";
+import { MunicipalRole, MUNICIPAL_ROLE_MAPPING } from "@/types/municipal-roles";
 import { getEntityById } from "@/data/mock-entities";
 import { getMairieById } from "@/data/mock-mairies-network";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, Briefcase } from "lucide-react";
+import { Check, Loader2, Copy, CheckCircle2 } from "lucide-react";
+import { loginDemoUser, getDemoCredentials } from "@/services/demoAuthService";
+import { toast } from "sonner";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface DemoUserCardProps {
   user: DemoUser;
@@ -35,34 +39,74 @@ const ROLE_COLORS: Record<string, string> = {
 export function DemoUserCard({ user }: DemoUserCardProps) {
   const navigate = useNavigate();
   const { simulateUser } = useDemo();
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Essayer d'abord les mairies puis les anciennes entités
   const mairie = user.entityId ? getMairieById(user.entityId) : null;
   const entity = !mairie && user.entityId ? getEntityById(user.entityId) : null;
   const entityInfo = mairie || entity;
 
-  const handleSimulate = () => {
-    simulateUser(user.id);
+  const credentials = getDemoCredentials(user.id);
 
-    // Navigation selon le rôle
+  const getTargetRoute = () => {
     if (user.role === 'ADMIN') {
-      navigate("/dashboard/super-admin");
+      return "/dashboard/super-admin";
     } else if (user.role === MunicipalRole.CITOYEN || user.role === MunicipalRole.CITOYEN_AUTRE_COMMUNE) {
-      navigate("/dashboard/citizen");
+      return "/dashboard/citizen";
     } else if (user.role === MunicipalRole.ETRANGER_RESIDENT) {
-      navigate("/dashboard/foreigner");
+      return "/dashboard/foreigner";
     } else if (user.role === MunicipalRole.PERSONNE_MORALE) {
-      navigate("/dashboard/citizen"); // Pour l'instant, même dashboard
+      return "/dashboard/citizen";
     } else if (user.role === MunicipalRole.MAIRE || user.role === MunicipalRole.MAIRE_ADJOINT) {
-      navigate("/dashboard/maire");
+      return "/dashboard/maire";
     } else if (user.role === MunicipalRole.SECRETAIRE_GENERAL) {
-      navigate("/dashboard/sg");
+      return "/dashboard/sg";
     } else if (user.role === MunicipalRole.CHEF_SERVICE || user.role === MunicipalRole.CHEF_BUREAU) {
-      navigate("/dashboard/chef-service");
+      return "/dashboard/chef-service";
     } else {
-      // Agents municipaux, état civil, techniques, accueil, stagiaires
-      navigate("/dashboard/agent");
+      return "/dashboard/agent";
     }
+  };
+
+  const handleOneClickLogin = async () => {
+    setLoading(true);
+    
+    try {
+      // First, set the simulation context
+      simulateUser(user.id);
+
+      // Then, authenticate with Supabase
+      const result = await loginDemoUser(user);
+      
+      if (result.success) {
+        toast.success(`Bienvenue ${user.name} !`, {
+          description: "Connexion réussie avec votre compte démo"
+        });
+        navigate(getTargetRoute());
+      } else {
+        // If auth fails, still allow simulation mode
+        toast.warning("Mode simulation activé", {
+          description: result.error || "Authentification Supabase non disponible"
+        });
+        navigate(getTargetRoute());
+      }
+    } catch (error) {
+      console.error('Demo login error:', error);
+      // Fallback to simulation mode
+      toast.info("Mode simulation activé");
+      navigate(getTargetRoute());
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copyCredentials = async () => {
+    const text = `Email: ${credentials.email}\nMot de passe: ${credentials.password}`;
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    toast.success("Identifiants copiés !");
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const getRoleColor = () => {
@@ -89,9 +133,26 @@ export function DemoUserCard({ user }: DemoUserCardProps) {
             <span className="hidden sm:inline">{getRoleDisplayLabel()}</span>
             <span className="sm:hidden">{getRoleDisplayLabel().split(' ')[0]}</span>
           </Badge>
-          {entityInfo && (
-            <span className="text-lg">🇬🇦</span>
-          )}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={copyCredentials}
+              >
+                {copied ? (
+                  <CheckCircle2 className="h-3 w-3 text-green-500" />
+                ) : (
+                  <Copy className="h-3 w-3 text-muted-foreground" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">
+              <p className="font-mono text-[10px]">{credentials.email}</p>
+              <p className="text-muted-foreground text-[10px]">Cliquer pour copier</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
         <CardTitle className="text-sm md:text-base leading-tight">{user.name}</CardTitle>
         <CardDescription className="text-xs line-clamp-2">{user.description}</CardDescription>
@@ -124,12 +185,20 @@ export function DemoUserCard({ user }: DemoUserCardProps) {
 
       <CardFooter className="p-3 pt-0">
         <Button
-          onClick={handleSimulate}
+          onClick={handleOneClickLogin}
           className="w-full h-8 text-xs"
           variant="default"
           size="sm"
+          disabled={loading}
         >
-          Simuler
+          {loading ? (
+            <>
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              Connexion...
+            </>
+          ) : (
+            "Se connecter"
+          )}
         </Button>
       </CardFooter>
     </Card>
