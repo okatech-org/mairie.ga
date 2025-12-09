@@ -173,32 +173,26 @@ class CorrespondanceService {
     }> {
         const { recipient, recipientOrg, subject, contentPoints, template = 'courrier', signatureAuthority } = params;
 
-        // Build the letter content
-        const date = new Date().toLocaleDateString('fr-FR', {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric'
-        });
+        // Map template names to document types
+        const templateToType: Record<string, 'lettre' | 'communique' | 'note_service' | 'attestation'> = {
+            'courrier': 'lettre',
+            'lettre': 'lettre',
+            'note': 'note_service',
+            'note_service': 'note_service',
+            'communique': 'communique',
+            'attestation': 'attestation'
+        };
 
-        const contentBody = `
-À l'attention de ${recipient}
-${recipientOrg}
-
-Objet : ${subject}
-
-${contentPoints.map(point => `• ${point}`).join('\n')}
-
-Veuillez agréer, ${recipient}, l'expression de mes salutations distinguées.
-
-${signatureAuthority || 'Le Maire'}
-        `.trim();
-
-        // Generate PDF using existing service
+        // Generate PDF using documentGenerationService
         const result = await documentGenerationService.generateDocument({
-            title: `Courrier - ${subject}`,
-            content: contentBody,
-            template: template,
+            title: subject,
+            content: '', // Not used anymore, we use contentPoints
+            template: (templateToType[template] || 'lettre') as any,
             format: 'pdf',
+            recipient: recipient,
+            recipientOrg: recipientOrg,
+            contentPoints: contentPoints,
+            signatureAuthority: signatureAuthority,
             onProgress: (progress, status) => {
                 console.log(`[Correspondance] ${progress}% - ${status}`);
             }

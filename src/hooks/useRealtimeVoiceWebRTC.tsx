@@ -19,6 +19,43 @@ const USE_LITE_PROMPT = true;      // Prompt allégé (~80% économie)
 const USE_LOCAL_ROUTER = true;     // Commandes locales (~40% économie)
 const USE_FAQ_CACHE = true;        // Cache FAQ (~20% économie supplémentaire)
 
+/**
+ * Noise filter: Detect and filter out transcriptions that are likely background noise
+ * Common patterns: non-Latin scripts, very short, single words in other languages
+ */
+function isNoisyTranscription(text: string): boolean {
+    if (!text || text.length < 3) return true;
+
+    // Too short to be meaningful
+    if (text.trim().split(/\s+/).length <= 1 && text.length < 5) return true;
+
+    // Contains non-Latin scripts (Korean, Hindi, Chinese, Japanese, Arabic, etc.)
+    const nonLatinPattern = /[\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\uAC00-\uD7AF\u0900-\u097F\u0600-\u06FF\u0590-\u05FF]/;
+    if (nonLatinPattern.test(text)) return true;
+
+    // Common noise phrases from Whisper misinterpretation
+    const noisePatterns = [
+        /^(thanks?|thank you)\.?$/i,
+        /^(ok|okay)\.?$/i,
+        /^(yeah|yes|no|nope)\.?$/i,
+        /^(um+|uh+|hmm+|huh)\.?$/i,
+        /^(hi|hey|hello)\.?$/i,
+        /^[\.\,\!\?]+$/,
+        /^(mbc|cnn|bbc|abc)/i, // TV channel names from background
+        /^un+o+t?$/i, // Random syllables
+    ];
+
+    for (const pattern of noisePatterns) {
+        if (pattern.test(text.trim())) return true;
+    }
+
+    // Mostly non-French characters (less than 50% common French letters)
+    const frenchChars = text.match(/[a-zA-ZéèêëàâäùûüôöîïçÉÈÊËÀÂÄÙÛÜÔÖÎÏÇ\s]/g) || [];
+    if (frenchChars.length / text.length < 0.5) return true;
+
+    return false;
+}
+
 export type VoiceState = 'idle' | 'connecting' | 'listening' | 'thinking' | 'speaking';
 
 export interface UseRealtimeVoiceWebRTC {
@@ -609,6 +646,16 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                 if (event.transcript) {
                     const transcript = event.transcript;
                     console.log(`🎤 [Optimizer] User said: "${transcript}"`);
+
+                    // Noise filter: Skip transcriptions that look like noise
+                    if (isNoisyTranscription(transcript)) {
+                        console.log(`🔇 [NoiseFilter] Ignored: "${transcript}"`);
+                        // Cancel pending response to save costs
+                        if (dataChannel.current?.readyState === 'open') {
+                            dataChannel.current.send(JSON.stringify({ type: 'response.cancel' }));
+                        }
+                        break;
+                    }
 
                     // 1. Check local commands first (navigation, theme, etc.)
                     if (USE_LOCAL_ROUTER) {

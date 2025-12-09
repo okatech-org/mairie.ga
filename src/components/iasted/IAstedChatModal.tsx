@@ -563,11 +563,11 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                     console.error('Erreur suppression messages:', deleteError);
                 }
 
-                // Marquer la session comme terminée pour ne plus la recharger
+                // Marquer la session comme inactive
                 const { error: updateError } = await supabase
                     .from('conversation_sessions')
                     .update({
-                        ended_at: new Date().toISOString(),
+                        is_active: false,
                         updated_at: new Date().toISOString(),
                     })
                     .eq('id', sessionId);
@@ -588,12 +588,16 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
         const newSessionId = crypto.randomUUID();
         setSessionId(newSessionId);
 
-        // Créer nouvelle session
-        await supabase.from('conversation_sessions').insert({
-            session_id: newSessionId,
-            user_id: (await supabase.auth.getUser()).data.user?.id,
-            started_at: new Date().toISOString(),
-        });
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            // Créer nouvelle session avec colonnes correctes
+            await supabase.from('conversation_sessions').insert({
+                id: newSessionId,
+                user_id: user.id,
+                title: 'Nouvelle conversation',
+                is_active: true,
+            });
+        }
 
         toast({
             title: "✨ Nouvelle conversation",
@@ -667,7 +671,7 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                 .from('conversation_sessions')
                 .select('*')
                 .eq('user_id', user.id)
-                .is('ended_at', null)
+                .eq('is_active', true)
                 .gte('updated_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
                 .order('updated_at', { ascending: false })
                 .limit(1)
@@ -681,8 +685,8 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                     .from('conversation_sessions')
                     .insert({
                         user_id: user.id,
-                        settings: { mode: 'text' },
-                        focus_mode: null,
+                        title: 'Conversation iAsted',
+                        is_active: true,
                     })
                     .select()
                     .single();
