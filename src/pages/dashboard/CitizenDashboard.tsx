@@ -170,12 +170,18 @@ export default function CitizenDashboard() {
                             </div>
                             <div>
                                 <h3 className="font-bold text-xl">{citizen.firstName} {citizen.lastName}</h3>
-                                <p className="text-muted-foreground">Né(e) le {citizen.dateOfBirth.toLocaleDateString()}</p>
+                                <p className="text-muted-foreground">
+                                    {citizen.dateOfBirth
+                                        ? `Né(e) le ${citizen.dateOfBirth.toLocaleDateString()}`
+                                        : 'Date de naissance non renseignée'}
+                                </p>
                                 <div className="flex items-center gap-2 mt-1">
                                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-300">
                                         Vérifié
                                     </span>
-                                    <span className="text-sm text-muted-foreground">• {citizen.profession}</span>
+                                    {citizen.profession && (
+                                        <span className="text-sm text-muted-foreground">• {citizen.profession}</span>
+                                    )}
                                 </div>
                             </div>
                         </div>
