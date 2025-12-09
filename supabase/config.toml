@@ -17,3 +17,6 @@ verify_jwt = true
 
 [functions.document-ocr]
 verify_jwt = true
+
+[functions.security-alert-login]
+verify_jwt = false
