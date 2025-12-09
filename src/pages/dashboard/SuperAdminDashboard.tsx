@@ -1,4 +1,5 @@
 import { Building2, FileText, Users, Globe, Activity, Plus, ShieldCheck, Settings, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
+import { LoginAttemptsMonitor } from "@/components/dashboard/admin/LoginAttemptsMonitor";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { Organization, OrganizationType } from "@/types/organization";
@@ -352,33 +353,10 @@ export default function SuperAdminDashboard() {
                         </div>
                     </div>
 
-                    {/* RECENT ACTIVITY & LOGS */}
+                    {/* LOGIN ATTEMPTS MONITOR */}
                     <div className="space-y-6">
-                        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                            <Activity className="w-5 h-5" />
-                            Activité Système
-                        </h2>
-
-                        <div className="neu-raised rounded-xl p-6 space-y-6">
-                            {[
-                                { action: "Connexion Admin", user: "Super Admin", time: "À l'instant", type: "info" },
-                                { action: "Mise à jour Entité", user: "Consulat Paris", time: "Il y a 2h", type: "success" },
-                                { action: "Nouveau Dossier", user: "Jean Dupont", time: "Il y a 5h", type: "warning" },
-                                { action: "Erreur Synchro", user: "Système", time: "Il y a 1j", type: "error" },
-                            ].map((log, i) => (
-                                <div key={i} className="flex gap-4 items-start">
-                                    <div className={`w-2 h-2 mt-1.5 rounded-full flex-shrink-0 ${log.type === 'info' ? 'bg-blue-500' :
-                                        log.type === 'success' ? 'bg-green-500' :
-                                            log.type === 'warning' ? 'bg-orange-500' : 'bg-red-500'
-                                        }`} />
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-800 dark:text-gray-100">{log.action}</p>
-                                        <p className="text-xs text-muted-foreground">{log.user} • {log.time}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
+                        <LoginAttemptsMonitor />
+                        
                         <div className="neu-raised rounded-xl p-6">
                             <h3 className="font-bold mb-4 text-sm uppercase tracking-wider text-muted-foreground">Maintenance</h3>
                             <div className="space-y-3">
