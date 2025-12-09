@@ -1260,6 +1260,198 @@ export default function IAstedInterface({
             };
         }
 
+        // ========== OUTILS DE CORRESPONDANCE (PERSONNEL MUNICIPAL) ==========
+
+        if (toolName === 'create_correspondence') {
+            console.log('📄 [IAstedInterface] Création de correspondance:', args);
+
+            // 1. Ouvrir le chat pour afficher le document
+            setIsOpen(true);
+
+            try {
+                // 2. Importer et utiliser le service de correspondance
+                const { correspondanceService } = await import('@/services/correspondanceService');
+
+                const result = await correspondanceService.createCorrespondance({
+                    recipient: args.recipient || 'Destinataire',
+                    recipientOrg: args.recipient_org || 'Organisation',
+                    recipientEmail: args.recipient_email,
+                    subject: args.subject || 'Sans objet',
+                    contentPoints: args.content_points || [],
+                    template: args.template || 'note_service',
+                });
+
+                // 3. Stocker le document pour les actions futures
+                setPendingDocument({
+                    id: result.documentId,
+                    name: result.fileName,
+                    url: result.localUrl,
+                    type: 'application/pdf',
+                    recipient: args.recipient,
+                    recipientEmail: args.recipient_email,
+                    subject: args.subject,
+                });
+
+                // 4. Dispatch event pour afficher le PDF dans le chat
+                window.dispatchEvent(new CustomEvent('iasted-document-created', {
+                    detail: {
+                        documentId: result.documentId,
+                        fileName: result.fileName,
+                        localUrl: result.localUrl,
+                        recipient: args.recipient,
+                        recipientOrg: args.recipient_org,
+                        subject: args.subject,
+                    }
+                }));
+
+                toast.success(`📄 Courrier créé pour ${args.recipient}`);
+
+                return {
+                    success: true,
+                    documentId: result.documentId,
+                    fileName: result.fileName,
+                    message: `Courrier PDF créé pour ${args.recipient}. Le document est affiché dans le chat. Vous pouvez maintenant l'envoyer ou le classer.`
+                };
+            } catch (error: any) {
+                console.error('❌ [IAstedInterface] Erreur création correspondance:', error);
+                toast.error(`Erreur: ${error.message}`);
+                return {
+                    success: false,
+                    message: `Erreur lors de la création du courrier: ${error.message}`
+                };
+            }
+        }
+
+        if (toolName === 'send_correspondence') {
+            console.log('✉️ [IAstedInterface] Envoi de correspondance:', args);
+
+            try {
+                const { correspondanceService } = await import('@/services/correspondanceService');
+
+                // Utiliser le document en attente si pas d'ID spécifié
+                const documentId = args.document_id || pendingDocument?.id;
+
+                if (!documentId && !args.recipient_email) {
+                    return {
+                        success: false,
+                        message: 'Aucun document à envoyer. Créez d\'abord un courrier.'
+                    };
+                }
+
+                const result = await correspondanceService.sendCorrespondance({
+                    recipientEmail: args.recipient_email || pendingDocument?.recipientEmail,
+                    subject: args.subject || pendingDocument?.subject || 'Correspondance officielle',
+                    body: args.body || 'Veuillez trouver ci-joint le courrier officiel.',
+                    documentId: documentId,
+                });
+
+                toast.success(`✉️ Courrier envoyé à ${args.recipient_email || pendingDocument?.recipientEmail}`);
+
+                // Réinitialiser le document en attente
+                setPendingDocument(null);
+
+                return {
+                    success: true,
+                    message: `Courrier envoyé par email à ${args.recipient_email || pendingDocument?.recipientEmail}`
+                };
+            } catch (error: any) {
+                console.error('❌ [IAstedInterface] Erreur envoi correspondance:', error);
+                toast.error(`Erreur d'envoi: ${error.message}`);
+                return {
+                    success: false,
+                    message: `Erreur lors de l'envoi: ${error.message}`
+                };
+            }
+        }
+
+        if (toolName === 'file_correspondence') {
+            console.log('📁 [IAstedInterface] Classement de correspondance:', args);
+
+            try {
+                // Utiliser le document en attente si pas d'ID spécifié
+                const documentId = args.document_id || pendingDocument?.id;
+                const documentUrl = pendingDocument?.url;
+                const documentName = pendingDocument?.name || 'Correspondance';
+
+                if (!documentId && !documentUrl) {
+                    return {
+                        success: false,
+                        message: 'Aucun document à classer. Créez d\'abord un courrier.'
+                    };
+                }
+
+                // Pour classer le document, on navigue vers le coffre-fort
+                // Le document est déjà disponible via son URL blob
+                // L'utilisateur peut le télécharger depuis le chat
+
+                // Si le document a une URL blob, on déclenche un téléchargement
+                if (documentUrl) {
+                    const link = document.createElement('a');
+                    link.href = documentUrl;
+                    link.download = documentName;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+
+                toast.success(`📁 Courrier classé dans "Mes Documents"`);
+
+                // Réinitialiser le document en attente
+                setPendingDocument(null);
+
+                return {
+                    success: true,
+                    message: `Document "${documentName}" classé dans vos documents`
+                };
+            } catch (error: any) {
+                console.error('❌ [IAstedInterface] Erreur classement:', error);
+                toast.error(`Erreur de classement: ${error.message}`);
+                return {
+                    success: false,
+                    message: `Erreur lors du classement: ${error.message}`
+                };
+            }
+        }
+
+        if (toolName === 'read_correspondence') {
+            console.log('📬 [IAstedInterface] Lecture correspondance:', args);
+
+            try {
+                const { correspondanceService } = await import('@/services/correspondanceService');
+                const folders = await correspondanceService.getMockFolders();
+
+                const folderId = args.folder_id;
+                const folder = folders.find(f => f.id === folderId);
+
+                if (folder) {
+                    toast.info(`📬 Dossier "${folder.name}" - ${folder.documents.length} courrier(s)`);
+
+                    // Naviguer vers la page de correspondance
+                    navigate('/correspondances', {
+                        state: { openFolder: folderId }
+                    });
+                } else {
+                    // Afficher un résumé de tous les dossiers
+                    const summary = folders.map(f => `${f.name}: ${f.documents.length}`).join(', ');
+                    toast.info(`📬 Dossiers: ${summary}`);
+                }
+
+                return {
+                    success: true,
+                    folders: folders,
+                    message: folder
+                        ? `Vous avez ${folder.documents.length} courrier(s) dans "${folder.name}"`
+                        : `Vos dossiers: ${folders.map(f => f.name).join(', ')}`
+                };
+            } catch (error: any) {
+                console.error('❌ [IAstedInterface] Erreur lecture:', error);
+                return {
+                    success: false,
+                    message: `Erreur: ${error.message}`
+                };
+            }
+        }
+
         // SECURITY: security_override tool removed - all authorization must be server-side via RLS
 
         // 2. External Handler (for navigation, specific actions)

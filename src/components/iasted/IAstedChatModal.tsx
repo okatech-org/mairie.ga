@@ -642,6 +642,39 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
         }
     }, [pendingDocument, onClearPendingDocument]);
 
+    // Écouter l'événement de création de document depuis IAstedInterface
+    useEffect(() => {
+        const handleDocumentCreated = (event: CustomEvent) => {
+            const { documentId, fileName, localUrl, recipient, recipientOrg, subject } = event.detail;
+
+            console.log('📄 [IAstedChatModal] Document créé reçu:', event.detail);
+
+            // Ajouter le document comme message dans le chat
+            const docMessage: Message = {
+                id: crypto.randomUUID(),
+                role: 'assistant',
+                content: `📄 **Courrier généré**\n\n**Destinataire**: ${recipient} (${recipientOrg || 'Organisation'})\n**Objet**: ${subject}\n\nLe document est prêt. Vous pouvez le télécharger, l'imprimer ou l'envoyer.`,
+                timestamp: new Date().toISOString(),
+                metadata: {
+                    documents: [{
+                        id: documentId,
+                        name: fileName,
+                        url: localUrl,
+                        type: 'application/pdf',
+                    }],
+                },
+            };
+
+            setMessages(prev => [...prev, docMessage]);
+        };
+
+        window.addEventListener('iasted-document-created', handleDocumentCreated as EventListener);
+
+        return () => {
+            window.removeEventListener('iasted-document-created', handleDocumentCreated as EventListener);
+        };
+    }, []);
+
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
