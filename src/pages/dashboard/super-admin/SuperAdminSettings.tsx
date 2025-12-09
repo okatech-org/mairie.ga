@@ -189,6 +189,10 @@ export default function SuperAdminSettings() {
                 <Tabs defaultValue="general" className="w-full">
                     <TabsList className="mb-6">
                         <TabsTrigger value="general">Général</TabsTrigger>
+                        <TabsTrigger value="session" className="gap-2">
+                            <Clock className="w-4 h-4" />
+                            Session
+                        </TabsTrigger>
                         <TabsTrigger value="security">Sécurité Avancée</TabsTrigger>
                         <TabsTrigger value="roles">Rôles & Permissions</TabsTrigger>
                         <TabsTrigger value="iasted" className="gap-2">
@@ -281,39 +285,6 @@ export default function SuperAdminSettings() {
                             </div>
                         </div>
 
-                        {/* SESSION MANAGEMENT */}
-                        <div className="neu-raised p-6 rounded-xl space-y-6">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="neu-inset p-2 rounded-full text-purple-600">
-                                    <Clock className="w-6 h-6" />
-                                </div>
-                                <h2 className="text-xl font-bold">Gestion de Session</h2>
-                            </div>
-
-                            <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50/50">
-                                <div className="space-y-0.5">
-                                    <Label className="text-base font-bold">Déconnexion automatique</Label>
-                                    <p className="text-sm text-muted-foreground">
-                                        Déconnecter les utilisateurs après une période d'inactivité pour sécuriser les comptes.
-                                    </p>
-                                </div>
-                                <Select 
-                                    value={inactivityTimeout.toString()} 
-                                    onValueChange={handleInactivityChange}
-                                >
-                                    <SelectTrigger className="w-[150px]">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {INACTIVITY_OPTIONS.map(option => (
-                                            <SelectItem key={option.value} value={option.value.toString()}>
-                                                {option.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
                         {/* SECURITY & BACKUP */}
                         <div className="neu-raised p-6 rounded-xl space-y-6">
                             <div className="flex items-center gap-3 mb-4">
@@ -356,6 +327,119 @@ export default function SuperAdminSettings() {
                                         </SelectContent>
                                     </Select>
                                 </div>
+                            </div>
+                        </div>
+                    </TabsContent>
+
+                    {/* SESSION TAB */}
+                    <TabsContent value="session" className="space-y-6">
+                        {/* Inactivity Timeout */}
+                        <div className="neu-raised p-6 rounded-xl space-y-6">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="neu-inset p-2 rounded-full text-purple-600">
+                                    <Clock className="w-6 h-6" />
+                                </div>
+                                <h2 className="text-xl font-bold">Déconnexion automatique</h2>
+                            </div>
+
+                            <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50/50">
+                                <div className="space-y-0.5">
+                                    <Label className="text-base font-bold">Délai d'inactivité</Label>
+                                    <p className="text-sm text-muted-foreground">
+                                        Déconnecter automatiquement les utilisateurs après une période d'inactivité pour protéger les comptes.
+                                    </p>
+                                </div>
+                                <Select 
+                                    value={inactivityTimeout.toString()} 
+                                    onValueChange={handleInactivityChange}
+                                >
+                                    <SelectTrigger className="w-[150px]">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {INACTIVITY_OPTIONS.map(option => (
+                                            <SelectItem key={option.value} value={option.value.toString()}>
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="neu-inset p-4 rounded-lg bg-blue-50/50 dark:bg-blue-950/20 border-l-4 border-blue-500">
+                                <div className="flex gap-3">
+                                    <Bell className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Avertissement avant déconnexion</p>
+                                        <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                                            Un avertissement est affiché 1 minute avant la déconnexion automatique pour permettre à l'utilisateur de prolonger sa session.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Session Security */}
+                        <div className="neu-raised p-6 rounded-xl space-y-6">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="neu-inset p-2 rounded-full text-green-600">
+                                    <Shield className="w-6 h-6" />
+                                </div>
+                                <h2 className="text-xl font-bold">Sécurité de session</h2>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50/50">
+                                    <div className="space-y-0.5">
+                                        <Label className="text-base font-bold">Confirmation de déconnexion</Label>
+                                        <p className="text-sm text-muted-foreground">
+                                            Afficher une boîte de dialogue de confirmation avant la déconnexion manuelle.
+                                        </p>
+                                    </div>
+                                    <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
+                                        Activé
+                                    </Badge>
+                                </div>
+
+                                <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50/50">
+                                    <div className="space-y-0.5">
+                                        <Label className="text-base font-bold">Redirection après déconnexion</Label>
+                                        <p className="text-sm text-muted-foreground">
+                                            Rediriger automatiquement vers la page de connexion après déconnexion.
+                                        </p>
+                                    </div>
+                                    <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
+                                        Activé
+                                    </Badge>
+                                </div>
+
+                                <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50/50">
+                                    <div className="space-y-0.5">
+                                        <Label className="text-base font-bold">Enregistrement des connexions</Label>
+                                        <p className="text-sm text-muted-foreground">
+                                            Enregistrer toutes les tentatives de connexion dans les logs de sécurité.
+                                        </p>
+                                    </div>
+                                    <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
+                                        Activé
+                                    </Badge>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Active Sessions Info */}
+                        <div className="neu-raised p-6 rounded-xl space-y-6">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="neu-inset p-2 rounded-full text-orange-600">
+                                    <Database className="w-6 h-6" />
+                                </div>
+                                <h2 className="text-xl font-bold">Sessions actives</h2>
+                            </div>
+
+                            <div className="text-center py-8 text-muted-foreground">
+                                <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                <p className="font-medium">Fonctionnalité à venir</p>
+                                <p className="text-sm">La gestion des sessions actives sera disponible prochainement.</p>
                             </div>
                         </div>
                     </TabsContent>
