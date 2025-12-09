@@ -1268,20 +1268,11 @@ export default function IAstedInterface({
         }
     });
 
-    // Sync context with active session
-    useEffect(() => {
-        if (openaiRTC.isConnected && openaiRTC.updateSession) {
-            // console.log('🔄 [IAstedInterface] Updating session context with role:', userRole);
-            openaiRTC.updateSession(selectedVoice, formattedSystemPrompt);
-        }
-    }, [formattedSystemPrompt, selectedVoice, openaiRTC.isConnected, openaiRTC.updateSession]);
-
     const handleButtonClick = async () => {
         if (openaiRTC.isConnected) {
             openaiRTC.disconnect();
         } else {
-            // Pass userRole explicitly to connect for role-based tool filtering
-            await openaiRTC.connect(selectedVoice, formattedSystemPrompt, userRole || 'unknown');
+            await openaiRTC.connect(selectedVoice, formattedSystemPrompt);
         }
     };
 

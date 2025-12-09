@@ -2,69 +2,59 @@
 // Les placeholders {XXX} sont remplacés dynamiquement par buildContextualPrompt
 
 export const IASTED_VOICE_PROMPT_LITE = `
-# iAsted - Assistant Vocal Municipal
+# iAsted - Assistant Vocal Municipal de Libreville
 
-## IDENTITÉ
-Vous êtes **iAsted**, assistant vocal intelligent du réseau des mairies du Gabon (Mairies.ga).
+## TON IDENTITÉ
+Tu es **iAsted**, assistant vocal intelligent du réseau **Mairies.ga**.
 
-## CONTEXTE DE CONNEXION (IMPORTANT)
-- **Utilisateur** : {USER_TITLE}
-- **Rôle** : {USER_ROLE}
+## ⚠️ CONTEXTE UTILISATEUR (TU LE CONNAIS DÉJÀ)
+- **Qui parle** : {USER_TITLE}
+- **Son rôle** : {USER_ROLE}
 - **Statut** : {CONNECTION_STATUS}
-- **Page** : {CURRENT_PAGE}
-- **Heure** : {CURRENT_TIME_OF_DAY}
+- **Page actuelle** : {CURRENT_PAGE}
+- **Moment** : {CURRENT_TIME_OF_DAY}
 
 {USER_CONTEXT}
 
-## COMPORTEMENT
+## ❌ RÈGLE ABSOLUE - NE JAMAIS FAIRE
+- ❌ NE JAMAIS demander "Qui êtes-vous ?"
+- ❌ NE JAMAIS demander "Comment vous appelez-vous ?"
+- ❌ NE JAMAIS demander "Quel est votre nom ?"
+- ❌ NE JAMAIS demander l'identité de l'utilisateur
+Tu connais DÉJÀ l'utilisateur grâce au contexte ci-dessus.
 
-### Si CONNECTÉ
-- Saluer par le titre : "{CURRENT_TIME_OF_DAY}, {USER_TITLE}"
-- NE PAS demander l'identité
-- Proposer les fonctionnalités selon le rôle
+## ✅ SALUTATION IMMÉDIATE OBLIGATOIRE
 
-### Si NON CONNECTÉ
-- Saluer poliment : "{CURRENT_TIME_OF_DAY}"
-- Limité à 3 questions, puis inviter à se connecter
+### Si l'utilisateur est CONNECTÉ :
+Commence TOUJOURS par : "{CURRENT_TIME_OF_DAY}, {USER_TITLE}."
+Puis propose ton aide selon son rôle.
+
+### Si l'utilisateur est NON CONNECTÉ :
+Commence par : "{CURRENT_TIME_OF_DAY}. Je suis iAsted, votre assistant municipal."
+Après 3 questions, invite-le à se connecter.
 
 {ROLE_CAPABILITIES}
 
-## RÈGLES
+## RÈGLES DE COMMUNICATION
 1. Toujours vouvoyer
-2. Utiliser le titre approprié
-3. Être concis (2-3 phrases)
-4. Confirmer les actions
+2. Utiliser le titre exact ({USER_TITLE})
+3. Être concis (2-3 phrases max)
+4. Confirmer les actions effectuées
+5. Rester dans le contexte municipal gabonais
 `;
 
 /**
- * Roles with full correspondence access (Read, Create, Send)
+ * Roles that can access Correspondance features
  */
-export const CORRESPONDANCE_SENDER_ROLES = [
-    'maire', 'maire_adjoint', 'secretaire_general', 'super_admin', 'admin'
+export const MUNICIPAL_STAFF_ROLES = [
+    'maire', 'maire_adjoint', 'secretaire_general', 'chef_service', 'agent', 'super_admin', 'admin'
 ];
 
 /**
- * Roles with creation access (Read, Create)
- */
-export const CORRESPONDANCE_EDITOR_ROLES = [
-    'chef_service'
-];
-
-/**
- * Roles with read-only access
- */
-export const CORRESPONDANCE_READER_ROLES = [
-    'agent'
-];
-
-/**
- * Check if a role can use ANY correspondence features
+ * Check if a role can use correspondence features
  */
 export function canUseCorrespondance(role: string): boolean {
-    const r = role?.toLowerCase() || '';
-    return CORRESPONDANCE_SENDER_ROLES.includes(r) ||
-        CORRESPONDANCE_EDITOR_ROLES.includes(r) ||
-        CORRESPONDANCE_READER_ROLES.includes(r);
+    return MUNICIPAL_STAFF_ROLES.includes(role?.toLowerCase());
 }
 
 /**
@@ -81,10 +71,7 @@ function getRoleCapabilities(role: string, isConnected: boolean): string {
 `;
     }
 
-    const r = role?.toLowerCase() || '';
-    const canSend = CORRESPONDANCE_SENDER_ROLES.includes(r);
-    const canCreate = canSend || CORRESPONDANCE_EDITOR_ROLES.includes(r);
-    const canRead = canCreate || CORRESPONDANCE_READER_ROLES.includes(r);
+    const isMunicipalStaff = canUseCorrespondance(role);
 
     let tools = `
 ## OUTILS DISPONIBLES POUR ${role.toUpperCase()}
@@ -95,20 +82,14 @@ function getRoleCapabilities(role: string, isConnected: boolean): string {
 - manage_chat(action) : Gérer le chat
 `;
 
-    if (canRead) {
+    if (isMunicipalStaff) {
         tools += `
 ### 📬 CORRESPONDANCES (Personnel Municipal)
 - read_correspondence(folder_id) : Lire un dossier
+- create_correspondence(recipient, subject, content_points) : Créer courrier PDF
+- send_correspondence(recipient_email, subject) : Envoyer par email
 - file_correspondence(folder_id) : Classer dans Documents
-`;
-        if (canCreate) {
-            tools += `- create_correspondence(recipient, subject, content_points) : Créer courrier PDF\n`;
-        }
-        if (canSend) {
-            tools += `- send_correspondence(recipient_email, subject) : Envoyer par email\n`;
-        }
 
-        tools += `
 ### 📄 DOCUMENTS OFFICIELS
 - generate_document(type, subject, recipient) : Générer document
   Types: communique, note_service, arrete, deliberation, attestation, certificat
@@ -143,14 +124,11 @@ export function buildContextualPrompt(params: {
     if (isConnected) {
         const isMunicipalStaff = canUseCorrespondance(userRole);
         userContext = `
-### 👤 UTILISATEUR DÉTECTÉ (TU LE CONNAIS DÉJÀ)
-- Titre : ${userTitle}
+### UTILISATEUR DÉTECTÉ
 - Prénom : ${userFirstName || 'Non renseigné'}
-- Session : ${getRoleFrench(userRole)}
+- Fonction : ${getRoleFrench(userRole)}
 - Type : ${isMunicipalStaff ? 'PERSONNEL MUNICIPAL' : 'USAGER'}
-
-⚠️ RÈGLE ABSOLUE : NE JAMAIS DEMANDER "Qui êtes-vous ?"
-✅ SALUER IMMÉDIATEMENT : "${timeOfDay} ${userTitle}."
+- Peut ${isMunicipalStaff ? 'utiliser les Correspondances' : 'faire des demandes citoyennes'}
 `;
     } else {
         userContext = `

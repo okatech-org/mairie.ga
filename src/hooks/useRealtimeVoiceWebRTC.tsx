@@ -2,12 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { IASTED_SYSTEM_PROMPT } from '@/config/iasted-config';
-import {
-    IASTED_VOICE_PROMPT_LITE,
-    CORRESPONDANCE_SENDER_ROLES,
-    CORRESPONDANCE_EDITOR_ROLES,
-    CORRESPONDANCE_READER_ROLES
-} from '@/config/iasted-prompt-lite';
+import { IASTED_VOICE_PROMPT_LITE } from '@/config/iasted-prompt-lite';
 import { getRouteKnowledgePrompt, resolveRoute } from '@/utils/route-mapping';
 import { matchLocalCommand, LocalCommandResult } from '@/utils/local-command-router';
 import {
@@ -77,7 +72,6 @@ export interface UseRealtimeVoiceWebRTC {
     clearSession: () => void;
     toggleConversation: (voice?: 'echo' | 'ash' | 'shimmer') => void;
     setSpeechRate: (rate: number) => void;
-    updateSession: (voice?: 'echo' | 'ash' | 'shimmer', systemPrompt?: string) => void;
 }
 
 export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) => void): UseRealtimeVoiceWebRTC => {
@@ -90,14 +84,10 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
         USE_LITE_PROMPT ? IASTED_VOICE_PROMPT_LITE : IASTED_SYSTEM_PROMPT
     );
 
-    // Store role in ref to access it in updateSession without stale closures
-    const currentUserRoleRef = useRef<string>('unknown');
-
     const peerConnection = useRef<RTCPeerConnection | null>(null);
     const dataChannel = useRef<RTCDataChannel | null>(null);
     const audioContext = useRef<AudioContext | null>(null);
     const analyser = useRef<AnalyserNode | null>(null);
-    const audioElement = useRef<HTMLAudioElement | null>(null); // Keep reference to prevent GC
     const animationFrame = useRef<number | null>(null);
     const { toast } = useToast();
     const location = useLocation();
@@ -128,11 +118,10 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
         animationFrame.current = requestAnimationFrame(analyzeAudio);
     };
 
-    const connect = async (voice: 'echo' | 'ash' | 'shimmer' = 'echo', systemPrompt: string = USE_LITE_PROMPT ? IASTED_VOICE_PROMPT_LITE : IASTED_SYSTEM_PROMPT, role: string = 'unknown') => {
+    const connect = async (voice: 'echo' | 'ash' | 'shimmer' = 'echo', systemPrompt: string = USE_LITE_PROMPT ? IASTED_VOICE_PROMPT_LITE : IASTED_SYSTEM_PROMPT) => {
         try {
             if (voice) setCurrentVoice(voice);
             if (systemPrompt) setCurrentSystemPrompt(systemPrompt);
-            currentUserRoleRef.current = role;
 
             setVoiceState('connecting');
 
@@ -172,12 +161,8 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             // Audio Element for output
             const audioEl = document.createElement('audio');
             audioEl.autoplay = true;
-            audioElement.current = audioEl; // Store ref
-
             pc.ontrack = (e) => {
-                console.log('🔊 [WebRTC] Audio track received');
                 audioEl.srcObject = e.streams[0];
-                audioEl.play().catch(err => console.error('⚠️ Autoplay failed:', err));
             };
 
             // Data Channel
@@ -189,17 +174,31 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                 setVoiceState('listening');
                 updateSession(voice, systemPrompt); // Send initial config
 
-                // Trigger iAsted to speak first (auto-greeting)
-                // Reduced latency for immediate feedback (50ms)
+                // Trigger iAsted to speak first with FORCED contextual greeting
                 setTimeout(() => {
                     if (dc.readyState === 'open') {
-                        console.log('🎙️ Triggering auto-greeting...');
+                        console.log('🎙️ Triggering contextual auto-greeting...');
+
+                        // First, send a hidden user message that triggers the greeting
+                        // This acts as a "silent prompt" to make the AI respond with context
                         dc.send(JSON.stringify({
-                            type: 'response.create',
-                            response: {
-                                instructions: "Salue l'utilisateur IMMÉDIATEMENT par son titre exact (comme défini dans le contexte) et propose ton aide."
+                            type: 'conversation.item.create',
+                            item: {
+                                type: 'message',
+                                role: 'user',
+                                content: [{
+                                    type: 'input_text',
+                                    text: '[SYSTÈME: L\'utilisateur vient d\'activer iAsted. Salue-le IMMÉDIATEMENT avec son titre exact comme indiqué dans ton contexte. NE demande PAS son identité - tu la connais déjà. Propose-lui ton aide.]'
+                                }]
                             }
                         }));
+
+                        // Then trigger the AI response
+                        setTimeout(() => {
+                            if (dc.readyState === 'open') {
+                                dc.send(JSON.stringify({ type: 'response.create' }));
+                            }
+                        }, 100);
                     }
                 }, 500);
             };
@@ -227,24 +226,6 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
 
-            // Wait for ICE candidates (crucial for some networks)
-            // Race condition: wait max 1s for candidates or 'complete' state
-            // await new Promise<void>(resolve => {
-            //     if (pc.iceGatheringState === 'complete') return resolve();
-            //     const check = () => {
-            //         if (pc.iceGatheringState === 'complete') {
-            //             pc.removeEventListener('icegatheringstatechange', check);
-            //             resolve();
-            //         }
-            //     };
-            //     pc.addEventListener('icegatheringstatechange', check);
-            //     setTimeout(() => {
-            //         pc.removeEventListener('icegatheringstatechange', check);
-            //         resolve();
-            //     }, 800); 
-            // });
-            // Note: OpenAI Realtime usually works with single REST offer, but waiting helps stability.
-
             // 5. Exchange SDP with OpenAI
             const baseUrl = 'https://api.openai.com/v1/realtime';
             const model = 'gpt-4o-realtime-preview-2024-12-17';
@@ -252,7 +233,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
 
             const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
                 method: 'POST',
-                body: offer.sdp, // Uses the updated SDP with candidates if waited (or partial)
+                body: offer.sdp,
                 headers: {
                     Authorization: `Bearer ${EPHEMERAL_KEY}`,
                     'Content-Type': 'application/sdp',
@@ -282,12 +263,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                 description: err.message,
                 variant: "destructive"
             });
-        }
-        setVoiceState('idle');
-        // Cleanup on error
-        if (audioElement.current) {
-            audioElement.current.srcObject = null;
-            audioElement.current = null;
+            setVoiceState('idle');
         }
     };
 
@@ -296,386 +272,6 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
 
         const routeKnowledge = getRouteKnowledgePrompt();
         const fullSystemPrompt = `${systemPrompt}\n\n${routeKnowledge}`;
-
-        // Filter tools based on role
-        const r = currentUserRoleRef.current?.toLowerCase() || '';
-        const canSend = CORRESPONDANCE_SENDER_ROLES.includes(r);
-        const canCreate = canSend || CORRESPONDANCE_EDITOR_ROLES.includes(r);
-        const canRead = canCreate || CORRESPONDANCE_READER_ROLES.includes(r);
-
-        // Define all available tools
-        const allTools = [
-            {
-                type: 'function',
-                name: 'change_voice',
-                description: 'Changer la voix de l\'assistant (homme/femme)',
-                parameters: { type: 'object', properties: {} }
-            },
-            {
-                type: 'function',
-                name: 'navigate_app',
-                description: 'Naviguer vers une page de l\'application',
-                parameters: {
-                    type: 'object',
-                    properties: {
-                        path: { type: 'string', description: 'Le chemin de la route (ex: /register, /register/gabonais, /login)' }
-                    },
-                    required: ['path']
-                }
-            },
-            {
-                type: 'function',
-                name: 'control_ui',
-                description: 'Contrôler l\'interface utilisateur (thème, sidebar)',
-                parameters: {
-                    type: 'object',
-                    properties: {
-                        action: {
-                            type: 'string',
-                            enum: ['set_theme_dark', 'set_theme_light', 'toggle_theme', 'toggle_sidebar', 'set_speech_rate']
-                        },
-                        value: { type: 'string', description: 'Valeur optionnelle (ex: vitesse)' }
-                    },
-                    required: ['action']
-                }
-            },
-            {
-                type: 'function',
-                name: 'fill_form_field',
-                description: 'Remplir un champ du formulaire d\'inscription. Utilise cette fonction quand l\'utilisateur te donne une information pour son inscription.',
-                parameters: {
-                    type: 'object',
-                    properties: {
-                        field: {
-                            type: 'string',
-                            enum: [
-                                'firstName', 'lastName', 'dateOfBirth', 'placeOfBirth',
-                                'maritalStatus', 'fatherName', 'motherName',
-                                'address', 'city', 'postalCode',
-                                'emergencyContactName', 'emergencyContactPhone',
-                                'professionalStatus', 'employer', 'profession',
-                                'email', 'phone'
-                            ],
-                            description: 'Le nom du champ à remplir'
-                        },
-                        value: { type: 'string', description: 'La valeur à mettre dans le champ' }
-                    },
-                    required: ['field', 'value']
-                }
-            },
-            {
-                type: 'function',
-                name: 'select_citizen_type',
-                description: 'Sélectionner le type de citoyen pour l\'inscription (gabonais ou étranger)',
-                parameters: {
-                    type: 'object',
-                    properties: {
-                        type: {
-                            type: 'string',
-                            enum: ['gabonais', 'etranger'],
-                            description: 'Type de citoyen: gabonais ou étranger'
-                        }
-                    },
-                    required: ['type']
-                }
-            },
-            {
-                type: 'function',
-                name: 'navigate_form_step',
-                description: 'Naviguer vers une étape spécifique du formulaire d\'inscription',
-                parameters: {
-                    type: 'object',
-                    properties: {
-                        step: {
-                            type: 'number',
-                            description: 'Numéro de l\'étape (1-6 pour gabonais: Documents, Infos Base, Famille, Contacts, Profession, Révision)'
-                        },
-                        direction: {
-                            type: 'string',
-                            enum: ['next', 'previous', 'goto'],
-                            description: 'Direction de navigation'
-                        }
-                    },
-                    required: ['direction']
-                }
-            },
-            {
-                type: 'function',
-                name: 'get_form_status',
-                description: 'Obtenir le statut actuel du formulaire (étape courante, champs remplis)',
-                parameters: { type: 'object', properties: {} }
-            },
-            {
-                type: 'function',
-                name: 'submit_form',
-                description: 'Soumettre le formulaire d\'inscription une fois complété',
-                parameters: { type: 'object', properties: {} }
-            },
-            {
-                type: 'function',
-                name: 'generate_document',
-                description: 'Générer un document officiel',
-                parameters: {
-                    type: 'object',
-                    properties: {
-                        type: { type: 'string' },
-                        recipient: { type: 'string' },
-                        subject: { type: 'string' },
-                        format: { type: 'string', enum: ['pdf', 'docx'] }
-                    },
-                    required: ['type', 'subject']
-                }
-            },
-            {
-                type: 'function',
-                name: 'stop_conversation',
-                description: 'Arrêter la conversation vocale',
-                parameters: { type: 'object', properties: {} }
-            },
-            {
-                type: 'function',
-                name: 'request_consular_service',
-                description: 'Initier une demande de service municipal',
-                parameters: {
-                    type: 'object',
-                    properties: {
-                        service_type: {
-                            type: 'string',
-                            description: 'Type de service demandé'
-                        },
-                        urgency: {
-                            type: 'string',
-                            enum: ['normal', 'urgent'],
-                            description: 'Niveau d\'urgence'
-                        }
-                    },
-                    required: ['service_type']
-                }
-            },
-            {
-                type: 'function',
-                name: 'schedule_appointment',
-                description: 'Prendre un rendez-vous à la mairie',
-                parameters: {
-                    type: 'object',
-                    properties: {
-                        service_type: { type: 'string' },
-                        preferred_date: { type: 'string' }
-                    }
-                }
-            },
-            {
-                type: 'function',
-                name: 'get_service_info',
-                description: 'Obtenir des informations sur un service municipal',
-                parameters: {
-                    type: 'object',
-                    properties: {
-                        service_type: { type: 'string' }
-                    },
-                    required: ['service_type']
-                }
-            },
-            // ============= CORRESPONDANCE TOOLS (Maire, Adjoint, SG) =============
-            {
-                type: 'function',
-                name: 'read_correspondence',
-                description: 'Lire à haute voix le contenu d\'un dossier de correspondance officielle. Réservé au Maire, Adjoint, et Secrétaire Général.',
-                parameters: {
-                    type: 'object',
-                    properties: {
-                        folder_id: { type: 'string', description: 'ID du dossier de correspondance à lire' }
-                    },
-                    required: ['folder_id']
-                }
-            },
-            {
-                type: 'function',
-                name: 'file_correspondence',
-                description: 'Classer un dossier de correspondance dans "Mes Documents". Réservé au Maire, Adjoint, et Secrétaire Général.',
-                parameters: {
-                    type: 'object',
-                    properties: {
-                        folder_id: { type: 'string', description: 'ID du dossier à classer' }
-                    },
-                    required: ['folder_id']
-                }
-            },
-            {
-                type: 'function',
-                name: 'create_correspondence',
-                description: 'Créer un courrier officiel en PDF. Réservé au Maire, Adjoint, et Secrétaire Général.',
-                parameters: {
-                    type: 'object',
-                    properties: {
-                        recipient: { type: 'string', description: 'Nom du destinataire' },
-                        recipient_org: { type: 'string', description: 'Organisation du destinataire' },
-                        recipient_email: { type: 'string', description: 'Email du destinataire (optionnel)' },
-                        subject: { type: 'string', description: 'Objet du courrier' },
-                        content_points: { type: 'array', items: { type: 'string' }, description: 'Points clés du contenu' },
-                        template: { type: 'string', description: 'Template à utiliser (défaut: courrier)' }
-                    },
-                    required: ['recipient', 'recipient_org', 'subject', 'content_points']
-                }
-            },
-            {
-                type: 'function',
-                name: 'send_correspondence',
-                description: 'Envoyer une correspondance par email. Réservé au Maire, Adjoint, et Secrétaire Général.',
-                parameters: {
-                    type: 'object',
-                    properties: {
-                        recipient_email: { type: 'string', description: 'Email du destinataire' },
-                        subject: { type: 'string', description: 'Objet de l\'email' },
-                        body: { type: 'string', description: 'Corps du message' },
-                        document_id: { type: 'string', description: 'ID du document à joindre' }
-                    },
-                    required: ['recipient_email']
-                }
-            },
-            // ============= DOCUMENT VAULT TOOLS =============
-            {
-                type: 'function',
-                name: 'import_document',
-                description: 'Importer un document depuis différentes sources. Utilise cet outil quand l\'utilisateur veut ajouter un document (photo, passeport, justificatif, etc.)',
-                parameters: {
-                    type: 'object',
-                    properties: {
-                        source: {
-                            type: 'string',
-                            enum: ['local', 'camera', 'vault'],
-                            description: 'Source du document: local (fichiers), camera (scanner), vault (coffre-fort)'
-                        },
-                        category: {
-                            type: 'string',
-                            enum: ['photo_identity', 'passport', 'birth_certificate', 'residence_proof', 'marriage_certificate', 'family_record', 'diploma', 'cv', 'other'],
-                            description: 'Catégorie du document'
-                        },
-                        for_field: { type: 'string', description: 'Champ du formulaire à remplir avec ce document (optionnel)' }
-                    },
-                    required: ['source']
-                }
-            },
-            {
-                type: 'function',
-                name: 'open_document_vault',
-                description: 'Ouvrir le coffre-fort de documents pour voir, gérer ou sélectionner des documents sauvegardés',
-                parameters: {
-                    type: 'object',
-                    properties: {
-                        category_filter: {
-                            type: 'string',
-                            enum: ['photo_identity', 'passport', 'birth_certificate', 'residence_proof', 'marriage_certificate', 'family_record', 'diploma', 'cv', 'other'],
-                            description: 'Filtrer par catégorie (optionnel)'
-                        },
-                        selection_mode: { type: 'boolean', description: 'Mode sélection pour utiliser un document dans un formulaire' }
-                    }
-                }
-            },
-            {
-                type: 'function',
-                name: 'list_saved_documents',
-                description: 'Lister les documents sauvegardés dans le coffre-fort de l\'utilisateur',
-                parameters: {
-                    type: 'object',
-                    properties: {
-                        category: {
-                            type: 'string',
-                            enum: ['photo_identity', 'passport', 'birth_certificate', 'residence_proof', 'marriage_certificate', 'family_record', 'diploma', 'cv', 'other'],
-                            description: 'Filtrer par catégorie'
-                        }
-                    }
-                }
-            },
-            {
-                type: 'function',
-                name: 'use_saved_document',
-                description: 'Utiliser un document déjà sauvegardé dans le coffre-fort pour remplir un champ du formulaire',
-                parameters: {
-                    type: 'object',
-                    properties: {
-                        document_id: { type: 'string', description: 'ID du document à utiliser' },
-                        for_field: { type: 'string', description: 'Champ du formulaire à remplir' }
-                    },
-                    required: ['document_id', 'for_field']
-                }
-            },
-            // ============= DOCUMENT ANALYSIS TOOLS =============
-            {
-                type: 'function',
-                name: 'analyze_dropped_documents',
-                description: 'Analyser les documents déposés dans le chat et extraire les informations pour pré-remplir le formulaire',
-                parameters: {
-                    type: 'object',
-                    properties: {
-                        auto_fill: { type: 'boolean', description: 'Remplir automatiquement le formulaire avec les données extraites' }
-                    }
-                }
-            },
-            {
-                type: 'function',
-                name: 'analyze_user_documents',
-                description: 'Analyser les documents existants de l\'utilisateur stockés dans son coffre-fort (passeport, CNI, acte de naissance, etc.) avec OCR pour extraire les informations',
-                parameters: {
-                    type: 'object',
-                    properties: {
-                        document_ids: {
-                            type: 'array',
-                            items: { type: 'string' },
-                            description: 'IDs des documents à analyser. Si vide, analyse tous les documents de l\'utilisateur.'
-                        },
-                        document_types: {
-                            type: 'array',
-                            items: { type: 'string' },
-                            description: 'Types de documents à analyser: passport, cni, birth_certificate, residence_proof, family_record'
-                        }
-                    }
-                }
-            },
-            {
-                type: 'function',
-                name: 'start_assisted_registration',
-                description: 'Démarrer l\'inscription assistée avec analyse des documents. Deux modes: autonome (sans formulaire) ou aperçu formulaire',
-                parameters: {
-                    type: 'object',
-                    properties: {
-                        mode: {
-                            type: 'string',
-                            enum: ['autonomous', 'form_preview'],
-                            description: 'autonomous: créer compte directement, form_preview: montrer le formulaire pré-rempli'
-                        }
-                    }
-                }
-            },
-            {
-                type: 'function',
-                name: 'confirm_extracted_field',
-                description: 'Confirmer ou corriger un champ extrait des documents',
-                parameters: {
-                    type: 'object',
-                    properties: {
-                        field: { type: 'string', description: 'Nom du champ à confirmer' },
-                        confirmed_value: { type: 'string', description: 'Valeur confirmée ou corrigée' }
-                    },
-                    required: ['field', 'confirmed_value']
-                }
-            },
-            {
-                type: 'function',
-                name: 'get_extraction_summary',
-                description: 'Obtenir un résumé des données extraites des documents',
-                parameters: {
-                    type: 'object',
-                    properties: {}
-                }
-            }
-        ]
-        const filteredTools = allTools.filter(t => {
-            if (['read_correspondence', 'file_correspondence'].includes(t.name)) return canRead;
-            if (t.name === 'create_correspondence') return canCreate;
-            if (t.name === 'send_correspondence') return canSend;
-            return true;
-        });
 
         const event = {
             type: 'session.update',
@@ -686,17 +282,374 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                 input_audio_transcription: {
                     model: 'whisper-1',
                 },
-                // VAD optimization for natural conversation (0-2s latency)
-                turn_detection: {
-                    type: 'server_vad',
-                    threshold: 0.6,
-                    prefix_padding_ms: 300,
-                    silence_duration_ms: 400
-                },
-                tools: filteredTools
+                tools: [
+                    {
+                        type: 'function',
+                        name: 'change_voice',
+                        description: 'Changer la voix de l\'assistant (homme/femme)',
+                        parameters: { type: 'object', properties: {} }
+                    },
+                    {
+                        type: 'function',
+                        name: 'navigate_app',
+                        description: 'Naviguer vers une page de l\'application',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                path: { type: 'string', description: 'Le chemin de la route (ex: /register, /register/gabonais, /login)' }
+                            },
+                            required: ['path']
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'control_ui',
+                        description: 'Contrôler l\'interface utilisateur (thème, sidebar)',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                action: {
+                                    type: 'string',
+                                    enum: ['set_theme_dark', 'set_theme_light', 'toggle_theme', 'toggle_sidebar', 'set_speech_rate']
+                                },
+                                value: { type: 'string', description: 'Valeur optionnelle (ex: vitesse)' }
+                            },
+                            required: ['action']
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'fill_form_field',
+                        description: 'Remplir un champ du formulaire d\'inscription. Utilise cette fonction quand l\'utilisateur te donne une information pour son inscription.',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                field: {
+                                    type: 'string',
+                                    enum: [
+                                        'firstName', 'lastName', 'dateOfBirth', 'placeOfBirth',
+                                        'maritalStatus', 'fatherName', 'motherName',
+                                        'address', 'city', 'postalCode',
+                                        'emergencyContactName', 'emergencyContactPhone',
+                                        'professionalStatus', 'employer', 'profession',
+                                        'email', 'phone'
+                                    ],
+                                    description: 'Le nom du champ à remplir'
+                                },
+                                value: { type: 'string', description: 'La valeur à mettre dans le champ' }
+                            },
+                            required: ['field', 'value']
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'select_citizen_type',
+                        description: 'Sélectionner le type de citoyen pour l\'inscription (gabonais ou étranger)',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                type: {
+                                    type: 'string',
+                                    enum: ['gabonais', 'etranger'],
+                                    description: 'Type de citoyen: gabonais ou étranger'
+                                }
+                            },
+                            required: ['type']
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'navigate_form_step',
+                        description: 'Naviguer vers une étape spécifique du formulaire d\'inscription',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                step: {
+                                    type: 'number',
+                                    description: 'Numéro de l\'étape (1-6 pour gabonais: Documents, Infos Base, Famille, Contacts, Profession, Révision)'
+                                },
+                                direction: {
+                                    type: 'string',
+                                    enum: ['next', 'previous', 'goto'],
+                                    description: 'Direction de navigation'
+                                }
+                            },
+                            required: ['direction']
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'get_form_status',
+                        description: 'Obtenir le statut actuel du formulaire (étape courante, champs remplis)',
+                        parameters: { type: 'object', properties: {} }
+                    },
+                    {
+                        type: 'function',
+                        name: 'submit_form',
+                        description: 'Soumettre le formulaire d\'inscription une fois complété',
+                        parameters: { type: 'object', properties: {} }
+                    },
+                    {
+                        type: 'function',
+                        name: 'generate_document',
+                        description: 'Générer un document officiel',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                type: { type: 'string' },
+                                recipient: { type: 'string' },
+                                subject: { type: 'string' },
+                                format: { type: 'string', enum: ['pdf', 'docx'] }
+                            },
+                            required: ['type', 'subject']
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'stop_conversation',
+                        description: 'Arrêter la conversation vocale',
+                        parameters: { type: 'object', properties: {} }
+                    },
+                    {
+                        type: 'function',
+                        name: 'request_consular_service',
+                        description: 'Initier une demande de service municipal',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                service_type: {
+                                    type: 'string',
+                                    description: 'Type de service demandé'
+                                },
+                                urgency: {
+                                    type: 'string',
+                                    enum: ['normal', 'urgent'],
+                                    description: 'Niveau d\'urgence'
+                                }
+                            },
+                            required: ['service_type']
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'schedule_appointment',
+                        description: 'Prendre un rendez-vous à la mairie',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                service_type: { type: 'string' },
+                                preferred_date: { type: 'string' }
+                            }
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'get_service_info',
+                        description: 'Obtenir des informations sur un service municipal',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                service_type: { type: 'string' }
+                            },
+                            required: ['service_type']
+                        }
+                    },
+                    // ============= CORRESPONDANCE TOOLS (Maire, Adjoint, SG) =============
+                    {
+                        type: 'function',
+                        name: 'read_correspondence',
+                        description: 'Lire à haute voix le contenu d\'un dossier de correspondance officielle. Réservé au Maire, Adjoint, et Secrétaire Général.',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                folder_id: { type: 'string', description: 'ID du dossier de correspondance à lire' }
+                            },
+                            required: ['folder_id']
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'file_correspondence',
+                        description: 'Classer un dossier de correspondance dans "Mes Documents". Réservé au Maire, Adjoint, et Secrétaire Général.',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                folder_id: { type: 'string', description: 'ID du dossier à classer' }
+                            },
+                            required: ['folder_id']
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'create_correspondence',
+                        description: 'Créer un courrier officiel en PDF. Réservé au Maire, Adjoint, et Secrétaire Général.',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                recipient: { type: 'string', description: 'Nom du destinataire' },
+                                recipient_org: { type: 'string', description: 'Organisation du destinataire' },
+                                recipient_email: { type: 'string', description: 'Email du destinataire (optionnel)' },
+                                subject: { type: 'string', description: 'Objet du courrier' },
+                                content_points: { type: 'array', items: { type: 'string' }, description: 'Points clés du contenu' },
+                                template: { type: 'string', description: 'Template à utiliser (défaut: courrier)' }
+                            },
+                            required: ['recipient', 'recipient_org', 'subject', 'content_points']
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'send_correspondence',
+                        description: 'Envoyer une correspondance par email. Réservé au Maire, Adjoint, et Secrétaire Général.',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                recipient_email: { type: 'string', description: 'Email du destinataire' },
+                                subject: { type: 'string', description: 'Objet de l\'email' },
+                                body: { type: 'string', description: 'Corps du message' },
+                                document_id: { type: 'string', description: 'ID du document à joindre' }
+                            },
+                            required: ['recipient_email']
+                        }
+                    },
+                    // ============= DOCUMENT VAULT TOOLS =============
+                    {
+                        type: 'function',
+                        name: 'import_document',
+                        description: 'Importer un document depuis différentes sources. Utilise cet outil quand l\'utilisateur veut ajouter un document (photo, passeport, justificatif, etc.)',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                source: {
+                                    type: 'string',
+                                    enum: ['local', 'camera', 'vault'],
+                                    description: 'Source du document: local (fichiers), camera (scanner), vault (coffre-fort)'
+                                },
+                                category: {
+                                    type: 'string',
+                                    enum: ['photo_identity', 'passport', 'birth_certificate', 'residence_proof', 'marriage_certificate', 'family_record', 'diploma', 'cv', 'other'],
+                                    description: 'Catégorie du document'
+                                },
+                                for_field: { type: 'string', description: 'Champ du formulaire à remplir avec ce document (optionnel)' }
+                            },
+                            required: ['source']
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'open_document_vault',
+                        description: 'Ouvrir le coffre-fort de documents pour voir, gérer ou sélectionner des documents sauvegardés',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                category_filter: {
+                                    type: 'string',
+                                    enum: ['photo_identity', 'passport', 'birth_certificate', 'residence_proof', 'marriage_certificate', 'family_record', 'diploma', 'cv', 'other'],
+                                    description: 'Filtrer par catégorie (optionnel)'
+                                },
+                                selection_mode: { type: 'boolean', description: 'Mode sélection pour utiliser un document dans un formulaire' }
+                            }
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'list_saved_documents',
+                        description: 'Lister les documents sauvegardés dans le coffre-fort de l\'utilisateur',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                category: {
+                                    type: 'string',
+                                    enum: ['photo_identity', 'passport', 'birth_certificate', 'residence_proof', 'marriage_certificate', 'family_record', 'diploma', 'cv', 'other'],
+                                    description: 'Filtrer par catégorie'
+                                }
+                            }
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'use_saved_document',
+                        description: 'Utiliser un document déjà sauvegardé dans le coffre-fort pour remplir un champ du formulaire',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                document_id: { type: 'string', description: 'ID du document à utiliser' },
+                                for_field: { type: 'string', description: 'Champ du formulaire à remplir' }
+                            },
+                            required: ['document_id', 'for_field']
+                        }
+                    },
+                    // ============= DOCUMENT ANALYSIS TOOLS =============
+                    {
+                        type: 'function',
+                        name: 'analyze_dropped_documents',
+                        description: 'Analyser les documents déposés dans le chat et extraire les informations pour pré-remplir le formulaire',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                auto_fill: { type: 'boolean', description: 'Remplir automatiquement le formulaire avec les données extraites' }
+                            }
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'analyze_user_documents',
+                        description: 'Analyser les documents existants de l\'utilisateur stockés dans son coffre-fort (passeport, CNI, acte de naissance, etc.) avec OCR pour extraire les informations',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                document_ids: {
+                                    type: 'array',
+                                    items: { type: 'string' },
+                                    description: 'IDs des documents à analyser. Si vide, analyse tous les documents de l\'utilisateur.'
+                                },
+                                document_types: {
+                                    type: 'array',
+                                    items: { type: 'string' },
+                                    description: 'Types de documents à analyser: passport, cni, birth_certificate, residence_proof, family_record'
+                                }
+                            }
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'start_assisted_registration',
+                        description: 'Démarrer l\'inscription assistée avec analyse des documents. Deux modes: autonome (sans formulaire) ou aperçu formulaire',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                mode: {
+                                    type: 'string',
+                                    enum: ['autonomous', 'form_preview'],
+                                    description: 'autonomous: créer compte directement, form_preview: montrer le formulaire pré-rempli'
+                                }
+                            }
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'confirm_extracted_field',
+                        description: 'Confirmer ou corriger un champ extrait des documents',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                field: { type: 'string', description: 'Nom du champ à confirmer' },
+                                confirmed_value: { type: 'string', description: 'Valeur confirmée ou corrigée' }
+                            },
+                            required: ['field', 'confirmed_value']
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'get_extraction_summary',
+                        description: 'Obtenir un résumé des données extraites des documents',
+                        parameters: {
+                            type: 'object',
+                            properties: {}
+                        }
+                    }
+                ]
             }
         };
-
         dataChannel.current.send(JSON.stringify(event));
     };
 
@@ -878,13 +831,6 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             dataChannel.current.close();
             dataChannel.current = null;
         }
-        if (audioElement.current) {
-            audioElement.current.pause();
-            audioElement.current.srcObject = null;
-            audioElement.current = null;
-        }
-
-        setIsMicrophoneAllowed(false);
         setVoiceState('idle');
     };
 
@@ -931,7 +877,6 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
         changeVoice,
         clearSession,
         toggleConversation,
-        setSpeechRate,
-        updateSession
+        setSpeechRate
     };
 };
