@@ -174,33 +174,20 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                 setVoiceState('listening');
                 updateSession(voice, systemPrompt); // Send initial config
 
-                // Trigger iAsted to speak first with FORCED contextual greeting
+                // IMPORTANT: Trigger iAsted greeting AFTER session update is processed
+                // Using presidence.ga approach: response.create with explicit instructions
                 setTimeout(() => {
                     if (dc.readyState === 'open') {
-                        console.log('🎙️ Triggering contextual auto-greeting...');
-
-                        // First, send a hidden user message that triggers the greeting
-                        // This acts as a "silent prompt" to make the AI respond with context
+                        console.log('👋 [WebRTC] Déclenchement de la salutation initiale contextuelle');
                         dc.send(JSON.stringify({
-                            type: 'conversation.item.create',
-                            item: {
-                                type: 'message',
-                                role: 'user',
-                                content: [{
-                                    type: 'input_text',
-                                    text: '[SYSTÈME: L\'utilisateur vient d\'activer iAsted. Salue-le IMMÉDIATEMENT avec son titre exact comme indiqué dans ton contexte. NE demande PAS son identité - tu la connais déjà. Propose-lui ton aide.]'
-                                }]
+                            type: 'response.create',
+                            response: {
+                                modalities: ['text', 'audio'],
+                                instructions: `Tu viens d'être activé. Salue IMMÉDIATEMENT l'utilisateur en utilisant son titre exact tel qu'indiqué dans tes instructions système. NE demande PAS son identité. Tu la connais. Sois bref et professionnel.`
                             }
                         }));
-
-                        // Then trigger the AI response
-                        setTimeout(() => {
-                            if (dc.readyState === 'open') {
-                                dc.send(JSON.stringify({ type: 'response.create' }));
-                            }
-                        }, 100);
                     }
-                }, 500);
+                }, 1000); // 1 seconde de délai pour que session.update soit traité
             };
 
             dc.onmessage = (e) => {
