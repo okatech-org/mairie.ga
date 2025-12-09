@@ -37,17 +37,34 @@ Vous êtes **iAsted**, assistant vocal intelligent du réseau des mairies du Gab
 `;
 
 /**
- * Roles that can access Correspondance features
+ * Roles with full correspondence access (Read, Create, Send)
  */
-export const MUNICIPAL_STAFF_ROLES = [
-    'maire', 'maire_adjoint', 'secretaire_general', 'chef_service', 'agent', 'super_admin', 'admin'
+export const CORRESPONDANCE_SENDER_ROLES = [
+    'maire', 'maire_adjoint', 'secretaire_general', 'super_admin', 'admin'
 ];
 
 /**
- * Check if a role can use correspondence features
+ * Roles with creation access (Read, Create)
+ */
+export const CORRESPONDANCE_EDITOR_ROLES = [
+    'chef_service'
+];
+
+/**
+ * Roles with read-only access
+ */
+export const CORRESPONDANCE_READER_ROLES = [
+    'agent'
+];
+
+/**
+ * Check if a role can use ANY correspondence features
  */
 export function canUseCorrespondance(role: string): boolean {
-    return MUNICIPAL_STAFF_ROLES.includes(role?.toLowerCase());
+    const r = role?.toLowerCase() || '';
+    return CORRESPONDANCE_SENDER_ROLES.includes(r) ||
+        CORRESPONDANCE_EDITOR_ROLES.includes(r) ||
+        CORRESPONDANCE_READER_ROLES.includes(r);
 }
 
 /**
@@ -64,7 +81,10 @@ function getRoleCapabilities(role: string, isConnected: boolean): string {
 `;
     }
 
-    const isMunicipalStaff = canUseCorrespondance(role);
+    const r = role?.toLowerCase() || '';
+    const canSend = CORRESPONDANCE_SENDER_ROLES.includes(r);
+    const canCreate = canSend || CORRESPONDANCE_EDITOR_ROLES.includes(r);
+    const canRead = canCreate || CORRESPONDANCE_READER_ROLES.includes(r);
 
     let tools = `
 ## OUTILS DISPONIBLES POUR ${role.toUpperCase()}
@@ -75,14 +95,20 @@ function getRoleCapabilities(role: string, isConnected: boolean): string {
 - manage_chat(action) : Gérer le chat
 `;
 
-    if (isMunicipalStaff) {
+    if (canRead) {
         tools += `
 ### 📬 CORRESPONDANCES (Personnel Municipal)
 - read_correspondence(folder_id) : Lire un dossier
-- create_correspondence(recipient, subject, content_points) : Créer courrier PDF
-- send_correspondence(recipient_email, subject) : Envoyer par email
 - file_correspondence(folder_id) : Classer dans Documents
+`;
+        if (canCreate) {
+            tools += `- create_correspondence(recipient, subject, content_points) : Créer courrier PDF\n`;
+        }
+        if (canSend) {
+            tools += `- send_correspondence(recipient_email, subject) : Envoyer par email\n`;
+        }
 
+        tools += `
 ### 📄 DOCUMENTS OFFICIELS
 - generate_document(type, subject, recipient) : Générer document
   Types: communique, note_service, arrete, deliberation, attestation, certificat
@@ -117,11 +143,14 @@ export function buildContextualPrompt(params: {
     if (isConnected) {
         const isMunicipalStaff = canUseCorrespondance(userRole);
         userContext = `
-### UTILISATEUR DÉTECTÉ
+### 👤 UTILISATEUR DÉTECTÉ (TU LE CONNAIS DÉJÀ)
+- Titre : ${userTitle}
 - Prénom : ${userFirstName || 'Non renseigné'}
-- Fonction : ${getRoleFrench(userRole)}
+- Session : ${getRoleFrench(userRole)}
 - Type : ${isMunicipalStaff ? 'PERSONNEL MUNICIPAL' : 'USAGER'}
-- Peut ${isMunicipalStaff ? 'utiliser les Correspondances' : 'faire des demandes citoyennes'}
+
+⚠️ RÈGLE ABSOLUE : NE JAMAIS DEMANDER "Qui êtes-vous ?"
+✅ SALUER IMMÉDIATEMENT : "${timeOfDay} ${userTitle}."
 `;
     } else {
         userContext = `
