@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
+import { organizationService } from "./organizationService";
 
 // Types basés sur la table profiles de Supabase avec extensions
 export type Profile = Tables<"profiles"> & {
@@ -24,9 +25,6 @@ export interface ProfileWithRole extends Profile {
     };
 }
 
-import { organizationService } from "./organizationService";
-import { MOCK_PROFILES } from "@/data/mock-profiles";
-
 export const profileService = {
     async getAll(): Promise<ProfileWithRole[]> {
         // 1. Récupérer les profils
@@ -35,12 +33,13 @@ export const profileService = {
             .select('*')
             .order('created_at', { ascending: false });
 
-        if (profileError) throw profileError;
+        if (profileError) {
+            console.error('Failed to fetch profiles:', profileError);
+            throw new Error(`Erreur lors du chargement des profils: ${profileError.message}`);
+        }
 
-        // Use mocks if DB is empty
         if (!profiles || profiles.length === 0) {
-            console.log("📦 [Profiles] Using mock data (Generated Staff)");
-            return MOCK_PROFILES as unknown as ProfileWithRole[];
+            return [];
         }
 
         // 2. Récupérer les rôles
@@ -48,27 +47,28 @@ export const profileService = {
             .from('user_roles')
             .select('user_id, role');
 
-        if (rolesError) throw rolesError;
+        if (rolesError) {
+            console.error('Failed to fetch roles:', rolesError);
+            throw new Error(`Erreur lors du chargement des rôles: ${rolesError.message}`);
+        }
 
         // 3. Récupérer les organisations pour le mapping
-        const organizations = await organizationService.getAll();
+        let organizations: any[] = [];
+        try {
+            organizations = await organizationService.getAll();
+        } catch (err) {
+            console.warn('Could not fetch organizations for profile enrichment:', err);
+        }
+
         const orgMap = new Map(organizations.map(o => [o.id, o]));
-        // Fallback: Map by name if ID doesn't match
         const orgNameMap = new Map(organizations.map(o => [o.name, o]));
 
         // 4. Mapper les données
         const roleMap = new Map(roles?.map(r => [r.user_id, r.role]) || []);
 
         return (profiles || []).map(p => {
-            // Tentative de liaison avec l'organisation via le champ 'employer' (ID ou Nom)
-            // ou via 'organization_id' si présent dans le type (pour compatibilité mock)
-            const orgIdOrName = p.employer || (p as any).organization_id;
+            const orgIdOrName = p.employer;
             let organization = orgMap.get(orgIdOrName) || orgNameMap.get(orgIdOrName);
-
-            // Si pas trouvé, et que c'est un mock ID, essayer de nettoyer
-            if (!organization && orgIdOrName?.startsWith('mock-')) {
-                organization = orgMap.get(orgIdOrName);
-            }
 
             return {
                 ...p,
@@ -89,11 +89,11 @@ export const profileService = {
             .eq('id', id)
             .single();
 
-        if (error) throw error;
+        if (error) {
+            console.error('Failed to fetch profile:', error);
+            return null;
+        }
 
-        // Enrichir avec rôle et org (simplifié ici, pourrait être factorisé)
-        // Pour l'instant on retourne juste le profil de base + role via autre appel si besoin
-        // Mais pour SuperAdminUsers on utilise surtout getAll()
         return data as unknown as ProfileWithRole;
     },
 
@@ -104,7 +104,10 @@ export const profileService = {
             .eq('user_id', userId)
             .single();
 
-        if (error) throw error;
+        if (error) {
+            console.error('Failed to fetch profile by user_id:', error);
+            return null;
+        }
 
         // Récupérer le rôle
         const { data: roleData } = await supabase
@@ -120,35 +123,11 @@ export const profileService = {
     },
 
     async getByOrganizationId(organizationId: string): Promise<ProfileWithRole[]> {
-        // Reuse getAll logic for now as it handles the enrichment
-        // In a real optimized scenario, we would filter at DB level + join
         const allProfiles = await this.getAll();
-
-        return allProfiles.filter(p => {
-            // Check direct match
-            if (p.organization_id === organizationId) return true;
-            // Check employer match (alias)
-            if (p.employer === organizationId) return true;
-            // Check if it's a mock ID pattern match (e.g. 'mock-1' matches 'mairie-libreville')
-            // For this specific MVP data set, we rely on the enriched 'organization' object having the right name/id
-            // But simpler is to rely on our previous mapping in getAll
-            return p.organization_id === organizationId || p.employer === organizationId;
-        });
+        return allProfiles.filter(p => p.employer === organizationId);
     },
 
     async update(id: string, updates: Partial<ProfileWithRole>): Promise<Profile> {
-        // Check for mock ID or if we are likely in demo mode for this user
-        if (id.startsWith('user-') || id.startsWith('mock-') || id.startsWith('temp-')) {
-            console.log("📦 [Profiles] Simulating UPDATE for mock user:", id, updates);
-            // Simulate network delay
-            await new Promise(resolve => setTimeout(resolve, 500));
-            return {
-                id,
-                ...updates,
-                updated_at: new Date().toISOString()
-            } as any;
-        }
-
         // Extraire le rôle et l'organisation si présents
         const { role, organization, ...profileUpdates } = updates as any;
 
@@ -164,7 +143,10 @@ export const profileService = {
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            console.error('Failed to update profile:', error);
+            throw new Error(`Erreur lors de la mise à jour du profil: ${error.message}`);
+        }
 
         // Mettre à jour le rôle si fourni
         if (role) {
@@ -186,28 +168,37 @@ export const profileService = {
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            console.error('Failed to update profile:', error);
+            throw new Error(`Erreur lors de la mise à jour du profil: ${error.message}`);
+        }
         return data as Profile;
     },
 
-    // Simulation de création pour l'UI Super Admin
-    async create(profileData: any): Promise<ProfileWithRole> {
-        // Dans une vraie app, cela appellerait une Edge Function pour inviter l'utilisateur
-        // ou utiliserait supabase.auth.admin.createUser
-        console.log("Simulating user creation:", profileData);
+    // Create a new user profile (requires admin privileges via Edge Function)
+    async create(profileData: {
+        email: string;
+        firstName: string;
+        lastName: string;
+        role: string;
+        organizationId?: string;
+    }): Promise<ProfileWithRole> {
+        // Call Edge Function to create user via Supabase Admin API
+        const { data, error } = await supabase.functions.invoke('create-user', {
+            body: {
+                email: profileData.email,
+                first_name: profileData.firstName,
+                last_name: profileData.lastName,
+                role: profileData.role,
+                organization_id: profileData.organizationId
+            }
+        });
 
-        // On retourne un objet mocké qui ressemble à ce qu'on a créé pour l'UI
-        return {
-            id: `temp-${Date.now()}`,
-            user_id: `temp-user-${Date.now()}`,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            first_name: profileData.name.split(' ')[0] || '',
-            last_name: profileData.name.split(' ').slice(1).join(' ') || '',
-            email: profileData.email,
-            employer: profileData.entityId,
-            role: profileData.role,
-            // ... autres champs
-        } as unknown as ProfileWithRole;
+        if (error) {
+            console.error('Failed to create user:', error);
+            throw new Error(`Erreur lors de la création de l'utilisateur: ${error.message}`);
+        }
+
+        return data as ProfileWithRole;
     }
 };

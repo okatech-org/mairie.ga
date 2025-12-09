@@ -95,25 +95,25 @@ export function useCitizenProfile() {
                         citizenType: CitizenType.GABONAIS,
                         firstName: profile.first_name || '',
                         lastName: profile.last_name || '',
-                        dateOfBirth: profile.date_of_birth ? new Date(profile.date_of_birth) : new Date(),
-                        birthPlace: profile.lieu_naissance || '',
-                        gender: 'M', // Defaulting as gender might not be in profile yet
+                        dateOfBirth: profile.date_of_birth ? new Date(profile.date_of_birth) : undefined as any,
+                        birthPlace: profile.lieu_naissance || undefined,
+                        gender: undefined as any, // Not in DB schema yet - should be added
                         photoUrl,
-                        cniNumber: '', // Placeholder
-                        cniExpireDate: new Date(), // Placeholder
+                        cniNumber: profile.numero_cni || undefined,
+                        cniExpireDate: undefined as any, // Not in DB schema yet
                         maritalStatus: mapMaritalStatus(profile.situation_matrimoniale),
-                        profession: profile.profession || '',
+                        profession: profile.profession || undefined,
                         currentAddress: {
-                            street: addressData?.full || '',
+                            street: addressData?.full || addressData?.street || '',
                             city: addressData?.city || '',
                             country: 'Gabon',
                             postalCode: addressData?.postalCode || ''
                         },
-                        phone: profile.phone || '',
+                        phone: profile.phone || undefined,
                         email: session.user.email || '',
                         preferredLanguage: 'FR',
                         preferredContact: 'EMAIL',
-                        assignedMunicipality: 'Hôtel de Ville de Libreville',
+                        assignedMunicipality: profile.arrondissement || 'Non assigné',
                         municipalFile: `DOS-${profile.created_at?.slice(0, 10).replace(/-/g, '')}-${profile.user_id.slice(0, 4).toUpperCase()}`,
                         registrationStatus: RegistrationStatus.APPROVED,
                         registrationDate: new Date(profile.created_at),
