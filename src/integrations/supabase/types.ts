@@ -582,6 +582,65 @@ export type Database = {
           },
         ]
       }
+      document_settings_audit: {
+        Row: {
+          action: string
+          changes: Json | null
+          created_at: string | null
+          field_changed: string | null
+          id: string
+          ip_address: string | null
+          new_value: string | null
+          old_value: string | null
+          organization_id: string | null
+          settings_id: string
+          user_agent: string | null
+          user_email: string | null
+          user_id: string
+          user_name: string | null
+        }
+        Insert: {
+          action: string
+          changes?: Json | null
+          created_at?: string | null
+          field_changed?: string | null
+          id?: string
+          ip_address?: string | null
+          new_value?: string | null
+          old_value?: string | null
+          organization_id?: string | null
+          settings_id: string
+          user_agent?: string | null
+          user_email?: string | null
+          user_id: string
+          user_name?: string | null
+        }
+        Update: {
+          action?: string
+          changes?: Json | null
+          created_at?: string | null
+          field_changed?: string | null
+          id?: string
+          ip_address?: string | null
+          new_value?: string | null
+          old_value?: string | null
+          organization_id?: string | null
+          settings_id?: string
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string
+          user_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_settings_audit_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_vault: {
         Row: {
           category: string
@@ -1079,6 +1138,7 @@ export type Database = {
           id: string
           logo_url: string | null
           motto: string | null
+          organization_id: string | null
           primary_color: string | null
           province: string | null
           republic: string | null
@@ -1095,6 +1155,7 @@ export type Database = {
           id?: string
           logo_url?: string | null
           motto?: string | null
+          organization_id?: string | null
           primary_color?: string | null
           province?: string | null
           republic?: string | null
@@ -1111,6 +1172,7 @@ export type Database = {
           id?: string
           logo_url?: string | null
           motto?: string | null
+          organization_id?: string | null
           primary_color?: string | null
           province?: string | null
           republic?: string | null
@@ -1118,7 +1180,15 @@ export type Database = {
           signature_title?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "service_document_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       services: {
         Row: {
