@@ -59,7 +59,7 @@ export default function IAstedInterfaceWrapper() {
           .from('user_roles')
           .select('role')
           .eq('user_id', authUser.id)
-          .single();
+          .maybeSingle();
 
         if (roleData?.role) {
           console.log('🔐 [IAstedWrapper] Rôle détecté:', roleData.role);
@@ -73,7 +73,7 @@ export default function IAstedInterfaceWrapper() {
           .from('profiles')
           .select('first_name')
           .eq('user_id', authUser.id)
-          .single();
+          .maybeSingle();
 
         if (profileData?.first_name) {
           console.log('🔐 [IAstedWrapper] Prénom détecté:', profileData.first_name);
