@@ -133,8 +133,10 @@ const MessageBubble: React.FC<{
 
     return (
         <motion.div
+            key={message.id}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
             className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4 group`}
             onMouseEnter={() => setShowActions(true)}
             onMouseLeave={() => setShowActions(false)}

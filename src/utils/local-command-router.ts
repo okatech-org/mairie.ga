@@ -543,10 +543,13 @@ const COMMAND_DEFINITIONS: CommandDef[] = [
     {
         patterns: [
             /parle\s*plus\s*vite/,
-            /accelere/,
-            /plus\s*rapide/,
-            /vitesse\s*plus\s*rapide/,
+            /parle\s*plus\s*rapidement/,
+            /accelere\s*(ta|la)?\s*(voix|parole|vitesse)?/,
+            /vitesse\s*(de\s*)?(parole|voix)?\s*plus\s*(vite|rapide)/,
+            /parle\s*rapidement/,
+            /parler\s*plus\s*vite/,
         ],
+        requiredKeywords: ['parle', 'vite'],
         toolName: 'control_ui',
         toolArgs: { action: 'set_speech_rate', value: '1.3' },
         response: 'Je parle plus vite maintenant.'

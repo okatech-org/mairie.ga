@@ -161,7 +161,7 @@ async function fetchMunicipalSettings(serviceRole: string): Promise<MunicipalSet
             };
         }
     } catch (e) {
-        console.warn('Using default municipal settings');
+        // Silently fallback to defaults if table doesn't exist
     }
     return DEFAULT_MUNICIPAL_SETTINGS;
 }

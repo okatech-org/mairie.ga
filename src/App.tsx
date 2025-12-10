@@ -92,7 +92,7 @@ const App = () => (
               <PresentationProvider>
                 <Toaster />
                 <Sonner />
-                <BrowserRouter>
+                <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                   <InactivityHandler />
                   <Routes>
                     {/* PUBLIC PORTAL (Citizens) */}
