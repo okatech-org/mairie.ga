@@ -5,7 +5,7 @@ import { MailSidebar } from '@/components/mail/MailSidebar';
 import { MailList } from '@/components/mail/MailList';
 import { MailView } from '@/components/mail/MailView';
 import { MailComposer } from '@/components/mail/MailComposer';
-import { MOCK_CONVERSATIONS } from '@/data/mock-messages';
+import { messagingService } from '@/services/messaging-service';
 import { Button } from '@/components/ui/button';
 import { Plus, Search, Menu, Mail, FolderOpen, Loader2, X, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -44,14 +44,15 @@ export default function MessagingPage() {
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [correspondenceCount, setCorrespondenceCount] = useState(0);
 
-    // Initialize conversations
+    // Initialize conversations - now user-specific
     useEffect(() => {
         const loadConversations = async () => {
             setIsLoading(true);
             try {
-                // Simulate API call - in production, fetch from Supabase
-                await new Promise(resolve => setTimeout(resolve, 500));
-                setConversations(MOCK_CONVERSATIONS);
+                // Load user-specific conversations from messaging service
+                const userConversations = await messagingService.getConversations();
+                setConversations(userConversations);
+                console.log('[MessagingPage] Loaded conversations:', userConversations.length);
             } catch (error) {
                 console.error('Error loading conversations:', error);
                 toast.error('Erreur lors du chargement des messages');
