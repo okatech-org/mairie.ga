@@ -76,6 +76,7 @@ import PolitiqueConfidentialite from "./pages/PolitiqueConfidentialite";
 import CGU from "./pages/CGU";
 import ArretesPublicsPage from "./pages/ArretesPublicsPage";
 import DeliberationsPubliquesPage from "./pages/DeliberationsPubliquesPage";
+import ContactsPage from "./pages/ContactsPage";
 import { InactivityHandler } from "@/components/auth/InactivityHandler";
 
 const queryClient = new QueryClient();
@@ -172,6 +173,8 @@ const App = () => (
                     <Route path="/dashboard/maire/urbanisme" element={<DashboardLayout><MaireUrbanismePage /></DashboardLayout>} />
                     <Route path="/dashboard/maire/documents" element={<DashboardLayout><MaireDocumentsPage /></DashboardLayout>} />
                     <Route path="/dashboard/maire/communications" element={<DashboardLayout><CommunicationsDashboard /></DashboardLayout>} />
+                    <Route path="/dashboard/maire/contacts" element={<DashboardLayout><ContactsPage /></DashboardLayout>} />
+                    <Route path="/contacts" element={<ContactsPage />} />
                     <Route path="/dashboard/sg" element={<DashboardLayout><AgentDashboard /></DashboardLayout>} />
                     <Route path="/dashboard/chef-service" element={<DashboardLayout><AgentDashboard /></DashboardLayout>} />
 

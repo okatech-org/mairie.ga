@@ -379,16 +379,39 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                     {
                         type: 'function',
                         name: 'generate_document',
-                        description: 'Générer un document officiel',
+                        description: 'Générer un document officiel (note de service, lettre, arrêté, attestation, etc.) en PDF ou DOCX. IMPORTANT: Le chat iAsted s\'ouvre automatiquement pour afficher le document. Rédige le contenu complet dans content_points.',
                         parameters: {
                             type: 'object',
                             properties: {
-                                type: { type: 'string' },
-                                recipient: { type: 'string' },
-                                subject: { type: 'string' },
-                                format: { type: 'string', enum: ['pdf', 'docx'] }
+                                type: {
+                                    type: 'string',
+                                    enum: ['lettre', 'note_service', 'arrete', 'communique', 'attestation', 'certificat', 'convocation', 'rapport', 'deliberation', 'circulaire', 'nomination'],
+                                    description: 'Type de document officiel à générer'
+                                },
+                                recipient: {
+                                    type: 'string',
+                                    description: 'Destinataire du document (ex: "Tous les agents", "M. le Préfet", etc.)'
+                                },
+                                subject: {
+                                    type: 'string',
+                                    description: 'Objet/sujet du document (ex: "Traitement diligent des dossiers")'
+                                },
+                                content_points: {
+                                    type: 'array',
+                                    items: { type: 'string' },
+                                    description: 'Liste des paragraphes du corps du document. Rédige CHAQUE point en phrases complètes et professionnelles. Ex: ["Il est rappelé à l\'ensemble des collaborateurs que la ponctualité est essentielle au bon fonctionnement des services.", "Le traitement des dossiers doit être effectué dans les délais impartis.", "L\'accueil des citoyens doit se faire avec courtoisie et professionnalisme."]'
+                                },
+                                format: {
+                                    type: 'string',
+                                    enum: ['pdf', 'docx'],
+                                    description: 'Format du document (défaut: pdf)'
+                                },
+                                signature_authority: {
+                                    type: 'string',
+                                    description: 'Titre du signataire (ex: "Le Maire de la Commune de Libreville")'
+                                }
                             },
-                            required: ['type', 'subject']
+                            required: ['type', 'subject', 'content_points']
                         }
                     },
                     {
@@ -633,6 +656,80 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                             type: 'object',
                             properties: {}
                         }
+                    },
+                    // ============= CONTACTS TOOLS =============
+                    {
+                        type: 'function',
+                        name: 'search_contact',
+                        description: 'Rechercher un contact par nom, organisation ou département. Retourne une liste de contacts correspondants.',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                query: {
+                                    type: 'string',
+                                    description: 'Terme de recherche (nom, prénom, organisation, département)'
+                                },
+                                category: {
+                                    type: 'string',
+                                    enum: ['citizen', 'enterprise', 'association', 'foreigner', 'collaborator', 'inter_municipality', 'administration', 'all'],
+                                    description: 'Catégorie de contact à filtrer (optionnel, défaut: all)'
+                                }
+                            },
+                            required: ['query']
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'call_contact',
+                        description: 'Initier un appel téléphonique vers un contact identifié',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                contact_id: { type: 'string', description: 'ID du contact à appeler' },
+                                contact_name: { type: 'string', description: 'Nom du contact (si ID non disponible)' }
+                            }
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'email_contact',
+                        description: 'Envoyer un email à un contact. Ouvre le compositeur de mail avec le destinataire pré-rempli.',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                contact_id: { type: 'string', description: 'ID du contact' },
+                                contact_name: { type: 'string', description: 'Nom du contact (si ID non disponible)' },
+                                subject: { type: 'string', description: 'Objet de l\'email (optionnel)' },
+                                body: { type: 'string', description: 'Corps de l\'email (optionnel)' }
+                            }
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'open_contacts',
+                        description: 'Ouvrir la page des contacts pour consulter l\'annuaire',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                category: {
+                                    type: 'string',
+                                    enum: ['citizen', 'enterprise', 'association', 'foreigner', 'collaborator', 'inter_municipality', 'administration'],
+                                    description: 'Catégorie à afficher par défaut (optionnel)'
+                                }
+                            }
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'get_contact_info',
+                        description: 'Obtenir les informations détaillées d\'un contact spécifique',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                contact_id: { type: 'string', description: 'ID du contact' },
+                                contact_name: { type: 'string', description: 'Nom du contact à rechercher' }
+                            }
+                        }
                     }
                 ]
             }
@@ -663,6 +760,14 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                         }
                         break;
                     }
+
+                    // Add user's voice transcription to messages for display in chat
+                    setMessages(prev => [...prev, {
+                        id: crypto.randomUUID(),
+                        role: 'user',
+                        content: transcript,
+                        timestamp: new Date().toISOString()
+                    }]);
 
                     // 1. Check local commands first (navigation, theme, etc.)
                     if (USE_LOCAL_ROUTER) {
@@ -770,7 +875,15 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
 
     const handleToolCall = async (item: any) => {
         const { name, arguments: argsString } = item;
-        const args = JSON.parse(argsString);
+
+        let args: any = {};
+        try {
+            args = JSON.parse(argsString || '{}');
+        } catch (e) {
+            console.warn(`⚠️ [handleToolCall] JSON parse error for ${name}:`, e);
+            // Try to extract what we can from malformed JSON
+            args = {};
+        }
 
         console.log(`🔧 Tool Call: ${name}`, args);
 

@@ -30,6 +30,9 @@ import {
     Phone,
     Video,
     Users,
+    FolderPlus,
+    Mail,
+    Send as SendIcon,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AudioVideoInterface } from './AudioVideoInterface';
@@ -70,7 +73,11 @@ const MessageBubble: React.FC<{
     onDelete?: (id: string) => void;
     onEdit?: (id: string, newContent: string) => void;
     onCopy?: (content: string) => void;
-}> = ({ message, onDelete, onEdit, onCopy }) => {
+    onSaveToDocuments?: (doc: any) => void;
+    onSendByMail?: (doc: any) => void;
+    onSendByCorrespondance?: (doc: any) => void;
+    userRole?: string;
+}> = ({ message, onDelete, onEdit, onCopy, onSaveToDocuments, onSendByMail, onSendByCorrespondance, userRole }) => {
     const isUser = message.role === 'user';
     const [isEditing, setIsEditing] = useState(false);
     const [editedContent, setEditedContent] = useState(message.content);
@@ -197,11 +204,45 @@ const MessageBubble: React.FC<{
                                                     <button
                                                         onClick={() => handleDownloadDocument(doc)}
                                                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
+                                                        title="Télécharger"
                                                     >
                                                         <Download className="w-3.5 h-3.5" />
                                                         <span className="text-xs font-medium">Télécharger</span>
                                                     </button>
                                                 </div>
+                                            </div>
+                                            {/* Boutons d'action pour le document */}
+                                            <div className="flex flex-wrap gap-1.5 mt-2">
+                                                {onSaveToDocuments && (
+                                                    <button
+                                                        onClick={() => onSaveToDocuments(doc)}
+                                                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 transition-colors"
+                                                        title="Classer dans Mes Documents"
+                                                    >
+                                                        <FolderPlus className="w-3.5 h-3.5" />
+                                                        <span className="text-xs font-medium">Classer</span>
+                                                    </button>
+                                                )}
+                                                {onSendByMail && (
+                                                    <button
+                                                        onClick={() => onSendByMail(doc)}
+                                                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 transition-colors"
+                                                        title="Envoyer par iBoîte"
+                                                    >
+                                                        <Mail className="w-3.5 h-3.5" />
+                                                        <span className="text-xs font-medium">iBoîte</span>
+                                                    </button>
+                                                )}
+                                                {onSendByCorrespondance && userRole && ['MAIRE', 'maire', 'MAIRE_ADJOINT', 'maire_adjoint', 'SECRETAIRE_GENERAL', 'secretaire_general', 'CHEF_SERVICE', 'chef_service', 'AGENT', 'agent', 'SUPER_ADMIN', 'super_admin', 'admin'].includes(userRole) && (
+                                                    <button
+                                                        onClick={() => onSendByCorrespondance(doc)}
+                                                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-green-500/10 hover:bg-green-500/20 text-green-600 transition-colors"
+                                                        title="Envoyer par Correspondance (workflow d'approbation)"
+                                                    >
+                                                        <SendIcon className="w-3.5 h-3.5" />
+                                                        <span className="text-xs font-medium">Correspondance</span>
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     ))}
@@ -454,6 +495,11 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
         return currentVoice || (localStorage.getItem('iasted-voice-selection') as 'echo' | 'ash' | 'shimmer') || 'ash';
     });
 
+    // Ref pour tracker si la session a été initialisée (évite les problèmes de timing)
+    const sessionInitializedRef = useRef(false);
+    // Ref pour tracker si un document a été généré avant ouverture du chat
+    const hasDocumentRef = useRef(false);
+
     // Sync internal state with prop if it changes (e.g. via voice command)
     useEffect(() => {
         if (currentVoice && currentVoice !== selectedVoice) {
@@ -553,6 +599,117 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
         });
     };
 
+    // === Document Action Handlers ===
+
+    const handleSaveToDocuments = async (doc: any) => {
+        console.log('📁 [handleSaveToDocuments] Document reçu:', doc);
+
+        if (!doc || !doc.url) {
+            console.error('📁 [handleSaveToDocuments] Document invalide:', doc);
+            toast({
+                title: "Erreur",
+                description: "Document invalide ou URL manquante",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        try {
+            // Convert blob URL to actual file and upload to vault
+            console.log('📁 [handleSaveToDocuments] Récupération du blob depuis:', doc.url);
+            const response = await fetch(doc.url);
+
+            if (!response.ok) {
+                throw new Error(`Échec récupération blob: ${response.status}`);
+            }
+
+            const blob = await response.blob();
+            console.log('📁 [handleSaveToDocuments] Blob récupéré:', blob.size, 'bytes');
+
+            const file = new File([blob], doc.name, { type: doc.type || 'application/pdf' });
+            console.log('📁 [handleSaveToDocuments] File créé:', file.name, file.type);
+
+            const { uploadToVault } = await import('@/services/documentVaultService');
+            console.log('📁 [handleSaveToDocuments] Service chargé, upload en cours...');
+
+            const result = await uploadToVault(file, 'other', {
+                name: doc.name,
+                source: 'upload',
+                metadata: { generatedBy: 'iAsted', timestamp: new Date().toISOString() }
+            });
+
+            console.log('📁 [handleSaveToDocuments] Résultat upload:', result);
+
+            if (result.error) {
+                throw result.error;
+            }
+
+            toast({
+                title: "📁 Document classé",
+                description: `${doc.name} sauvegardé dans Mes Documents`,
+            });
+        } catch (error: any) {
+            console.error('❌ [handleSaveToDocuments] Erreur:', error);
+            toast({
+                title: "Erreur",
+                description: error.message || "Impossible de sauvegarder le document",
+                variant: "destructive",
+            });
+        }
+    };
+
+    const handleSendByMail = (doc: any) => {
+        console.log('📧 [handleSendByMail] Document reçu:', doc);
+
+        if (!doc) {
+            console.error('📧 [handleSendByMail] Document invalide');
+            return;
+        }
+
+        // Navigate to messaging page with document attached
+        // Note: /messaging ou /iboite selon la configuration
+        navigate('/messaging', {
+            state: {
+                compose: true,
+                subject: `Document: ${doc.name}`,
+                attachments: [doc],
+            }
+        });
+
+        console.log('📧 [handleSendByMail] Navigation vers /messaging avec attachement');
+        onClose(); // Close the chat modal
+
+        toast({
+            title: "📧 Redirection vers iBoîte",
+            description: "Composez votre message avec le document en pièce jointe",
+        });
+    };
+
+    const handleSendByCorrespondance = async (doc: any) => {
+        console.log('📨 [handleSendByCorrespondance] Document reçu:', doc);
+
+        if (!doc) {
+            console.error('📨 [handleSendByCorrespondance] Document invalide');
+            return;
+        }
+
+        // Navigate to correspondance page to start approval workflow
+        navigate('/correspondance', {
+            state: {
+                newCorrespondance: true,
+                document: doc,
+            }
+        });
+
+        console.log('📨 [handleSendByCorrespondance] Navigation vers /correspondance');
+        onClose(); // Close the chat modal
+
+        toast({
+            title: "📨 Redirection vers Correspondance",
+            description: "Le document sera soumis au workflow d'approbation",
+        });
+    };
+
     const handleClearConversation = async () => {
         if (window.confirm('Êtes-vous sûr de vouloir supprimer toute la conversation ?')) {
             setMessages([]);
@@ -613,8 +770,14 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
 
     // Initialiser la session au montage
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && !sessionInitializedRef.current && !hasDocumentRef.current) {
             initializeSession();
+        }
+
+        // Réinitialiser les refs quand le modal se ferme
+        if (!isOpen) {
+            sessionInitializedRef.current = false;
+            hasDocumentRef.current = false;
         }
     }, [isOpen]);
 
@@ -622,6 +785,9 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
     useEffect(() => {
         if (pendingDocument && onClearPendingDocument) {
             console.log('📄 [IAstedChatModal] Génération de document depuis voix:', pendingDocument);
+
+            // Marquer qu'un document est en cours - empêche l'init d'écraser les messages
+            hasDocumentRef.current = true;
 
             // Créer un tool call simulé pour réutiliser la logique existante
             const toolCall = {
@@ -683,23 +849,50 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
     const initializeSession = async () => {
         try {
             console.log('🔄 [IAstedChatModal] Initialisation session...');
+
+            // Vérifier si déjà initialisé via ref (plus fiable que le state)
+            if (sessionInitializedRef.current) {
+                console.log('ℹ️ [IAstedChatModal] Session déjà initialisée (ref), skip');
+                return;
+            }
+
+            // Vérifier si un document est en cours de génération
+            if (hasDocumentRef.current) {
+                console.log('ℹ️ [IAstedChatModal] Document en cours, skip init');
+                return;
+            }
+
+            // Ne pas réinitialiser si on a déjà une session et des messages
+            if (sessionId && messages.length > 0) {
+                console.log('ℹ️ [IAstedChatModal] Session existe déjà avec des messages, skip init');
+                sessionInitializedRef.current = true;
+                return;
+            }
+
             const { data: { user } } = await supabase.auth.getUser();
 
             // Mode démo : pas d'utilisateur authentifié, utiliser session locale
             if (!user) {
                 console.log('ℹ️ [IAstedChatModal] Mode démo - session locale uniquement');
-                const demoSessionId = `demo-${crypto.randomUUID()}`;
-                setSessionId(demoSessionId);
 
-                // Message de bienvenue pour le mode démo
-                const greetingMessage: Message = {
-                    id: crypto.randomUUID(),
-                    role: 'assistant',
-                    content: `Bonjour,\n\nJe suis iAsted, votre assistant municipal intelligent. Comment puis-je vous aider aujourd'hui ?`,
-                    timestamp: new Date().toISOString(),
-                    metadata: { responseStyle: 'strategique' },
-                };
-                setMessages([greetingMessage]);
+                // Ne créer une session que si pas encore de sessionId
+                if (!sessionId) {
+                    const demoSessionId = `demo-${crypto.randomUUID()}`;
+                    setSessionId(demoSessionId);
+                }
+
+                // Ne pas écraser les messages existants (ex: document généré)
+                if (messages.length === 0) {
+                    const greetingMessage: Message = {
+                        id: crypto.randomUUID(),
+                        role: 'assistant',
+                        content: `Bonjour,\n\nJe suis iAsted, votre assistant municipal intelligent. Comment puis-je vous aider aujourd'hui ?`,
+                        timestamp: new Date().toISOString(),
+                        metadata: { responseStyle: 'strategique' },
+                    };
+                    setMessages([greetingMessage]);
+                }
+
                 console.log('✅ [IAstedChatModal] Session démo prête');
                 return;
             }
@@ -732,31 +925,40 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                 if (error) throw error;
                 setSessionId(newSession.id);
 
-                // Message de bienvenue
-                const greetingMessage: Message = {
-                    id: crypto.randomUUID(),
-                    role: 'assistant',
-                    content: `Bonjour,\n\nJe suis iAsted, votre assistant stratégique. Comment puis-je vous aider aujourd'hui ?`,
-                    timestamp: new Date().toISOString(),
-                    metadata: { responseStyle: 'strategique' },
-                };
-                setMessages([greetingMessage]);
-                await saveMessage(newSession.id, greetingMessage);
+                // Ne pas écraser les messages existants (ex: document généré)
+                if (messages.length === 0) {
+                    // Message de bienvenue
+                    const greetingMessage: Message = {
+                        id: crypto.randomUUID(),
+                        role: 'assistant',
+                        content: `Bonjour,\n\nJe suis iAsted, votre assistant stratégique. Comment puis-je vous aider aujourd'hui ?`,
+                        timestamp: new Date().toISOString(),
+                        metadata: { responseStyle: 'strategique' },
+                    };
+                    setMessages([greetingMessage]);
+                    await saveMessage(newSession.id, greetingMessage);
+                }
             }
 
             console.log('✅ [IAstedChatModal] Session prête');
+            sessionInitializedRef.current = true;
         } catch (error) {
             console.error('❌ [IAstedChatModal] Erreur initialisation:', error);
             // Fallback en mode démo local
-            const demoSessionId = `demo-fallback-${crypto.randomUUID()}`;
-            setSessionId(demoSessionId);
-            const greetingMessage: Message = {
-                id: crypto.randomUUID(),
-                role: 'assistant',
-                content: `Bonjour,\n\nJe suis iAsted. Je fonctionne en mode local. Comment puis-je vous aider ?`,
-                timestamp: new Date().toISOString(),
-            };
-            setMessages([greetingMessage]);
+            if (!sessionId) {
+                const demoSessionId = `demo-fallback-${crypto.randomUUID()}`;
+                setSessionId(demoSessionId);
+            }
+            // Ne pas écraser les messages existants
+            if (messages.length === 0) {
+                const greetingMessage: Message = {
+                    id: crypto.randomUUID(),
+                    role: 'assistant',
+                    content: `Bonjour,\n\nJe suis iAsted. Je fonctionne en mode local. Comment puis-je vous aider ?`,
+                    timestamp: new Date().toISOString(),
+                };
+                setMessages([greetingMessage]);
+            }
         }
     };
 
@@ -1356,6 +1558,10 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                                             onDelete={handleDeleteMessage}
                                             onEdit={handleEditMessage}
                                             onCopy={handleCopyMessage}
+                                            onSaveToDocuments={handleSaveToDocuments}
+                                            onSendByMail={handleSendByMail}
+                                            onSendByCorrespondance={handleSendByCorrespondance}
+                                            userRole={userRole}
                                         />
                                     ))}
                                 </AnimatePresence>

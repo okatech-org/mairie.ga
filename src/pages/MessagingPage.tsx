@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Plus, Search, Menu, Mail, FolderOpen, Loader2, X, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Conversation } from '@/types/messaging';
+import { Conversation, Message } from '@/types/messaging';
 import { toast } from 'sonner';
 import {
     DropdownMenu,
@@ -42,6 +42,7 @@ export default function MessagingPage() {
     // Loading state
     const [isLoading, setIsLoading] = useState(true);
     const [conversations, setConversations] = useState<Conversation[]>([]);
+    const [messages, setMessages] = useState<Message[]>([]);
     const [correspondenceCount, setCorrespondenceCount] = useState(0);
 
     // Initialize conversations - now user-specific
@@ -101,6 +102,8 @@ export default function MessagingPage() {
             const mailToOpen = conversations.find(m => m.id === state.openMail);
             if (mailToOpen) {
                 setSelectedMailId(mailToOpen.id);
+                // Also load messages for this conversation
+                messagingService.getMessages(mailToOpen.id).then(setMessages);
             }
         }
 
@@ -204,8 +207,17 @@ export default function MessagingPage() {
         clearSearch();
     }, [clearSearch]);
 
-    const handleSelectMail = useCallback((id: string) => {
+    const handleSelectMail = useCallback(async (id: string) => {
         setSelectedMailId(id);
+
+        // Load messages for this conversation
+        try {
+            const conversationMessages = await messagingService.getMessages(id);
+            setMessages(conversationMessages);
+        } catch (error) {
+            console.error('Error loading messages:', error);
+            toast.error('Erreur lors du chargement de la conversation');
+        }
 
         // Mark as read (update local state - in production, call API)
         setConversations(prev => prev.map(conv =>
@@ -412,6 +424,7 @@ export default function MessagingPage() {
                                 </div>
                                 <MailView
                                     mail={selectedMail}
+                                    messages={messages}
                                     onReply={handleReply}
                                 />
                             </>

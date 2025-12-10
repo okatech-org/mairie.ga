@@ -1452,6 +1452,211 @@ export default function IAstedInterface({
             }
         }
 
+        // ============= CONTACTS TOOLS HANDLERS =============
+
+        if (toolName === 'search_contact') {
+            console.log('👥 [IAstedInterface] Recherche contact:', args);
+
+            try {
+                const { searchContacts, getContactsByCategory } = await import('@/services/contactService');
+
+                let results;
+                if (args.category && args.category !== 'all') {
+                    const categoryContacts = await getContactsByCategory(args.category);
+                    const query = args.query.toLowerCase();
+                    results = categoryContacts.filter(c =>
+                        c.name.toLowerCase().includes(query) ||
+                        c.email?.toLowerCase().includes(query) ||
+                        c.organization?.toLowerCase().includes(query)
+                    );
+                } else {
+                    results = await searchContacts(args.query);
+                }
+
+                if (results.length === 0) {
+                    toast.info(`Aucun contact trouvé pour "${args.query}"`);
+                    return { success: true, contacts: [], message: `Aucun contact trouvé pour "${args.query}"` };
+                }
+
+                // Formater les résultats pour la réponse vocale
+                const contactList = results.slice(0, 5).map(c => ({
+                    id: c.id,
+                    name: c.name,
+                    email: c.email,
+                    phone: c.phone,
+                    organization: c.organization,
+                    position: c.position
+                }));
+
+                toast.success(`${results.length} contact(s) trouvé(s)`);
+
+                return {
+                    success: true,
+                    contacts: contactList,
+                    message: results.length === 1
+                        ? `J'ai trouvé ${results[0].name}${results[0].position ? `, ${results[0].position}` : ''}${results[0].email ? `. Email: ${results[0].email}` : ''}`
+                        : `J'ai trouvé ${results.length} contacts correspondant à "${args.query}": ${contactList.map(c => c.name).join(', ')}`
+                };
+            } catch (error: any) {
+                console.error('❌ [IAstedInterface] Erreur recherche contact:', error);
+                return { success: false, message: `Erreur: ${error.message}` };
+            }
+        }
+
+        if (toolName === 'call_contact') {
+            console.log('📞 [IAstedInterface] Appel contact:', args);
+
+            try {
+                let contact = null;
+
+                if (args.contact_id) {
+                    const { getContactById } = await import('@/services/contactService');
+                    contact = await getContactById(args.contact_id);
+                } else if (args.contact_name) {
+                    const { searchContacts } = await import('@/services/contactService');
+                    const results = await searchContacts(args.contact_name);
+                    contact = results[0];
+                }
+
+                if (!contact) {
+                    toast.error('Contact non trouvé');
+                    return { success: false, message: 'Contact non trouvé' };
+                }
+
+                if (!contact.phone) {
+                    toast.error(`${contact.name} n'a pas de numéro de téléphone`);
+                    return { success: false, message: `${contact.name} n'a pas de numéro de téléphone enregistré` };
+                }
+
+                // Initier l'appel
+                window.location.href = `tel:${contact.phone}`;
+                toast.success(`Appel vers ${contact.name}...`);
+
+                return {
+                    success: true,
+                    contact: contact.name,
+                    phone: contact.phone,
+                    message: `Appel en cours vers ${contact.name} au ${contact.phone}`
+                };
+            } catch (error: any) {
+                console.error('❌ [IAstedInterface] Erreur appel:', error);
+                return { success: false, message: `Erreur: ${error.message}` };
+            }
+        }
+
+        if (toolName === 'email_contact') {
+            console.log('📧 [IAstedInterface] Email contact:', args);
+
+            try {
+                let contact = null;
+
+                if (args.contact_id) {
+                    const { getContactById } = await import('@/services/contactService');
+                    contact = await getContactById(args.contact_id);
+                } else if (args.contact_name) {
+                    const { searchContacts } = await import('@/services/contactService');
+                    const results = await searchContacts(args.contact_name);
+                    contact = results[0];
+                }
+
+                if (!contact) {
+                    toast.error('Contact non trouvé');
+                    return { success: false, message: 'Contact non trouvé' };
+                }
+
+                if (!contact.email) {
+                    toast.error(`${contact.name} n'a pas d'adresse email`);
+                    return { success: false, message: `${contact.name} n'a pas d'adresse email enregistrée` };
+                }
+
+                // Construire l'URL mailto
+                let mailtoUrl = `mailto:${contact.email}`;
+                const params = [];
+                if (args.subject) params.push(`subject=${encodeURIComponent(args.subject)}`);
+                if (args.body) params.push(`body=${encodeURIComponent(args.body)}`);
+                if (params.length > 0) mailtoUrl += '?' + params.join('&');
+
+                // Ouvrir le client mail ou naviguer vers iBoîte
+                navigate('/messaging', {
+                    state: {
+                        compose: true,
+                        to: contact.email,
+                        subject: args.subject || `Message pour ${contact.name}`,
+                        contact: contact
+                    }
+                });
+
+                toast.success(`Composition d'email pour ${contact.name}`);
+
+                return {
+                    success: true,
+                    contact: contact.name,
+                    email: contact.email,
+                    message: `Ouverture de la messagerie pour envoyer un email à ${contact.name}`
+                };
+            } catch (error: any) {
+                console.error('❌ [IAstedInterface] Erreur email:', error);
+                return { success: false, message: `Erreur: ${error.message}` };
+            }
+        }
+
+        if (toolName === 'open_contacts') {
+            console.log('👥 [IAstedInterface] Ouverture contacts:', args);
+
+            const category = args.category || '';
+            const path = userRole && ['admin', 'maire', 'MAIRE', 'MAIRE_ADJOINT'].includes(userRole)
+                ? '/dashboard/maire/contacts'
+                : '/contacts';
+
+            navigate(path, { state: { category } });
+            toast.success('Ouverture de l\'annuaire des contacts');
+
+            return {
+                success: true,
+                message: args.category
+                    ? `Ouverture de l'annuaire - catégorie ${args.category}`
+                    : `Ouverture de l'annuaire des contacts`
+            };
+        }
+
+        if (toolName === 'get_contact_info') {
+            console.log('ℹ️ [IAstedInterface] Info contact:', args);
+
+            try {
+                let contact = null;
+
+                if (args.contact_id) {
+                    const { getContactById } = await import('@/services/contactService');
+                    contact = await getContactById(args.contact_id);
+                } else if (args.contact_name) {
+                    const { searchContacts } = await import('@/services/contactService');
+                    const results = await searchContacts(args.contact_name);
+                    contact = results[0];
+                }
+
+                if (!contact) {
+                    return { success: false, message: 'Contact non trouvé' };
+                }
+
+                // Formater les infos pour la réponse vocale
+                let info = `${contact.name}`;
+                if (contact.position) info += `, ${contact.position}`;
+                if (contact.organization) info += ` chez ${contact.organization}`;
+                if (contact.department) info += `, département ${contact.department}`;
+                if (contact.email) info += `. Email: ${contact.email}`;
+                if (contact.phone) info += `. Téléphone: ${contact.phone}`;
+
+                return {
+                    success: true,
+                    contact: contact,
+                    message: info
+                };
+            } catch (error: any) {
+                console.error('❌ [IAstedInterface] Erreur info contact:', error);
+                return { success: false, message: `Erreur: ${error.message}` };
+            }
+        }
+
         // SECURITY: security_override tool removed - all authorization must be server-side via RLS
 
         // 2. External Handler (for navigation, specific actions)
@@ -1474,6 +1679,7 @@ export default function IAstedInterface({
                 showPresentation={isPresentationMode}
                 onClosePresentation={handlePresentationClose}
                 onOpenInterface={handleButtonClick}
+                onOpenChatModal={() => setIsOpen(true)}
                 isInterfaceOpen={isOpen}
                 voiceListening={openaiRTC.voiceState === 'listening'}
                 voiceSpeaking={openaiRTC.voiceState === 'speaking'}

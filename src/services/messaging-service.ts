@@ -407,7 +407,7 @@ export const messagingService = {
 
         const newMessage: Message = {
             id: `msg_${Date.now()}`,
-            senderId: session?.user?.id || 'anonymous',
+            senderId: session?.user?.email || 'anonymous@mairie.ga',
             senderName: session?.user?.email?.split('@')[0] || 'Utilisateur',
             senderRole: 'CITIZEN',
             content,

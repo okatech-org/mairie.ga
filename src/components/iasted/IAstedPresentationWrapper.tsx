@@ -13,6 +13,7 @@ interface IAstedPresentationWrapperProps {
   showPresentation: boolean;
   onClosePresentation: () => void;
   onOpenInterface: () => void;
+  onOpenChatModal?: () => void;
   isInterfaceOpen: boolean;
   voiceListening?: boolean;
   voiceSpeaking?: boolean;
@@ -23,6 +24,7 @@ export default function IAstedPresentationWrapper({
   showPresentation,
   onClosePresentation,
   onOpenInterface,
+  onOpenChatModal,
   isInterfaceOpen,
   voiceListening = false,
   voiceSpeaking = false,
@@ -285,6 +287,7 @@ export default function IAstedPresentationWrapper({
           <IAstedButtonFull
             onClick={onOpenInterface}
             onSingleClick={onOpenInterface}
+            onDoubleClick={onOpenChatModal}
             isInterfaceOpen={isInterfaceOpen}
             voiceListening={voiceListening}
             voiceSpeaking={isActive}
