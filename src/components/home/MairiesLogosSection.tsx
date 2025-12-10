@@ -1,14 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Building2, MapPin, Users, Phone, Mail, Globe } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Building2, MapPin, Users, Phone, Mail, Filter } from 'lucide-react';
 import { organizationService, Organization } from '@/services/organizationService';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export const MairiesLogosSection = () => {
   const [mairies, setMairies] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchMairies = async () => {
@@ -24,6 +28,20 @@ export const MairiesLogosSection = () => {
 
     fetchMairies();
   }, []);
+
+  const provinces = useMemo(() => {
+    const uniqueProvinces = [...new Set(mairies.map(m => m.province).filter(Boolean))];
+    return uniqueProvinces.sort();
+  }, [mairies]);
+
+  const filteredMairies = useMemo(() => {
+    if (!selectedProvince) return mairies;
+    return mairies.filter(m => m.province === selectedProvince);
+  }, [mairies, selectedProvince]);
+
+  const handleMairieClick = (mairie: Organization) => {
+    navigate(`/entity/${mairie.id}`);
+  };
 
   if (loading) {
     return (
@@ -57,7 +75,7 @@ export const MairiesLogosSection = () => {
   return (
     <section className="py-16 bg-gradient-to-b from-muted/30 to-background">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <Badge variant="outline" className="mb-4">
             <Building2 className="h-3 w-3 mr-1" />
             Nos Mairies
@@ -70,15 +88,45 @@ export const MairiesLogosSection = () => {
           </p>
         </div>
 
+        {/* Province Filter */}
+        <div className="flex flex-wrap justify-center gap-2 mb-8">
+          <Button
+            variant={selectedProvince === null ? "default" : "outline"}
+            size="sm"
+            onClick={() => setSelectedProvince(null)}
+            className="gap-1"
+          >
+            <Filter className="h-3 w-3" />
+            Toutes ({mairies.length})
+          </Button>
+          {provinces.map((province) => {
+            const count = mairies.filter(m => m.province === province).length;
+            return (
+              <Button
+                key={province}
+                variant={selectedProvince === province ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedProvince(province)}
+              >
+                {province} ({count})
+              </Button>
+            );
+          })}
+        </div>
+
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
-          {mairies.map((mairie, index) => (
+          {filteredMairies.map((mairie, index) => (
             <motion.div
               key={mairie.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05, duration: 0.3 }}
+              layout
             >
-              <Card className="group h-full overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-2 hover:border-primary/30 cursor-pointer">
+              <Card 
+                className="group h-full overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-2 hover:border-primary/30 cursor-pointer"
+                onClick={() => handleMairieClick(mairie)}
+              >
                 <CardContent className="p-4 md:p-6 flex flex-col items-center text-center">
                   {/* Logo */}
                   <div className="relative w-16 h-16 md:w-20 md:h-20 mb-4 rounded-full overflow-hidden bg-gradient-to-br from-primary/10 to-primary/20 p-1 transition-transform group-hover:scale-110">
@@ -146,7 +194,7 @@ export const MairiesLogosSection = () => {
             <p className="text-sm text-muted-foreground">Mairies connectées</p>
           </div>
           <div className="text-center">
-            <p className="text-3xl md:text-4xl font-bold text-primary">9</p>
+            <p className="text-3xl md:text-4xl font-bold text-primary">{provinces.length}</p>
             <p className="text-sm text-muted-foreground">Provinces</p>
           </div>
           <div className="text-center">
