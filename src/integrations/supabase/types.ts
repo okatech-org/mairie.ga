@@ -430,11 +430,15 @@ export type Database = {
           content: string | null
           created_at: string | null
           delivered_at: string | null
+          document_ids: string[] | null
           error_message: string | null
+          folder_id: string | null
           id: string
+          is_urgent: boolean | null
           metadata: Json | null
           recipient_email: string
           recipient_name: string | null
+          recipient_org: string | null
           sender_id: string
           sent_at: string | null
           status: Database["public"]["Enums"]["correspondence_status"] | null
@@ -446,11 +450,15 @@ export type Database = {
           content?: string | null
           created_at?: string | null
           delivered_at?: string | null
+          document_ids?: string[] | null
           error_message?: string | null
+          folder_id?: string | null
           id?: string
+          is_urgent?: boolean | null
           metadata?: Json | null
           recipient_email: string
           recipient_name?: string | null
+          recipient_org?: string | null
           sender_id: string
           sent_at?: string | null
           status?: Database["public"]["Enums"]["correspondence_status"] | null
@@ -462,11 +470,15 @@ export type Database = {
           content?: string | null
           created_at?: string | null
           delivered_at?: string | null
+          document_ids?: string[] | null
           error_message?: string | null
+          folder_id?: string | null
           id?: string
+          is_urgent?: boolean | null
           metadata?: Json | null
           recipient_email?: string
           recipient_name?: string | null
+          recipient_org?: string | null
           sender_id?: string
           sent_at?: string | null
           status?: Database["public"]["Enums"]["correspondence_status"] | null
