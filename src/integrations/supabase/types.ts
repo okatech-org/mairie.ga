@@ -532,9 +532,11 @@ export type Database = {
       deliberations: {
         Row: {
           abstentions: number | null
+          commission: string | null
           content: string | null
           created_at: string | null
           created_by: string | null
+          document_url: string | null
           documents: Json | null
           id: string
           metadata: Json | null
@@ -543,6 +545,8 @@ export type Database = {
           rapporteur: string | null
           resultat: Database["public"]["Enums"]["deliberation_result"] | null
           session_date: string
+          session_type: string | null
+          summary: string | null
           title: string
           updated_at: string | null
           votes_contre: number | null
@@ -550,9 +554,11 @@ export type Database = {
         }
         Insert: {
           abstentions?: number | null
+          commission?: string | null
           content?: string | null
           created_at?: string | null
           created_by?: string | null
+          document_url?: string | null
           documents?: Json | null
           id?: string
           metadata?: Json | null
@@ -561,6 +567,8 @@ export type Database = {
           rapporteur?: string | null
           resultat?: Database["public"]["Enums"]["deliberation_result"] | null
           session_date: string
+          session_type?: string | null
+          summary?: string | null
           title: string
           updated_at?: string | null
           votes_contre?: number | null
@@ -568,9 +576,11 @@ export type Database = {
         }
         Update: {
           abstentions?: number | null
+          commission?: string | null
           content?: string | null
           created_at?: string | null
           created_by?: string | null
+          document_url?: string | null
           documents?: Json | null
           id?: string
           metadata?: Json | null
@@ -579,6 +589,8 @@ export type Database = {
           rapporteur?: string | null
           resultat?: Database["public"]["Enums"]["deliberation_result"] | null
           session_date?: string
+          session_type?: string | null
+          summary?: string | null
           title?: string
           updated_at?: string | null
           votes_contre?: number | null
