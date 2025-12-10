@@ -36,7 +36,44 @@ export interface UrbanismeDossier {
 
 const urbanismeTable = () => (supabase as any).from('urbanisme_dossiers');
 
+export interface CreateUrbanismeDossierInput {
+  type: UrbanismeType;
+  title: string;
+  description?: string;
+  address?: { street?: string; city?: string; postalCode?: string };
+  surfaceTerrain?: number;
+  surfaceConstruction?: number;
+  organizationId?: string;
+  status?: UrbanismeStatus;
+  documents?: string[];
+  metadata?: Record<string, unknown>;
+}
+
 class UrbanismeService {
+  /**
+   * List all dossiers (admin/agent view)
+   */
+  async list(filters?: { status?: UrbanismeStatus; type?: UrbanismeType }): Promise<UrbanismeDossier[]> {
+    try {
+      let query = urbanismeTable().select('*');
+      
+      if (filters?.status) {
+        query = query.eq('status', filters.status);
+      }
+      if (filters?.type) {
+        query = query.eq('type', filters.type);
+      }
+      
+      const { data, error } = await query.order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return (data || []).map((row: any) => this.mapFromDatabase(row));
+    } catch (err) {
+      console.error('[UrbanismeService] Error listing dossiers:', err);
+      return [];
+    }
+  }
+
   /**
    * Get all dossiers for current user
    */
@@ -106,7 +143,7 @@ class UrbanismeService {
   /**
    * Create a new dossier
    */
-  async create(dossier: Omit<UrbanismeDossier, 'id' | 'numero' | 'dateDepot' | 'createdAt' | 'updatedAt'>): Promise<UrbanismeDossier> {
+  async create(dossier: CreateUrbanismeDossierInput): Promise<UrbanismeDossier> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');

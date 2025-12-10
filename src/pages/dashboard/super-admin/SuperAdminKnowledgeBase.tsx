@@ -1,199 +1,475 @@
-import { useState } from "react";
-import DashboardLayout from "@/layouts/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Upload, Trash2, Eye, Search, File, Loader2 } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import {
+    BookOpen,
+    Search,
+    Plus,
+    Eye,
+    Pencil,
+    Trash2,
+    FileText,
+    Globe,
+    Archive,
+    Loader2,
+    Tags,
+    BarChart3,
+    ThumbsUp
+} from "lucide-react";
+import {
+    knowledgeBaseService,
+    KBArticle,
+    KBStatus
+} from "@/services/knowledge-base-service";
 
-type DocumentStatus = "indexed" | "processing" | "error";
+const categoryLabels: Record<string, string> = {
+    'procedures': 'Procédures',
+    'faq': 'FAQ',
+    'legal': 'Juridique',
+    'technical': 'Technique',
+    'services': 'Services',
+    'general': 'Général'
+};
 
-interface KBDocument {
-    id: string;
-    name: string;
-    type: string;
-    size: string;
-    uploadDate: string;
-    status: DocumentStatus;
-    chunkCount: number;
+const categoryColors: Record<string, string> = {
+    'procedures': 'bg-blue-500/10 text-blue-600',
+    'faq': 'bg-purple-500/10 text-purple-600',
+    'legal': 'bg-amber-500/10 text-amber-600',
+    'technical': 'bg-cyan-500/10 text-cyan-600',
+    'services': 'bg-green-500/10 text-green-600',
+    'general': 'bg-gray-500/10 text-gray-600'
+};
+
+const statusConfig: Record<KBStatus, { label: string; color: string; icon: React.ElementType }> = {
+    'DRAFT': { label: 'Brouillon', color: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20', icon: FileText },
+    'PUBLISHED': { label: 'Publié', color: 'bg-green-500/10 text-green-600 border-green-500/20', icon: Globe },
+    'ARCHIVED': { label: 'Archivé', color: 'bg-gray-500/10 text-gray-600 border-gray-500/20', icon: Archive }
+};
+
+interface ArticleForm {
+    title: string;
+    content: string;
+    category: string;
+    subcategory: string;
+    tags: string[];
+    status: KBStatus;
 }
 
-const MOCK_DOCS: KBDocument[] = [
-    { id: "1", name: "Procedures_Consulaires_2024.pdf", type: "PDF", size: "2.4 MB", uploadDate: "2024-03-15", status: "indexed", chunkCount: 145 },
-    { id: "2", name: "Tarifs_Visas_V2.pdf", type: "PDF", size: "1.1 MB", uploadDate: "2024-03-10", status: "indexed", chunkCount: 42 },
-    { id: "3", name: "faq_mariage.docx", type: "DOCX", size: "500 KB", uploadDate: "2024-03-18", status: "processing", chunkCount: 0 },
-    { id: "4", name: "guide_accueil.txt", type: "TXT", size: "12 KB", uploadDate: "2024-03-01", status: "error", chunkCount: 0 },
-];
-
 export default function SuperAdminKnowledgeBase() {
-    const { toast } = useToast();
-    const [documents, setDocuments] = useState<KBDocument[]>(MOCK_DOCS);
-    const [search, setSearch] = useState("");
-    const [isUploadOpen, setIsUploadOpen] = useState(false);
-    const [isUploading, setIsUploading] = useState(false);
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [articles, setArticles] = useState<KBArticle[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [activeTab, setActiveTab] = useState('all');
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [editingArticle, setEditingArticle] = useState<KBArticle | null>(null);
+    const [submitting, setSubmitting] = useState(false);
 
-    const filteredDocs = documents.filter(doc =>
-        doc.name.toLowerCase().includes(search.toLowerCase())
-    );
+    const [formData, setFormData] = useState<ArticleForm>({
+        title: '',
+        content: '',
+        category: 'general',
+        subcategory: '',
+        tags: [],
+        status: 'DRAFT'
+    });
 
-    const handleUpload = () => {
-        if (!selectedFile) return;
+    useEffect(() => {
+        loadArticles();
+    }, []);
 
-        setIsUploading(true);
-        // Simulate upload
-        setTimeout(() => {
-            const newDoc: KBDocument = {
-                id: Math.random().toString(),
-                name: selectedFile.name,
-                type: selectedFile.name.split('.').pop()?.toUpperCase() || 'FILE',
-                size: (selectedFile.size / 1024 / 1024).toFixed(2) + ' MB',
-                uploadDate: new Date().toISOString().split('T')[0],
-                status: "processing",
-                chunkCount: 0
-            };
-
-            setDocuments([newDoc, ...documents]);
-            setIsUploading(false);
-            setIsUploadOpen(false);
-            setSelectedFile(null);
-
-            toast({
-                title: "Document ajouté",
-                description: "Le fichier est en cours de traitement pour indexation.",
-            });
-        }, 2000);
+    const loadArticles = async () => {
+        setLoading(true);
+        const data = await knowledgeBaseService.getAll();
+        setArticles(data);
+        setLoading(false);
     };
 
-    const handleDelete = (id: string) => {
-        setDocuments(documents.filter(d => d.id !== id));
-        toast({
-            title: "Document supprimé",
-            description: "Le document a été retiré de la base de connaissances.",
+    const resetForm = () => {
+        setFormData({
+            title: '',
+            content: '',
+            category: 'general',
+            subcategory: '',
+            tags: [],
+            status: 'DRAFT'
         });
+        setEditingArticle(null);
     };
+
+    const handleOpenDialog = (article?: KBArticle) => {
+        if (article) {
+            setEditingArticle(article);
+            setFormData({
+                title: article.title,
+                content: article.content,
+                category: article.category,
+                subcategory: article.subcategory || '',
+                tags: article.tags || [],
+                status: article.status
+            });
+        } else {
+            resetForm();
+        }
+        setIsDialogOpen(true);
+    };
+
+    const handleSubmit = async () => {
+        if (!formData.title || !formData.content || !formData.category) {
+            toast.error("Veuillez remplir tous les champs obligatoires");
+            return;
+        }
+
+        setSubmitting(true);
+
+        try {
+            if (editingArticle) {
+                await knowledgeBaseService.update(editingArticle.id, formData);
+                toast.success("Article mis à jour");
+            } else {
+                await knowledgeBaseService.create({
+                    ...formData,
+                    metadata: {}
+                });
+                toast.success("Article créé avec succès");
+            }
+            setIsDialogOpen(false);
+            resetForm();
+            loadArticles();
+        } catch (err) {
+            toast.error("Erreur lors de l'opération");
+        }
+        setSubmitting(false);
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm("Êtes-vous sûr de vouloir supprimer cet article ?")) return;
+
+        try {
+            await knowledgeBaseService.delete(id);
+            toast.success("Article supprimé");
+            loadArticles();
+        } catch (err) {
+            toast.error("Erreur lors de la suppression");
+        }
+    };
+
+    const handlePublish = async (article: KBArticle) => {
+        const newStatus: KBStatus = article.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED';
+        try {
+            await knowledgeBaseService.update(article.id, { status: newStatus });
+            toast.success(newStatus === 'PUBLISHED' ? "Article publié" : "Article dépublié");
+            loadArticles();
+        } catch (err) {
+            toast.error("Erreur lors de la mise à jour");
+        }
+    };
+
+    const filteredArticles = articles.filter(a => {
+        const matchesSearch = a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            a.content.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesTab = activeTab === 'all' || a.status === activeTab || a.category === activeTab;
+        return matchesSearch && matchesTab;
+    });
+
+    const stats = {
+        total: articles.length,
+        published: articles.filter(a => a.status === 'PUBLISHED').length,
+        drafts: articles.filter(a => a.status === 'DRAFT').length,
+        totalViews: articles.reduce((sum, a) => sum + (a.viewCount || 0), 0)
+    };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-96">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
-        <DashboardLayout>
-            <div className="space-y-6 pb-20">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-800">Base de Connaissances</h1>
-                        <p className="text-muted-foreground">Gestion des documents RAG pour iAsted</p>
-                    </div>
-
-                    <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
-                        <DialogTrigger asChild>
-                            <Button className="gap-2">
-                                <Upload className="w-4 h-4" />
-                                Ajouter un document
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Téléverser un document</DialogTitle>
-                                <DialogDescription>
-                                    Formats supportés : PDF, DOCX, TXT. Max 10MB.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className="grid gap-4 py-4">
-                                <div className="grid gap-2">
-                                    <Label htmlFor="file">Fichier</Label>
-                                    <Input
-                                        id="file"
-                                        type="file"
-                                        onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                                    />
-                                </div>
-                            </div>
-                            <DialogFooter>
-                                <Button variant="outline" onClick={() => setIsUploadOpen(false)}>Annuler</Button>
-                                <Button onClick={handleUpload} disabled={!selectedFile || isUploading}>
-                                    {isUploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                                    Téléverser
-                                </Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
+        <div className="space-y-6 p-6 animate-fade-in">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                        Base de Connaissances
+                    </h1>
+                    <p className="text-muted-foreground mt-1">
+                        Gérez les articles et la documentation pour iAsted
+                    </p>
                 </div>
+                <Button className="gap-2" onClick={() => handleOpenDialog()}>
+                    <Plus className="h-4 w-4" />
+                    Nouvel article
+                </Button>
+            </div>
 
-                <Card className="neu-raised">
-                    <CardHeader>
-                        <div className="flex justify-between items-center">
-                            <CardTitle>Documents Indexés</CardTitle>
-                            <div className="relative w-64">
-                                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    placeholder="Rechercher..."
-                                    className="pl-8"
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                />
+            {/* Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Card className="neu-card border-none">
+                    <CardContent className="pt-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 rounded-xl bg-primary/10">
+                                <BookOpen className="h-6 w-6 text-primary" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-bold">{stats.total}</p>
+                                <p className="text-sm text-muted-foreground">Total articles</p>
                             </div>
                         </div>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Nom du fichier</TableHead>
-                                    <TableHead>Type</TableHead>
-                                    <TableHead>Taille</TableHead>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead>Statut</TableHead>
-                                    <TableHead>Chunks</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredDocs.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
-                                            Aucun document trouvé
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    filteredDocs.map((doc) => (
-                                        <TableRow key={doc.id}>
-                                            <TableCell className="font-medium flex items-center gap-2">
-                                                <FileText className="w-4 h-4 text-blue-500" />
-                                                {doc.name}
-                                            </TableCell>
-                                            <TableCell>{doc.type}</TableCell>
-                                            <TableCell>{doc.size}</TableCell>
-                                            <TableCell>{doc.uploadDate}</TableCell>
-                                            <TableCell>
-                                                <Badge variant={
-                                                    doc.status === "indexed" ? "default" :
-                                                        doc.status === "processing" ? "secondary" : "destructive"
-                                                } className={
-                                                    doc.status === "indexed" ? "bg-green-500 hover:bg-green-600" : ""
-                                                }>
-                                                    {doc.status === "indexed" ? "Indexé" :
-                                                        doc.status === "processing" ? "Traitement..." : "Erreur"}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>{doc.chunkCount}</TableCell>
-                                            <TableCell className="text-right space-x-2">
-                                                <Button variant="ghost" size="icon">
-                                                    <Eye className="w-4 h-4 text-gray-500" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" onClick={() => handleDelete(doc.id)}>
-                                                    <Trash2 className="w-4 h-4 text-red-500" />
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
+                    </CardContent>
+                </Card>
+                <Card className="neu-card border-none">
+                    <CardContent className="pt-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 rounded-xl bg-green-500/10">
+                                <Globe className="h-6 w-6 text-green-500" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-bold">{stats.published}</p>
+                                <p className="text-sm text-muted-foreground">Publiés</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="neu-card border-none">
+                    <CardContent className="pt-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 rounded-xl bg-yellow-500/10">
+                                <FileText className="h-6 w-6 text-yellow-500" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-bold">{stats.drafts}</p>
+                                <p className="text-sm text-muted-foreground">Brouillons</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="neu-card border-none">
+                    <CardContent className="pt-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 rounded-xl bg-blue-500/10">
+                                <BarChart3 className="h-6 w-6 text-blue-500" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-bold">{stats.totalViews}</p>
+                                <p className="text-sm text-muted-foreground">Vues totales</p>
+                            </div>
+                        </div>
                     </CardContent>
                 </Card>
             </div>
-        </DashboardLayout>
+
+            {/* Filters */}
+            <div className="flex flex-col md:flex-row gap-4">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Rechercher un article..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10"
+                    />
+                </div>
+                <Tabs value={activeTab} onValueChange={setActiveTab}>
+                    <TabsList>
+                        <TabsTrigger value="all">Tous</TabsTrigger>
+                        <TabsTrigger value="PUBLISHED">Publiés</TabsTrigger>
+                        <TabsTrigger value="DRAFT">Brouillons</TabsTrigger>
+                        <TabsTrigger value="procedures">Procédures</TabsTrigger>
+                        <TabsTrigger value="faq">FAQ</TabsTrigger>
+                    </TabsList>
+                </Tabs>
+            </div>
+
+            {/* Articles List */}
+            <Card className="neu-card border-none">
+                <CardHeader>
+                    <CardTitle className="text-lg">Articles</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <ScrollArea className="h-[500px]">
+                        {filteredArticles.length === 0 ? (
+                            <div className="text-center py-12 text-muted-foreground">
+                                <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                                <p>Aucun article trouvé</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {filteredArticles.map((article) => {
+                                    const StatusIcon = statusConfig[article.status]?.icon || FileText;
+                                    return (
+                                        <div
+                                            key={article.id}
+                                            className="p-4 rounded-lg border bg-card hover:bg-muted/30 transition-colors"
+                                        >
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <Badge className={categoryColors[article.category] || categoryColors.general}>
+                                                            {categoryLabels[article.category] || article.category}
+                                                        </Badge>
+                                                        <Badge variant="outline" className={statusConfig[article.status]?.color}>
+                                                            <StatusIcon className="h-3 w-3 mr-1" />
+                                                            {statusConfig[article.status]?.label}
+                                                        </Badge>
+                                                    </div>
+                                                    <h3 className="font-semibold">{article.title}</h3>
+                                                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                                                        {article.content}
+                                                    </p>
+                                                    <div className="flex items-center flex-wrap gap-4 mt-3 text-sm text-muted-foreground">
+                                                        <span className="flex items-center gap-1">
+                                                            <Eye className="h-3 w-3" />
+                                                            {article.viewCount || 0} vues
+                                                        </span>
+                                                        <span className="flex items-center gap-1">
+                                                            <ThumbsUp className="h-3 w-3" />
+                                                            {article.helpfulCount || 0} utile
+                                                        </span>
+                                                        {article.tags && article.tags.length > 0 && (
+                                                            <span className="flex items-center gap-1">
+                                                                <Tags className="h-3 w-3" />
+                                                                {article.tags.join(', ')}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-2 ml-4">
+                                                    <Button 
+                                                        size="sm" 
+                                                        variant="outline"
+                                                        onClick={() => handlePublish(article)}
+                                                    >
+                                                        {article.status === 'PUBLISHED' ? 'Dépublier' : 'Publier'}
+                                                    </Button>
+                                                    <Button 
+                                                        size="sm" 
+                                                        variant="ghost"
+                                                        onClick={() => handleOpenDialog(article)}
+                                                    >
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button 
+                                                        size="sm" 
+                                                        variant="ghost"
+                                                        className="text-destructive"
+                                                        onClick={() => handleDelete(article.id)}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </ScrollArea>
+                </CardContent>
+            </Card>
+
+            {/* Create/Edit Dialog */}
+            <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>
+                            {editingArticle ? 'Modifier l\'article' : 'Créer un nouvel article'}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Catégorie *</Label>
+                                <Select
+                                    value={formData.category}
+                                    onValueChange={(v) => setFormData({ ...formData, category: v })}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Sélectionner..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {Object.entries(categoryLabels).map(([key, label]) => (
+                                            <SelectItem key={key} value={key}>{label}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Sous-catégorie</Label>
+                                <Input
+                                    value={formData.subcategory}
+                                    onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
+                                    placeholder="Ex: Passeport, Visa..."
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Titre *</Label>
+                            <Input
+                                value={formData.title}
+                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                placeholder="Titre de l'article..."
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Contenu *</Label>
+                            <Textarea
+                                value={formData.content}
+                                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                                placeholder="Rédigez le contenu de l'article..."
+                                rows={12}
+                                className="font-mono text-sm"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Tags (séparés par des virgules)</Label>
+                            <Input
+                                value={formData.tags.join(', ')}
+                                onChange={(e) => setFormData({
+                                    ...formData,
+                                    tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean)
+                                })}
+                                placeholder="passeport, renouvellement, documents..."
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Statut</Label>
+                            <Select
+                                value={formData.status}
+                                onValueChange={(v) => setFormData({ ...formData, status: v as KBStatus })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="DRAFT">Brouillon</SelectItem>
+                                    <SelectItem value="PUBLISHED">Publié</SelectItem>
+                                    <SelectItem value="ARCHIVED">Archivé</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                            Annuler
+                        </Button>
+                        <Button onClick={handleSubmit} disabled={submitting}>
+                            {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                            {editingArticle ? 'Mettre à jour' : 'Créer l\'article'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
     );
 }
