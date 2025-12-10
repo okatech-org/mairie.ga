@@ -47,6 +47,7 @@ import MaireAgendaPage from "./pages/dashboard/maire/MaireAgendaPage";
 import MaireUrbanismePage from "./pages/dashboard/maire/MaireUrbanismePage";
 import MaireDocumentsPage from "./pages/dashboard/maire/MaireDocumentsPage";
 import CorrespondancePage from "./pages/CorrespondancePage";
+import CommunicationsDashboard from "./pages/dashboard/maire/CommunicationsDashboard";
 
 import CompaniesPage from "./pages/companies/CompaniesPage";
 import NewCompanyPage from "./pages/companies/NewCompanyPage";
@@ -170,6 +171,7 @@ const App = () => (
                     <Route path="/dashboard/maire/agenda" element={<DashboardLayout><MaireAgendaPage /></DashboardLayout>} />
                     <Route path="/dashboard/maire/urbanisme" element={<DashboardLayout><MaireUrbanismePage /></DashboardLayout>} />
                     <Route path="/dashboard/maire/documents" element={<DashboardLayout><MaireDocumentsPage /></DashboardLayout>} />
+                    <Route path="/dashboard/maire/communications" element={<DashboardLayout><CommunicationsDashboard /></DashboardLayout>} />
                     <Route path="/dashboard/sg" element={<DashboardLayout><AgentDashboard /></DashboardLayout>} />
                     <Route path="/dashboard/chef-service" element={<DashboardLayout><AgentDashboard /></DashboardLayout>} />
 

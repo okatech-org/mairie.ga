@@ -138,6 +138,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     title: "COMMUNICATION",
                     items: [
                         { label: "iBoîte", icon: Mail, path: "/iboite" },
+                        { label: "Notifications", icon: BarChart3, path: "/dashboard/maire/communications" },
                     ]
                 },
                 {
