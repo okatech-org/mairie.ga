@@ -134,6 +134,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     title: "DOCUMENTS",
                     items: [
                         { label: "Mes Documents", icon: FolderOpen, path: "/dashboard/maire/documents" },
+                        { label: "Paramètres PDF", icon: FileText, path: "/dashboard/maire/document-settings" },
                     ]
                 },
                 {

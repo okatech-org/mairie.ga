@@ -176,6 +176,7 @@ const App = () => (
                     <Route path="/dashboard/maire/agenda" element={<DashboardLayout><MaireAgendaPage /></DashboardLayout>} />
                     <Route path="/dashboard/maire/urbanisme" element={<DashboardLayout><MaireUrbanismePage /></DashboardLayout>} />
                     <Route path="/dashboard/maire/documents" element={<DashboardLayout><MaireDocumentsPage /></DashboardLayout>} />
+                    <Route path="/dashboard/maire/document-settings" element={<DashboardLayout><DocumentSettingsAdmin /></DashboardLayout>} />
                     <Route path="/dashboard/maire/communications" element={<DashboardLayout><CommunicationsDashboard /></DashboardLayout>} />
                     <Route path="/dashboard/maire/contacts" element={<DashboardLayout><ContactsPage /></DashboardLayout>} />
                     <Route path="/contacts" element={<ContactsPage />} />
