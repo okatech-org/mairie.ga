@@ -1069,6 +1069,57 @@ export type Database = {
           },
         ]
       }
+      service_document_settings: {
+        Row: {
+          cabinet: string | null
+          commune: string | null
+          created_at: string | null
+          footer_address: string | null
+          footer_email: string | null
+          id: string
+          logo_url: string | null
+          motto: string | null
+          primary_color: string | null
+          province: string | null
+          republic: string | null
+          service_role: string
+          signature_title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          cabinet?: string | null
+          commune?: string | null
+          created_at?: string | null
+          footer_address?: string | null
+          footer_email?: string | null
+          id?: string
+          logo_url?: string | null
+          motto?: string | null
+          primary_color?: string | null
+          province?: string | null
+          republic?: string | null
+          service_role: string
+          signature_title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          cabinet?: string | null
+          commune?: string | null
+          created_at?: string | null
+          footer_address?: string | null
+          footer_email?: string | null
+          id?: string
+          logo_url?: string | null
+          motto?: string | null
+          primary_color?: string | null
+          province?: string | null
+          republic?: string | null
+          service_role?: string
+          signature_title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       services: {
         Row: {
           category: string | null
