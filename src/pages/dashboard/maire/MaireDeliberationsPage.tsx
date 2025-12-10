@@ -25,7 +25,7 @@ import {
     Trash2,
     Mail
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeWithDemoFallback } from "@/utils/demoMode";
 import {
     deliberationService,
     Deliberation,
@@ -225,8 +225,9 @@ export default function MaireDeliberationsPage() {
 
         setSendingNotification(true);
         try {
-            const { data, error } = await supabase.functions.invoke('send-deliberation-notification', {
-                body: {
+            const { data, error, isDemo } = await invokeWithDemoFallback<{ success: boolean; message?: string; recipients?: number }>(
+                'send-deliberation-notification',
+                {
                     deliberationId: delib.id,
                     deliberationNumero: delib.numero,
                     deliberationTitle: delib.title,
@@ -234,11 +235,15 @@ export default function MaireDeliberationsPage() {
                     resultat: delib.resultat,
                     notifyAllCitizens: true
                 }
-            });
+            );
 
             if (error) throw error;
 
-            toast.success(data?.message || "Notifications envoyées avec succès");
+            if (isDemo) {
+                toast.info("Mode Démo: Notification simulée (aucun email envoyé)");
+            } else {
+                toast.success(data?.message || "Notifications envoyées avec succès");
+            }
         } catch (err) {
             console.error('Error sending notification:', err);
             toast.error("Erreur lors de l'envoi des notifications");

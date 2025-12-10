@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
 import { organizationService } from "./organizationService";
+import { invokeWithDemoFallback } from "@/utils/demoMode";
 
 // Types basés sur la table profiles de Supabase avec extensions
 export type Profile = Tables<"profiles"> & {
@@ -183,22 +184,40 @@ export const profileService = {
         role: string;
         organizationId?: string;
     }): Promise<ProfileWithRole> {
-        // Call Edge Function to create user via Supabase Admin API
-        const { data, error } = await supabase.functions.invoke('create-user', {
-            body: {
+        // Call Edge Function with demo fallback
+        const { data, error, isDemo } = await invokeWithDemoFallback<ProfileWithRole>(
+            'create-user',
+            {
                 email: profileData.email,
                 first_name: profileData.firstName,
                 last_name: profileData.lastName,
                 role: profileData.role,
                 organization_id: profileData.organizationId
             }
-        });
+        );
 
         if (error) {
             console.error('Failed to create user:', error);
             throw new Error(`Erreur lors de la création de l'utilisateur: ${error.message}`);
         }
 
+        if (isDemo) {
+            console.log('[ProfileService] Demo mode - returning simulated user creation');
+            // Return a more complete mock profile for demo mode
+            return {
+                id: crypto.randomUUID(),
+                user_id: crypto.randomUUID(),
+                first_name: profileData.firstName,
+                last_name: profileData.lastName,
+                email: profileData.email,
+                role: profileData.role,
+                employer: profileData.organizationId || null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            } as unknown as ProfileWithRole;
+        }
+
+        console.log('[ProfileService] User created:', data);
         return data as ProfileWithRole;
     }
 };

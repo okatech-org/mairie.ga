@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Save, AlertTriangle, Bell, Shield, Database, Mail, RefreshCw, XCircle, CheckCircle2, Bot, Clock } from "lucide-react";
+import { Save, AlertTriangle, Bell, Shield, Database, Mail, RefreshCw, XCircle, CheckCircle2, Bot, Clock, Loader2 } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,7 @@ import { IAstedOptimizerStats } from "@/components/iasted/IAstedOptimizerStats";
 import { useSessionConfigStore, InactivityTimeout } from "@/stores/sessionConfigStore";
 import { toast as sonnerToast } from "sonner";
 import { ActiveSessionsManager } from "@/components/auth/ActiveSessionsManager";
+import { auditService, AuditLog } from "@/services/audit-service";
 
 const INACTIVITY_OPTIONS: { value: InactivityTimeout; label: string }[] = [
     { value: 0, label: 'Désactivé' },
@@ -51,12 +52,7 @@ const INITIAL_SETTINGS: SettingsState = {
     ipWhitelist: "192.168.1.1, 10.0.0.1"
 };
 
-const MOCK_AUDIT_LOGS = [
-    { id: 1, action: "Connexion échouée", user: "unknown", ip: "145.2.3.4", date: "2024-03-20 14:23", status: "failed" },
-    { id: 2, action: "Modification paramètres", user: "Super Admin", ip: "192.168.1.1", date: "2024-03-20 14:00", status: "success" },
-    { id: 3, action: "Création Mairie", user: "Super Admin", ip: "192.168.1.1", date: "2024-03-20 11:30", status: "success" },
-    { id: 4, action: "Export données", user: "Admin Lyon", ip: "88.12.34.56", date: "2024-03-19 16:45", status: "warning" },
-];
+
 
 const ROLES_MATRIX = [
     { permission: "Gestion Utilisateurs", super_admin: true, admin: true, agent: false, citizen: false },
@@ -76,13 +72,30 @@ export default function SuperAdminSettings() {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [isDirty, setIsDirty] = useState(false);
+    const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+    const [loadingLogs, setLoadingLogs] = useState(false);
+
+    // Load audit logs
+    useEffect(() => {
+        const loadAuditLogs = async () => {
+            setLoadingLogs(true);
+            try {
+                const logs = await auditService.getLogs({ limit: 20 });
+                setAuditLogs(logs);
+            } catch (err) {
+                console.error('Error loading audit logs:', err);
+            }
+            setLoadingLogs(false);
+        };
+        loadAuditLogs();
+    }, []);
 
     const handleInactivityChange = (value: string) => {
         const timeout = parseInt(value) as InactivityTimeout;
         setInactivityTimeout(timeout);
         sonnerToast.success("Paramètre de session mis à jour", {
-            description: timeout === 0 
-                ? "La déconnexion automatique est désactivée." 
+            description: timeout === 0
+                ? "La déconnexion automatique est désactivée."
                 : `Déconnexion automatique après ${timeout} minutes d'inactivité.`
         });
     };
@@ -350,8 +363,8 @@ export default function SuperAdminSettings() {
                                         Déconnecter automatiquement les utilisateurs après une période d'inactivité pour protéger les comptes.
                                     </p>
                                 </div>
-                                <Select 
-                                    value={inactivityTimeout.toString()} 
+                                <Select
+                                    value={inactivityTimeout.toString()}
                                     onValueChange={handleInactivityChange}
                                 >
                                     <SelectTrigger className="w-[150px]">
@@ -468,32 +481,53 @@ export default function SuperAdminSettings() {
                                 <h2 className="text-xl font-bold">Audit Logs</h2>
                             </div>
                             <div className="rounded-md border">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Date</TableHead>
-                                            <TableHead>Utilisateur</TableHead>
-                                            <TableHead>Action</TableHead>
-                                            <TableHead>IP</TableHead>
-                                            <TableHead>Statut</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {MOCK_AUDIT_LOGS.map((log) => (
-                                            <TableRow key={log.id}>
-                                                <TableCell className="text-xs">{log.date}</TableCell>
-                                                <TableCell className="font-medium">{log.user}</TableCell>
-                                                <TableCell>{log.action}</TableCell>
-                                                <TableCell className="text-xs text-muted-foreground">{log.ip}</TableCell>
-                                                <TableCell>
-                                                    <Badge variant={log.status === 'success' ? 'outline' : log.status === 'warning' ? 'secondary' : 'destructive'}>
-                                                        {log.status}
-                                                    </Badge>
-                                                </TableCell>
+                                {loadingLogs ? (
+                                    <div className="flex items-center justify-center py-8">
+                                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                    </div>
+                                ) : auditLogs.length === 0 ? (
+                                    <div className="text-center py-8 text-muted-foreground">
+                                        Aucun log d'audit disponible
+                                    </div>
+                                ) : (
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Date</TableHead>
+                                                <TableHead>Utilisateur</TableHead>
+                                                <TableHead>Action</TableHead>
+                                                <TableHead>Ressource</TableHead>
+                                                <TableHead>IP</TableHead>
                                             </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {auditLogs.map((log) => (
+                                                <TableRow key={log.id}>
+                                                    <TableCell className="text-xs">
+                                                        {new Date(log.createdAt).toLocaleString('fr-FR')}
+                                                    </TableCell>
+                                                    <TableCell className="font-medium">
+                                                        {log.userId ? log.userId.substring(0, 8) + '...' : 'Anonyme'}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge variant={
+                                                            log.action.includes('LOGIN_FAILED') ? 'destructive' :
+                                                                log.action.includes('DELETE') ? 'destructive' :
+                                                                    log.action.includes('CREATE') ? 'default' :
+                                                                        'secondary'
+                                                        }>
+                                                            {log.action}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell>{log.resourceType}</TableCell>
+                                                    <TableCell className="text-xs text-muted-foreground">
+                                                        {log.ipAddress || '-'}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                )}
                             </div>
                         </div>
                     </TabsContent>

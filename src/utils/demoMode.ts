@@ -146,6 +146,18 @@ export const DEMO_RESPONSES = {
         userId: 'demo-user-' + Date.now(),
         message: '[Mode Démo] Utilisateur créé avec succès',
     },
+
+    'send-deliberation-notification': {
+        success: true,
+        message: '[Mode Démo] Notification de délibération simulée - aucun email envoyé',
+        recipients: 0,
+    },
+
+    'send-arrete-notification': {
+        success: true,
+        message: '[Mode Démo] Notification d\'arrêté simulée - aucun email envoyé',
+        recipients: 0,
+    },
 };
 
 /**

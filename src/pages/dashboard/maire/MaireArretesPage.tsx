@@ -27,12 +27,12 @@ import {
     Mail,
     Send
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { 
-    arreteService, 
-    Arrete, 
-    ArreteType, 
-    ArreteStatus 
+import { invokeWithDemoFallback } from "@/utils/demoMode";
+import {
+    arreteService,
+    Arrete,
+    ArreteType,
+    ArreteStatus
 } from "@/services/arrete-service";
 import { generateArretePDF } from "@/utils/generateArretePDF";
 import { NotificationHistoryPanel } from "@/components/dashboard/maire/NotificationHistoryPanel";
@@ -244,11 +244,12 @@ export default function MaireArretesPage() {
 
     const handleSendNotification = async (arrete: Arrete) => {
         if (!confirm("Envoyer une notification par email à tous les citoyens inscrits ?")) return;
-        
+
         setSendingNotification(true);
         try {
-            const { data, error } = await supabase.functions.invoke('send-arrete-notification', {
-                body: {
+            const { data, error, isDemo } = await invokeWithDemoFallback<{ success: boolean; message?: string; recipients?: number }>(
+                'send-arrete-notification',
+                {
                     arreteId: arrete.id,
                     arreteNumero: arrete.numero,
                     arreteTitle: arrete.title,
@@ -257,11 +258,15 @@ export default function MaireArretesPage() {
                     signataire: arrete.signataire,
                     notifyAllCitizens: true
                 }
-            });
-            
+            );
+
             if (error) throw error;
-            
-            toast.success(data?.message || "Notifications envoyées avec succès");
+
+            if (isDemo) {
+                toast.info("Mode Démo: Notification simulée (aucun email envoyé)");
+            } else {
+                toast.success(data?.message || "Notifications envoyées avec succès");
+            }
         } catch (err) {
             console.error('Error sending notification:', err);
             toast.error("Erreur lors de l'envoi des notifications");
@@ -445,23 +450,23 @@ export default function MaireArretesPage() {
                                                 </div>
                                                 <div className="flex flex-col gap-2 ml-4">
                                                     <div className="flex gap-1">
-                                                        <Button 
-                                                            size="sm" 
+                                                        <Button
+                                                            size="sm"
                                                             variant="ghost"
                                                             onClick={() => setSelectedArrete(arrete)}
                                                         >
                                                             <Eye className="h-4 w-4" />
                                                         </Button>
-                                                        <Button 
-                                                            size="sm" 
+                                                        <Button
+                                                            size="sm"
                                                             variant="ghost"
                                                             onClick={() => handleOpenDialog(arrete)}
                                                         >
                                                             <Pencil className="h-4 w-4" />
                                                         </Button>
                                                         {arrete.status === 'DRAFT' && (
-                                                            <Button 
-                                                                size="sm" 
+                                                            <Button
+                                                                size="sm"
                                                                 variant="ghost"
                                                                 className="text-destructive"
                                                                 onClick={() => handleDelete(arrete.id)}
@@ -472,8 +477,8 @@ export default function MaireArretesPage() {
                                                     </div>
                                                     {/* Workflow buttons */}
                                                     {arrete.status === 'DRAFT' && (
-                                                        <Button 
-                                                            size="sm" 
+                                                        <Button
+                                                            size="sm"
                                                             variant="outline"
                                                             className="text-xs"
                                                             onClick={() => handleSign(arrete)}
@@ -483,8 +488,8 @@ export default function MaireArretesPage() {
                                                         </Button>
                                                     )}
                                                     {arrete.status === 'SIGNED' && (
-                                                        <Button 
-                                                            size="sm" 
+                                                        <Button
+                                                            size="sm"
                                                             variant="outline"
                                                             className="text-xs"
                                                             onClick={() => handlePublish(arrete)}
@@ -495,8 +500,8 @@ export default function MaireArretesPage() {
                                                     )}
                                                     {arrete.status === 'PUBLISHED' && (
                                                         <>
-                                                            <Button 
-                                                                size="sm" 
+                                                            <Button
+                                                                size="sm"
                                                                 variant="outline"
                                                                 className="text-xs"
                                                                 onClick={() => handleSendNotification(arrete)}
@@ -509,8 +514,8 @@ export default function MaireArretesPage() {
                                                                 )}
                                                                 Notifier
                                                             </Button>
-                                                            <Button 
-                                                                size="sm" 
+                                                            <Button
+                                                                size="sm"
                                                                 variant="outline"
                                                                 className="text-xs text-destructive"
                                                                 onClick={() => handleAbrogate(arrete)}
@@ -655,11 +660,11 @@ Rédigez le contenu de l'arrêté...
                                     <p className="text-sm text-muted-foreground font-mono">{selectedArrete.numero}</p>
                                     <h2 className="text-xl font-bold mt-2">{selectedArrete.title}</h2>
                                 </div>
-                                
+
                                 {selectedArrete.content && (
-                                    <div 
+                                    <div
                                         className="prose prose-sm dark:prose-invert max-w-none"
-                                        dangerouslySetInnerHTML={{ 
+                                        dangerouslySetInnerHTML={{
                                             __html: selectedArrete.content
                                                 .replace(/^### (.+)$/gm, '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>')
                                                 .replace(/^## (.+)$/gm, '<h2 class="text-xl font-bold mt-6 mb-3">$1</h2>')
@@ -712,7 +717,7 @@ Rédigez le contenu de l'arrêté...
                                 <Button variant="outline" onClick={() => setSelectedArrete(null)}>
                                     Fermer
                                 </Button>
-                                <Button 
+                                <Button
                                     className="gap-2"
                                     onClick={() => handleDownloadPDF(selectedArrete)}
                                     disabled={downloadingPDF}
