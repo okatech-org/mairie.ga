@@ -132,10 +132,12 @@ export type Database = {
           date_fin: string | null
           date_publication: string | null
           date_signature: string | null
+          document_url: string | null
           documents: Json | null
           id: string
           metadata: Json | null
           numero: string
+          objet: string | null
           organization_id: string | null
           signataire: string | null
           status: Database["public"]["Enums"]["arrete_status"] | null
@@ -151,10 +153,12 @@ export type Database = {
           date_fin?: string | null
           date_publication?: string | null
           date_signature?: string | null
+          document_url?: string | null
           documents?: Json | null
           id?: string
           metadata?: Json | null
           numero: string
+          objet?: string | null
           organization_id?: string | null
           signataire?: string | null
           status?: Database["public"]["Enums"]["arrete_status"] | null
@@ -170,10 +174,12 @@ export type Database = {
           date_fin?: string | null
           date_publication?: string | null
           date_signature?: string | null
+          document_url?: string | null
           documents?: Json | null
           id?: string
           metadata?: Json | null
           numero?: string
+          objet?: string | null
           organization_id?: string | null
           signataire?: string | null
           status?: Database["public"]["Enums"]["arrete_status"] | null
