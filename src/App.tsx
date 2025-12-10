@@ -141,20 +141,22 @@ const App = () => (
                       <Route path="child/:childId" element={<ChildRegistrationPage />} />
                     </Route>
 
-                    <Route path="/dashboard/foreigner" element={<ForeignerDashboard />} />
+                    <Route path="/dashboard/foreigner" element={<DashboardLayout><ForeignerDashboard /></DashboardLayout>} />
 
                     {/* Services Catalog (accessible from sidebar) */}
                     <Route path="/dashboard/services" element={<DashboardLayout><DashboardServicesPage /></DashboardLayout>} />
 
-                    <Route path="/dashboard/super-admin" element={<SuperAdminDashboard />} />
-                    <Route path="/dashboard/super-admin/organizations" element={<SuperAdminOrganizations />} />
-                    <Route path="/dashboard/super-admin/organizations/:entityId" element={<OrganizationDetails />} />
-                    <Route path="/dashboard/super-admin/users" element={<SuperAdminUsers />} />
-                    <Route path="/dashboard/super-admin/services" element={<SuperAdminServices />} />
-                    <Route path="/dashboard/super-admin/settings" element={<SuperAdminSettings />} />
-                    <Route path="/dashboard/super-admin/iasted" element={<SuperAdminIAsted />} />
-                    <Route path="/dashboard/super-admin/knowledge-base" element={<SuperAdminKnowledgeBase />} />
-                    <Route path="/dashboard/super-admin/analytics" element={<SuperAdminAnalytics />} />
+                    {/* Super Admin Routes */}
+                    <Route path="/dashboard/super-admin" element={<DashboardLayout><SuperAdminDashboard /></DashboardLayout>} />
+                    <Route path="/dashboard/super-admin/organizations" element={<DashboardLayout><SuperAdminOrganizations /></DashboardLayout>} />
+                    <Route path="/dashboard/super-admin/organizations/:entityId" element={<DashboardLayout><OrganizationDetails /></DashboardLayout>} />
+                    <Route path="/dashboard/super-admin/users" element={<DashboardLayout><SuperAdminUsers /></DashboardLayout>} />
+                    <Route path="/dashboard/super-admin/services" element={<DashboardLayout><SuperAdminServices /></DashboardLayout>} />
+                    <Route path="/dashboard/super-admin/settings" element={<DashboardLayout><SuperAdminSettings /></DashboardLayout>} />
+                    <Route path="/dashboard/super-admin/iasted" element={<DashboardLayout><SuperAdminIAsted /></DashboardLayout>} />
+                    <Route path="/dashboard/super-admin/knowledge-base" element={<DashboardLayout><SuperAdminKnowledgeBase /></DashboardLayout>} />
+                    <Route path="/dashboard/super-admin/analytics" element={<DashboardLayout><SuperAdminAnalytics /></DashboardLayout>} />
+
                     {/* Municipal Personnel Routes */}
                     <Route path="/dashboard/maire" element={<DashboardLayout><MaireDashboard /></DashboardLayout>} />
                     <Route path="/dashboard/maire/analytics" element={<DashboardLayout><MaireAnalyticsPage /></DashboardLayout>} />
@@ -167,9 +169,10 @@ const App = () => (
                     <Route path="/dashboard/sg" element={<DashboardLayout><AgentDashboard /></DashboardLayout>} />
                     <Route path="/dashboard/chef-service" element={<DashboardLayout><AgentDashboard /></DashboardLayout>} />
 
-                    <Route path="/dashboard/agent" element={<AgentDashboard />} />
-                    <Route path="/dashboard/agent/appointments" element={<AgentAppointmentsPage />} />
-                    <Route path="/dashboard/agent/requests" element={<AgentRequestsPage />} />
+                    {/* Agent Routes */}
+                    <Route path="/dashboard/agent" element={<DashboardLayout><AgentDashboard /></DashboardLayout>} />
+                    <Route path="/dashboard/agent/appointments" element={<DashboardLayout><AgentAppointmentsPage /></DashboardLayout>} />
+                    <Route path="/dashboard/agent/requests" element={<DashboardLayout><AgentRequestsPage /></DashboardLayout>} />
 
                     {/* Consul General / Admin Routes */}
                     <Route path="/dashboard/admin/agents" element={<DashboardLayout><AgentsPage /></DashboardLayout>} />

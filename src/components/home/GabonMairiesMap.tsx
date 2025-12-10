@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeWithDemoFallback } from '@/utils/demoMode';
 import { mairiesGabon, provinces, MairieGabon } from '@/data/mock-mairies-gabon';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -34,8 +34,8 @@ const GabonMairiesMap = () => {
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return [];
     const query = searchQuery.toLowerCase();
-    return mairiesGabon.filter(m => 
-      m.name.toLowerCase().includes(query) || 
+    return mairiesGabon.filter(m =>
+      m.name.toLowerCase().includes(query) ||
       m.province.toLowerCase().includes(query) ||
       m.departement.toLowerCase().includes(query)
     ).slice(0, 8);
@@ -126,10 +126,18 @@ const GabonMairiesMap = () => {
   useEffect(() => {
     const initMap = async () => {
       try {
-        // Fetch Mapbox token from edge function
-        const { data, error: fnError } = await supabase.functions.invoke('get-mapbox-token');
-        
+        // Fetch Mapbox token from edge function with demo mode fallback
+        interface MapboxTokenResponse {
+          token: string | null;
+          error?: string;
+        }
+
+        const { data, error: fnError, isDemo } = await invokeWithDemoFallback<MapboxTokenResponse>('get-mapbox-token', {});
+
         if (fnError || !data?.token) {
+          if (isDemo) {
+            throw new Error('Carte non disponible en mode démonstration');
+          }
           throw new Error('Impossible de charger la carte');
         }
 
@@ -158,7 +166,7 @@ const GabonMairiesMap = () => {
           mairiesGabon.forEach((mairie) => {
             const province = provinces.find(p => p.name === mairie.province);
             const color = province?.color || '#009e49';
-            
+
             // Create marker element
             const el = document.createElement('div');
             el.className = 'mairie-marker';
@@ -170,12 +178,12 @@ const GabonMairiesMap = () => {
             el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
             el.style.cursor = 'pointer';
             el.style.transition = 'transform 0.2s ease';
-            
+
             el.addEventListener('mouseenter', () => {
               el.style.transform = 'scale(1.3)';
               setHoveredProvince(mairie.province);
             });
-            
+
             el.addEventListener('mouseleave', () => {
               el.style.transform = 'scale(1)';
               setHoveredProvince(null);
@@ -286,7 +294,7 @@ const GabonMairiesMap = () => {
                   className="w-full px-4 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors text-left border-b border-border/50 last:border-0"
                   onClick={() => handleSelectMairie(mairie)}
                 >
-                  <div 
+                  <div
                     className="w-3 h-3 rounded-full flex-shrink-0"
                     style={{ backgroundColor: province?.color || '#009e49' }}
                   />
@@ -316,11 +324,11 @@ const GabonMairiesMap = () => {
       <div className="grid lg:grid-cols-4 gap-6">
         {/* Map Container */}
         <div className="lg:col-span-3 relative">
-          <div 
-            ref={mapContainer} 
+          <div
+            ref={mapContainer}
             className="w-full h-[500px] rounded-2xl shadow-xl overflow-hidden"
           />
-          
+
           {loading && (
             <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center rounded-2xl">
               <div className="text-center">
@@ -352,9 +360,9 @@ const GabonMairiesMap = () => {
               Provinces
             </h3>
             {activeProvinceFilter && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={handleClearFilter}
                 className="text-xs h-7 gap-1"
               >
@@ -371,32 +379,31 @@ const GabonMairiesMap = () => {
               </p>
             </div>
           )}
-          
+
           {/* Estuaire - Full width */}
           {provinceCounts.filter(p => p.name === "Estuaire").map((province) => (
             <div
               key={province.name}
-              className={`p-2 rounded-md border transition-all cursor-pointer hover:shadow-sm ${
-                activeProvinceFilter === province.name
-                  ? 'border-primary bg-primary/10 shadow-sm ring-1 ring-primary/30'
-                  : hoveredProvince === province.name 
-                    ? 'border-primary bg-primary/5' 
-                    : 'border-border hover:border-primary/50'
-              }`}
+              className={`p-2 rounded-md border transition-all cursor-pointer hover:shadow-sm ${activeProvinceFilter === province.name
+                ? 'border-primary bg-primary/10 shadow-sm ring-1 ring-primary/30'
+                : hoveredProvince === province.name
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:border-primary/50'
+                }`}
               onMouseEnter={() => setHoveredProvince(province.name)}
               onMouseLeave={() => setHoveredProvince(null)}
               onClick={() => handleProvinceClick(province.name)}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <div 
-                    className="w-2 h-2 rounded-full" 
+                  <div
+                    className="w-2 h-2 rounded-full"
                     style={{ backgroundColor: province.color }}
                   />
                   <span className="font-medium text-xs">{province.name}</span>
                 </div>
-                <Badge 
-                  variant={activeProvinceFilter === province.name ? "default" : "secondary"} 
+                <Badge
+                  variant={activeProvinceFilter === province.name ? "default" : "secondary"}
                   className="text-[10px] px-1.5 h-4"
                 >
                   {province.count}
@@ -413,27 +420,26 @@ const GabonMairiesMap = () => {
             {provinceCounts.filter(p => p.name !== "Estuaire").map((province) => (
               <div
                 key={province.name}
-                className={`p-1.5 rounded-md border transition-all cursor-pointer hover:shadow-sm ${
-                  activeProvinceFilter === province.name
-                    ? 'border-primary bg-primary/10 shadow-sm ring-1 ring-primary/30'
-                    : hoveredProvince === province.name 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-border hover:border-primary/50'
-                }`}
+                className={`p-1.5 rounded-md border transition-all cursor-pointer hover:shadow-sm ${activeProvinceFilter === province.name
+                  ? 'border-primary bg-primary/10 shadow-sm ring-1 ring-primary/30'
+                  : hoveredProvince === province.name
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-primary/50'
+                  }`}
                 onMouseEnter={() => setHoveredProvince(province.name)}
                 onMouseLeave={() => setHoveredProvince(null)}
                 onClick={() => handleProvinceClick(province.name)}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1">
-                    <div 
-                      className="w-2 h-2 rounded-full flex-shrink-0" 
+                    <div
+                      className="w-2 h-2 rounded-full flex-shrink-0"
                       style={{ backgroundColor: province.color }}
                     />
                     <span className="font-medium text-[10px] truncate">{province.name}</span>
                   </div>
-                  <Badge 
-                    variant={activeProvinceFilter === province.name ? "default" : "secondary"} 
+                  <Badge
+                    variant={activeProvinceFilter === province.name ? "default" : "secondary"}
                     className="text-[9px] px-1 h-4 ml-1"
                   >
                     {province.count}

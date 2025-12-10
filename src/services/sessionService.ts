@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { invokeWithDemoFallback } from '@/utils/demoMode';
 
 export interface ActiveSession {
   id: string;
@@ -69,6 +70,12 @@ async function getClientIPWithLocation(): Promise<{ ip: string; location: string
   }
 }
 
+interface NewDeviceAlertResponse {
+  is_new_device: boolean;
+  location: string | null;
+  alert_sent: boolean;
+}
+
 // Check for new device and send alert
 async function checkNewDeviceAndAlert(
   userId: string,
@@ -79,8 +86,9 @@ async function checkNewDeviceAndAlert(
   ipAddress: string
 ): Promise<{ isNew: boolean; location: string | null }> {
   try {
-    const { data, error } = await supabase.functions.invoke('new-device-alert', {
-      body: {
+    const { data, error, isDemo } = await invokeWithDemoFallback<NewDeviceAlertResponse>(
+      'new-device-alert',
+      {
         user_id: userId,
         user_email: userEmail,
         device_info: deviceInfo,
@@ -88,11 +96,16 @@ async function checkNewDeviceAndAlert(
         os,
         ip_address: ipAddress
       }
-    });
+    );
 
     if (error) {
       console.error('Error checking new device:', error);
       return { isNew: false, location: null };
+    }
+
+    if (isDemo) {
+      console.log('[Session] Demo mode - new device check simulated');
+      return { isNew: false, location: 'Libreville, Gabon' };
     }
 
     console.log('New device check result:', data);

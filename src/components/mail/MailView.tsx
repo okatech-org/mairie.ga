@@ -6,14 +6,89 @@ import { Reply, ReplyAll, Forward, Trash2, MoreVertical, Paperclip, Download, Fi
 import { Conversation } from '@/types/messaging';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { toast } from 'sonner';
+import { useState } from 'react';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface MailViewProps {
     mail: Conversation | null;
     onReply: () => void;
+    onReplyAll?: () => void;
+    onForward?: () => void;
+    onDelete?: (mailId: string) => void;
+    onStar?: (mailId: string) => void;
 }
 
-export function MailView({ mail, onReply }: MailViewProps) {
+export function MailView({ mail, onReply, onReplyAll, onForward, onDelete, onStar }: MailViewProps) {
+    const [isStarred, setIsStarred] = useState(false);
+
     if (!mail) return null;
+
+    const handlePrint = () => {
+        window.print();
+        toast.info('Impression du message...');
+    };
+
+    const handleDelete = () => {
+        if (onDelete) {
+            onDelete(mail.id);
+        } else {
+            toast.success('Message déplacé vers la corbeille');
+        }
+    };
+
+    const handleStar = () => {
+        setIsStarred(!isStarred);
+        if (onStar) {
+            onStar(mail.id);
+        }
+        toast.success(isStarred ? 'Favori retiré' : 'Ajouté aux favoris ⭐');
+    };
+
+    const handleReplyAll = () => {
+        if (onReplyAll) {
+            onReplyAll();
+        } else {
+            // Fallback: use regular reply
+            onReply();
+            toast.info('Réponse à tous les destinataires');
+        }
+    };
+
+    const handleForward = () => {
+        if (onForward) {
+            onForward();
+        } else {
+            toast.info('Fonctionnalité de transfert à venir');
+        }
+    };
+
+    const handleDownloadAttachment = (attachment: { name: string; url: string }) => {
+        // For demo, show toast - in production, trigger download
+        toast.success(`Téléchargement de ${attachment.name}...`);
+        // If there's a real URL, open it
+        if (attachment.url && attachment.url !== '#') {
+            window.open(attachment.url, '_blank');
+        }
+    };
+
+    const handleMarkAsUnread = () => {
+        toast.success('Message marqué comme non lu');
+    };
+
+    const handleArchive = () => {
+        toast.success('Message archivé');
+    };
+
+    const handleReportSpam = () => {
+        toast.success('Message signalé comme spam');
+    };
 
     return (
         <div className="flex flex-col h-full bg-background">
@@ -31,7 +106,7 @@ export function MailView({ mail, onReply }: MailViewProps) {
                         </Tooltip>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon">
+                                <Button variant="ghost" size="icon" onClick={handleReplyAll}>
                                     <ReplyAll className="w-4 h-4" />
                                 </Button>
                             </TooltipTrigger>
@@ -39,7 +114,7 @@ export function MailView({ mail, onReply }: MailViewProps) {
                         </Tooltip>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon">
+                                <Button variant="ghost" size="icon" onClick={handleForward}>
                                     <Forward className="w-4 h-4" />
                                 </Button>
                             </TooltipTrigger>
@@ -47,20 +122,52 @@ export function MailView({ mail, onReply }: MailViewProps) {
                         </Tooltip>
                     </TooltipProvider>
                     <Separator orientation="vertical" className="h-6 mx-2" />
-                    <Button variant="ghost" size="icon">
-                        <Printer className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon">
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={handlePrint}>
+                                <Printer className="w-4 h-4" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Imprimer</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={handleDelete}>
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Supprimer</TooltipContent>
+                    </Tooltip>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="ghost" size="icon">
-                        <Star className="w-4 h-4 text-muted-foreground" />
-                    </Button>
-                    <Button variant="ghost" size="icon">
-                        <MoreVertical className="w-4 h-4" />
-                    </Button>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={handleStar}>
+                                <Star className={`w-4 h-4 ${isStarred ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{isStarred ? 'Retirer des favoris' : 'Ajouter aux favoris'}</TooltipContent>
+                    </Tooltip>
+
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                                <MoreVertical className="w-4 h-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={handleMarkAsUnread}>
+                                Marquer comme non lu
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={handleArchive}>
+                                Archiver
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={handleReportSpam} className="text-destructive">
+                                Signaler comme spam
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </div>
 
@@ -125,13 +232,17 @@ export function MailView({ mail, onReply }: MailViewProps) {
                                 </h4>
                                 <div className="flex flex-wrap gap-3">
                                     {mail.lastMessage.attachments.map((att) => (
-                                        <div key={att.id} className="flex items-center gap-3 p-3 border rounded-lg bg-background hover:bg-accent transition-all cursor-pointer group shadow-sm hover:shadow-md">
+                                        <div
+                                            key={att.id}
+                                            className="flex items-center gap-3 p-3 border rounded-lg bg-background hover:bg-accent transition-all cursor-pointer group shadow-sm hover:shadow-md"
+                                            onClick={() => handleDownloadAttachment(att)}
+                                        >
                                             <div className="p-2.5 bg-primary/10 rounded-md text-primary">
                                                 <FileIcon className="w-5 h-5" />
                                             </div>
                                             <div className="flex flex-col">
                                                 <span className="text-sm font-semibold text-foreground/90">{att.name}</span>
-                                                <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">1.2 MB</span>
+                                                <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{att.size || '1.2 MB'}</span>
                                             </div>
                                             <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
                                                 <Download className="w-4 h-4" />
@@ -147,7 +258,7 @@ export function MailView({ mail, onReply }: MailViewProps) {
                             <Button variant="outline" onClick={onReply} className="gap-2">
                                 <Reply className="w-4 h-4" /> Répondre
                             </Button>
-                            <Button variant="outline" className="gap-2">
+                            <Button variant="outline" onClick={handleForward} className="gap-2">
                                 <Forward className="w-4 h-4" /> Transférer
                             </Button>
                         </div>

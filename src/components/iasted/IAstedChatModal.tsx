@@ -6,6 +6,7 @@ import { useTheme } from 'next-themes';
 import { generateOfficialPDFWithURL } from '@/utils/generateOfficialPDF';
 import { documentGenerationService } from '@/services/documentGenerationService';
 import { canUseCorrespondance } from '@/config/iasted-prompt-lite';
+import { invokeWithDemoFallback } from '@/utils/demoMode';
 import {
     Send,
     Loader2,
@@ -1162,25 +1163,32 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
             // mais pour l'instant le hook WebRTC gère surtout l'audio.
             // On va utiliser l'API standard de chat pour le texte.
 
-            const { data, error } = await supabase.functions.invoke('chat-with-iasted', {
-                body: {
-                    message: userContent,
-                    conversationHistory: messages.map(m => ({
-                        role: m.role,
-                        content: m.content
-                    })),
-                    sessionId: sessionId,
-                    systemPrompt: "Vous êtes iAsted, l'assistant du Président. Soyez concis et direct.",
-                    generateAudio: false // Pas d'audio pour le chat texte
-                }
+            interface ChatResponse {
+                answer: string;
+                tool_calls?: Array<{ name: string; arguments: Record<string, unknown> }>;
+            }
+
+            const { data, error, isDemo } = await invokeWithDemoFallback<ChatResponse>('chat-with-iasted', {
+                message: userContent,
+                conversationHistory: messages.map(m => ({
+                    role: m.role,
+                    content: m.content
+                })),
+                sessionId: sessionId,
+                systemPrompt: "Vous êtes iAsted, l'assistant du Président. Soyez concis et direct.",
+                generateAudio: false // Pas d'audio pour le chat texte
             });
 
             if (error) throw error;
 
+            if (isDemo) {
+                console.log('[iAsted] Using demo mode response');
+            }
+
             const assistantMessage: Message = {
                 id: crypto.randomUUID(),
                 role: 'assistant',
-                content: data.answer,
+                content: data?.answer || 'Je suis en mode démonstration. Comment puis-je vous aider ?',
                 timestamp: new Date().toISOString(),
             };
 
@@ -1188,7 +1196,7 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
             if (sessionId) await saveMessage(sessionId, assistantMessage);
 
             // Vérifier les tool calls
-            if (data.tool_calls) {
+            if (data?.tool_calls) {
                 for (const toolCall of data.tool_calls) {
                     await executeToolCall(toolCall);
                 }

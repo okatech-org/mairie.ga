@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { invokeWithDemoFallback } from "@/utils/demoMode";
 
 /**
  * Records a login attempt in the database and triggers security alert if needed
@@ -31,18 +32,29 @@ export async function recordLoginAttempt(
   }
 }
 
+interface SecurityAlertResponse {
+  alert_sent: boolean;
+  message?: string;
+}
+
 /**
  * Checks for suspicious activity and triggers security alert if needed
  * This runs in the background and doesn't block the login flow
  */
 async function checkAndTriggerSecurityAlert(email: string, ipAddress?: string): Promise<void> {
   try {
-    const { data, error } = await supabase.functions.invoke('security-alert-login', {
-      body: { email, ip_address: ipAddress }
-    });
+    const { data, error, isDemo } = await invokeWithDemoFallback<SecurityAlertResponse>(
+      'security-alert-login',
+      { email, ip_address: ipAddress }
+    );
 
     if (error) {
       console.error("Error calling security alert function:", error);
+      return;
+    }
+
+    if (isDemo) {
+      console.log("[Security] Demo mode - alert simulated for email:", email);
       return;
     }
 

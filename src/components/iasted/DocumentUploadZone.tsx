@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeWithDemoFallback } from '@/utils/demoMode';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     analyzeDocument,
@@ -178,12 +179,20 @@ export const DocumentUploadZone: React.FC<DocumentUploadZoneProps> = ({
 
             updateFileStatus(uploadedFile.id, 'analyzing', 75);
 
-            const { data: analysisResult, error: analysisError } = await supabase.functions.invoke(
+            interface OCRResult {
+                analysis: DocumentAnalysis;
+            }
+
+            const { data: analysisResult, error: analysisError, isDemo } = await invokeWithDemoFallback<OCRResult>(
                 'document-ocr',
-                { body: { documentId: document.id } }
+                { documentId: document.id }
             );
 
             if (analysisError) throw analysisError;
+
+            if (isDemo) {
+                console.log('[DocumentUpload] Using demo mode OCR response');
+            }
 
             updateFileStatus(uploadedFile.id, 'completed', 100, analysisResult.analysis);
 

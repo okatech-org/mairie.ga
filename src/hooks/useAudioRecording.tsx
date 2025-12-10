@@ -1,7 +1,13 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeWithDemoFallback } from '@/utils/demoMode';
+
+interface TranscriptionResult {
+    text: string;
+    confidence?: number;
+    language?: string;
+}
 
 export const useAudioRecording = () => {
     const [isRecording, setIsRecording] = useState(false);
@@ -52,17 +58,27 @@ export const useAudioRecording = () => {
 
                     try {
                         setIsTranscribing(true);
-                        const { data, error } = await supabase.functions.invoke('transcribe-audio', {
-                            body: { audio: base64Audio }
-                        });
+                        const { data, error, isDemo } = await invokeWithDemoFallback<TranscriptionResult>(
+                            'transcribe-audio',
+                            { audio: base64Audio }
+                        );
 
                         if (error) throw error;
-                        resolve(data.text);
-                    } catch (err: any) {
+
+                        if (isDemo) {
+                            toast({
+                                title: "Mode Démo",
+                                description: "Transcription simulée",
+                            });
+                        }
+
+                        resolve(data?.text || '');
+                    } catch (err: unknown) {
+                        const errorMessage = err instanceof Error ? err.message : 'Erreur de transcription';
                         console.error('Transcription error:', err);
                         toast({
                             title: "Erreur transcription",
-                            description: err.message,
+                            description: errorMessage,
                             variant: "destructive"
                         });
                         reject(err);

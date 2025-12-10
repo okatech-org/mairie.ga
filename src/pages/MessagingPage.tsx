@@ -42,6 +42,7 @@ export default function MessagingPage() {
     // Loading state
     const [isLoading, setIsLoading] = useState(true);
     const [conversations, setConversations] = useState<Conversation[]>([]);
+    const [correspondenceCount, setCorrespondenceCount] = useState(0);
 
     // Initialize conversations
     useEffect(() => {
@@ -58,7 +59,20 @@ export default function MessagingPage() {
                 setIsLoading(false);
             }
         };
+
+        const loadCorrespondenceCount = async () => {
+            try {
+                const { correspondanceService } = await import('@/services/correspondanceService');
+                const count = await correspondanceService.getUnreadCount();
+                setCorrespondenceCount(count);
+            } catch (error) {
+                console.error('Error loading correspondence count:', error);
+                setCorrespondenceCount(0);
+            }
+        };
+
         loadConversations();
+        loadCorrespondenceCount();
     }, []);
 
     // Handle navigation state (from iAsted or other pages)
@@ -235,7 +249,7 @@ export default function MessagingPage() {
                                     >
                                         <FolderOpen className="w-4 h-4" /> Correspondance
                                         <span className="ml-auto bg-amber-500 text-white text-[10px] items-center justify-center flex h-5 min-w-5 rounded-full px-1">
-                                            3
+                                            {correspondenceCount}
                                         </span>
                                     </Button>
                                     <MailSidebar
@@ -281,7 +295,7 @@ export default function MessagingPage() {
                         <FolderOpen className="w-4 h-4" />
                         <span className="hidden lg:inline">Correspondance</span>
                         <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center shadow-md">
-                            3
+                            {correspondenceCount}
                         </span>
                     </Button>
 

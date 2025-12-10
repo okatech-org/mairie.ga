@@ -5,6 +5,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { documentGenerationService, DOCUMENT_TEMPLATES } from "./documentGenerationService";
+import { invokeWithDemoFallback } from "@/utils/demoMode";
 
 // Types
 export interface CorrespondanceFolder {
@@ -261,20 +262,38 @@ class CorrespondanceService {
         recipientOrg?: string;
     }): Promise<{ success: boolean; contentPoints: string[]; closingPhrase?: string }> {
         try {
-            const { data, error } = await supabase.functions.invoke('enrich-document-content', {
-                body: {
-                    documentType: params.documentType,
-                    subject: params.subject,
-                    userInput: params.userInput,
-                    recipient: params.recipient,
-                    recipientOrg: params.recipientOrg,
-                    language: 'fr'
-                }
+            interface EnrichResponse {
+                success: boolean;
+                contentPoints: string[];
+                closingPhrase?: string;
+            }
+
+            const { data, error, isDemo } = await invokeWithDemoFallback<EnrichResponse>('enrich-document-content', {
+                documentType: params.documentType,
+                subject: params.subject,
+                userInput: params.userInput,
+                recipient: params.recipient,
+                recipientOrg: params.recipientOrg,
+                language: 'fr'
             });
 
             if (error) {
                 console.error('[enrichContent] Edge function error:', error);
                 return { success: false, contentPoints: [] };
+            }
+
+            if (isDemo) {
+                console.log('[enrichContent] Using demo mode response');
+                // Return mock content for demo mode
+                return {
+                    success: true,
+                    contentPoints: [
+                        'Suite à votre demande concernant ' + params.subject + ',',
+                        'nous avons le plaisir de vous informer que votre dossier a été traité.',
+                        'Nous restons à votre disposition pour tout complément d\'information.'
+                    ],
+                    closingPhrase: 'Veuillez agréer, Madame, Monsieur, l\'expression de nos salutations distinguées.'
+                };
             }
 
             return {
@@ -298,19 +317,27 @@ class CorrespondanceService {
     }> {
         const { recipientEmail, subject, body, attachmentPath } = params;
 
-        // Call Edge Function to send email
-        const { data, error } = await supabase.functions.invoke('send-official-correspondence', {
-            body: {
-                to: recipientEmail,
-                subject: subject || 'Correspondance Officielle',
-                body: body || 'Veuillez trouver ci-joint notre correspondance officielle.',
-                attachmentPath: attachmentPath
-            }
+        interface SendResponse {
+            success: boolean;
+            messageId?: string;
+            message?: string;
+        }
+
+        // Call Edge Function to send email with demo mode fallback
+        const { data, error, isDemo } = await invokeWithDemoFallback<SendResponse>('send-official-correspondence', {
+            to: recipientEmail,
+            subject: subject || 'Correspondance Officielle',
+            body: body || 'Veuillez trouver ci-joint notre correspondance officielle.',
+            attachmentPath: attachmentPath
         });
 
         if (error) {
             console.error('Error sending correspondence:', error);
             throw new Error(`Erreur lors de l'envoi: ${error.message}`);
+        }
+
+        if (isDemo) {
+            console.log('[Correspondance] Demo mode - Email simulated');
         }
 
         // Log the sent correspondence (TODO: create correspondence_logs table)
@@ -321,12 +348,13 @@ class CorrespondanceService {
                 recipient_email: recipientEmail,
                 subject: subject,
                 sent_at: new Date().toISOString(),
+                demo_mode: isDemo
             });
         }
 
         return {
             success: true,
-            messageId: data?.messageId,
+            messageId: data?.messageId || (isDemo ? `demo-${Date.now()}` : undefined),
             sentAt: new Date().toISOString()
         };
     }

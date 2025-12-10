@@ -4,7 +4,7 @@
  * SECURE: API keys are stored server-side, not exposed to client
  */
 
-import { supabase } from '@/integrations/supabase/client';
+import { invokeWithDemoFallback } from '@/utils/demoMode';
 
 // Document types we can analyze
 export type DocumentType =
@@ -92,23 +92,29 @@ export async function analyzeDocument(
 ): Promise<DocumentAnalysis> {
     try {
         console.log(`[DocumentOCR] Analyzing document: ${file.name}, type hint: ${documentType || 'auto'}`);
-        
+
         // Convert file to base64
         const imageBase64 = await fileToBase64Raw(file);
         const mimeType = file.type || 'image/jpeg';
 
-        // Call the secure Edge Function
-        const { data, error } = await supabase.functions.invoke('document-ocr', {
-            body: {
-                imageBase64,
-                mimeType,
-                documentType
-            }
+        // Call the secure Edge Function with demo mode fallback
+        const { data, error, isDemo } = await invokeWithDemoFallback<DocumentAnalysis>('document-ocr', {
+            imageBase64,
+            mimeType,
+            documentType
         });
 
         if (error) {
             console.error('[DocumentOCR] Edge function error:', error);
             throw new Error(error.message || 'Erreur du service OCR');
+        }
+
+        if (!data) {
+            return createErrorAnalysis(documentType, 'Aucune donnée reçue');
+        }
+
+        if (isDemo) {
+            console.log('[DocumentOCR] Using demo mode response');
         }
 
         if (data.error) {
