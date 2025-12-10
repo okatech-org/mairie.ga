@@ -12,6 +12,9 @@ import { supabase } from '@/integrations/supabase/client';
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+// Type assertion helper for tables not yet in generated types
+const companiesTable = () => (supabase as any).from('companies');
+
 class CompanyService {
     private useSupabase = false;
     private mockCompanies: Company[] = [...MOCK_COMPANIES];
@@ -31,8 +34,7 @@ class CompanyService {
                 return;
             }
 
-            const { error } = await supabase
-                .from('companies')
+            const { error } = await companiesTable()
                 .select('id')
                 .limit(1);
 
@@ -62,7 +64,7 @@ class CompanyService {
         }
 
         try {
-            let query = supabase.from('companies').select('*');
+            let query = companiesTable().select('*');
 
             if (status) {
                 query = query.eq('status', status);
@@ -72,7 +74,7 @@ class CompanyService {
 
             if (error) throw error;
 
-            return (data || []).map(row => this.mapFromDatabase(row));
+            return (data || []).map((row: any) => this.mapFromDatabase(row));
         } catch (err) {
             console.error('[CompanyService] Error fetching companies:', err);
             return status ? this.mockCompanies.filter(c => c.status === status) : this.mockCompanies;
@@ -92,15 +94,14 @@ class CompanyService {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return [];
 
-            const { data, error } = await supabase
-                .from('companies')
+            const { data, error } = await companiesTable()
                 .select('*')
                 .eq('owner_id', user.id)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
 
-            return (data || []).map(row => this.mapFromDatabase(row));
+            return (data || []).map((row: any) => this.mapFromDatabase(row));
         } catch (err) {
             console.error('[CompanyService] Error fetching user companies:', err);
             return [];
@@ -117,8 +118,7 @@ class CompanyService {
         }
 
         try {
-            const { data, error } = await supabase
-                .from('companies')
+            const { data, error } = await companiesTable()
                 .select('*')
                 .eq('id', id)
                 .single();
@@ -155,8 +155,7 @@ class CompanyService {
 
             const dbData = this.mapToDatabase(company);
 
-            const { data, error } = await supabase
-                .from('companies')
+            const { data, error } = await companiesTable()
                 .insert({
                     ...dbData,
                     owner_id: user.id,
@@ -205,8 +204,7 @@ class CompanyService {
         try {
             const dbData = this.mapToDatabase(data);
 
-            const { data: result, error } = await supabase
-                .from('companies')
+            const { data: result, error } = await companiesTable()
                 .update({
                     ...dbData,
                     updated_at: new Date().toISOString()
