@@ -1,5 +1,5 @@
 import React from "react";
-import { LayoutDashboard, Settings, LogOut, FileText, Building2, Users, ShieldCheck, Globe, Mail, Bot, Database, LineChart, ScrollText, Shield, UserCheck, Briefcase, BookOpen, Calendar, ClipboardList, Home, FolderOpen, Wallet, Gavel, FileSignature, CalendarDays, Building, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, FileText, Building2, Users, ShieldCheck, Globe, Mail, Bot, Database, LineChart, ScrollText, Shield, UserCheck, Briefcase, BookOpen, Calendar, ClipboardList, Home, FolderOpen, Wallet, Gavel, FileSignature, CalendarDays, Building, BarChart3, Bell } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { GlobalSettings } from "@/components/GlobalSettings";
 import { useDemo } from "@/contexts/DemoContext";
@@ -81,6 +81,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     title: "COMMUNICATION",
                     items: [
                         { label: "iBoîte", icon: Mail, path: "/iboite" },
+                        { label: "Notifications", icon: Bell, path: "/dashboard/super-admin/notifications" },
                     ]
                 },
                 {
