@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Building2, MapPin, Users, Phone, Mail, Filter } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Building2, MapPin, Users, Phone, Mail, Filter, Search, X } from 'lucide-react';
 import { organizationService, Organization } from '@/services/organizationService';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -12,6 +13,7 @@ export const MairiesLogosSection = () => {
   const [mairies, setMairies] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -35,9 +37,28 @@ export const MairiesLogosSection = () => {
   }, [mairies]);
 
   const filteredMairies = useMemo(() => {
-    if (!selectedProvince) return mairies;
-    return mairies.filter(m => m.province === selectedProvince);
-  }, [mairies, selectedProvince]);
+    let result = mairies;
+    
+    if (selectedProvince) {
+      result = result.filter(m => m.province === selectedProvince);
+    }
+    
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      result = result.filter(m => 
+        m.name.toLowerCase().includes(query) ||
+        m.city?.toLowerCase().includes(query) ||
+        m.province?.toLowerCase().includes(query)
+      );
+    }
+    
+    return result;
+  }, [mairies, selectedProvince, searchQuery]);
+
+  const clearFilters = () => {
+    setSelectedProvince(null);
+    setSearchQuery('');
+  };
 
   const handleMairieClick = (mairie: Organization) => {
     navigate(`/entity/${mairie.id}`);
@@ -88,30 +109,64 @@ export const MairiesLogosSection = () => {
           </p>
         </div>
 
-        {/* Province Filter */}
-        <div className="flex flex-wrap justify-center gap-2 mb-8">
-          <Button
-            variant={selectedProvince === null ? "default" : "outline"}
-            size="sm"
-            onClick={() => setSelectedProvince(null)}
-            className="gap-1"
-          >
-            <Filter className="h-3 w-3" />
-            Toutes ({mairies.length})
-          </Button>
-          {provinces.map((province) => {
-            const count = mairies.filter(m => m.province === province).length;
-            return (
-              <Button
-                key={province}
-                variant={selectedProvince === province ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedProvince(province)}
+        {/* Search and Filter Section */}
+        <div className="mb-8 space-y-4">
+          {/* Search Bar */}
+          <div className="max-w-md mx-auto relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Rechercher une mairie..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-10"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
-                {province} ({count})
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Province Filter */}
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button
+              variant={selectedProvince === null ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedProvince(null)}
+              className="gap-1"
+            >
+              <Filter className="h-3 w-3" />
+              Toutes ({mairies.length})
+            </Button>
+            {provinces.map((province) => {
+              const count = mairies.filter(m => m.province === province).length;
+              return (
+                <Button
+                  key={province}
+                  variant={selectedProvince === province ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedProvince(province)}
+                >
+                  {province} ({count})
+                </Button>
+              );
+            })}
+          </div>
+
+          {/* Active Filters Summary */}
+          {(selectedProvince || searchQuery) && (
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <span>{filteredMairies.length} résultat{filteredMairies.length > 1 ? 's' : ''}</span>
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-auto py-1 px-2">
+                <X className="h-3 w-3 mr-1" />
+                Effacer les filtres
               </Button>
-            );
-          })}
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
