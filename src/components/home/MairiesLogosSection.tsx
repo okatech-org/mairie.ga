@@ -1,19 +1,25 @@
 import { useEffect, useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Building2, MapPin, Users, Phone, Mail, Filter, Search, X } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Building2, MapPin, Users, Phone, Mail, Filter, Search, X, ArrowUpDown, Map, Grid3X3 } from 'lucide-react';
 import { organizationService, Organization } from '@/services/organizationService';
 import { Skeleton } from '@/components/ui/skeleton';
+import GabonMairiesMap from '@/components/home/GabonMairiesMap';
+
+type SortOption = 'name' | 'population' | 'province';
 
 export const MairiesLogosSection = () => {
   const [mairies, setMairies] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<SortOption>('name');
+  const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -36,7 +42,7 @@ export const MairiesLogosSection = () => {
     return uniqueProvinces.sort();
   }, [mairies]);
 
-  const filteredMairies = useMemo(() => {
+  const filteredAndSortedMairies = useMemo(() => {
     let result = mairies;
     
     if (selectedProvince) {
@@ -51,9 +57,23 @@ export const MairiesLogosSection = () => {
         m.province?.toLowerCase().includes(query)
       );
     }
+
+    // Sort
+    result = [...result].sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name);
+        case 'population':
+          return (b.population || 0) - (a.population || 0);
+        case 'province':
+          return (a.province || '').localeCompare(b.province || '');
+        default:
+          return 0;
+      }
+    });
     
     return result;
-  }, [mairies, selectedProvince, searchQuery]);
+  }, [mairies, selectedProvince, searchQuery, sortBy]);
 
   const clearFilters = () => {
     setSelectedProvince(null);
@@ -109,138 +129,217 @@ export const MairiesLogosSection = () => {
           </p>
         </div>
 
-        {/* Search and Filter Section */}
-        <div className="mb-8 space-y-4">
-          {/* Search Bar */}
-          <div className="max-w-md mx-auto relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Rechercher une mairie..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-10"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-
-          {/* Province Filter */}
-          <div className="flex flex-wrap justify-center gap-2">
+        {/* View Toggle */}
+        <div className="flex justify-center mb-6">
+          <div className="inline-flex rounded-lg border bg-muted p-1">
             <Button
-              variant={selectedProvince === null ? "default" : "outline"}
+              variant={viewMode === 'grid' ? 'default' : 'ghost'}
               size="sm"
-              onClick={() => setSelectedProvince(null)}
-              className="gap-1"
+              onClick={() => setViewMode('grid')}
+              className="gap-2"
             >
-              <Filter className="h-3 w-3" />
-              Toutes ({mairies.length})
+              <Grid3X3 className="h-4 w-4" />
+              Grille
             </Button>
-            {provinces.map((province) => {
-              const count = mairies.filter(m => m.province === province).length;
-              return (
-                <Button
-                  key={province}
-                  variant={selectedProvince === province ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedProvince(province)}
-                >
-                  {province} ({count})
-                </Button>
-              );
-            })}
+            <Button
+              variant={viewMode === 'map' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('map')}
+              className="gap-2"
+            >
+              <Map className="h-4 w-4" />
+              Carte
+            </Button>
           </div>
-
-          {/* Active Filters Summary */}
-          {(selectedProvince || searchQuery) && (
-            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <span>{filteredMairies.length} résultat{filteredMairies.length > 1 ? 's' : ''}</span>
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-auto py-1 px-2">
-                <X className="h-3 w-3 mr-1" />
-                Effacer les filtres
-              </Button>
-            </div>
-          )}
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
-          {filteredMairies.map((mairie, index) => (
+        <AnimatePresence mode="wait">
+          {viewMode === 'map' ? (
             <motion.div
-              key={mairie.id}
+              key="map"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05, duration: 0.3 }}
-              layout
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
             >
-              <Card 
-                className="group h-full overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-2 hover:border-primary/30 cursor-pointer"
-                onClick={() => handleMairieClick(mairie)}
-              >
-                <CardContent className="p-4 md:p-6 flex flex-col items-center text-center">
-                  {/* Logo */}
-                  <div className="relative w-16 h-16 md:w-20 md:h-20 mb-4 rounded-full overflow-hidden bg-gradient-to-br from-primary/10 to-primary/20 p-1 transition-transform group-hover:scale-110">
-                    {mairie.logo_url ? (
-                      <img 
-                        src={mairie.logo_url} 
-                        alt={`Logo ${mairie.name}`}
-                        className="w-full h-full object-contain rounded-full bg-white"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = '/placeholder.svg';
-                        }}
-                      />
-                    ) : (
-                      <div className="w-full h-full rounded-full bg-primary/10 flex items-center justify-center">
-                        <Building2 className="h-8 w-8 text-primary" />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Nom */}
-                  <h3 className="font-semibold text-sm md:text-base mb-1 line-clamp-2 group-hover:text-primary transition-colors">
-                    {mairie.name}
-                  </h3>
-
-                  {/* Province */}
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
-                    <MapPin className="h-3 w-3" />
-                    <span>{mairie.province}</span>
-                  </div>
-
-                  {/* Population */}
-                  {mairie.population && (
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Users className="h-3 w-3" />
-                      <span>{mairie.population.toLocaleString()} hab.</span>
-                    </div>
-                  )}
-
-                  {/* Contact info on hover (desktop only) */}
-                  <div className="hidden md:flex flex-col gap-1 mt-3 pt-3 border-t w-full opacity-0 group-hover:opacity-100 transition-opacity">
-                    {mairie.contact_phone && (
-                      <div className="flex items-center justify-center gap-1 text-[10px] text-muted-foreground">
-                        <Phone className="h-2.5 w-2.5" />
-                        <span className="truncate">{mairie.contact_phone}</span>
-                      </div>
-                    )}
-                    {mairie.contact_email && (
-                      <div className="flex items-center justify-center gap-1 text-[10px] text-muted-foreground">
-                        <Mail className="h-2.5 w-2.5" />
-                        <span className="truncate">{mairie.contact_email}</span>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+              <GabonMairiesMap />
             </motion.div>
-          ))}
-        </div>
+          ) : (
+            <motion.div
+              key="grid"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              {/* Search, Filter and Sort Section */}
+              <div className="mb-8 space-y-4">
+                {/* Search Bar and Sort */}
+                <div className="flex flex-col sm:flex-row gap-3 max-w-2xl mx-auto">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="text"
+                      placeholder="Rechercher une mairie..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 pr-10"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Sort Dropdown */}
+                  <div className="flex gap-2">
+                    <Button
+                      variant={sortBy === 'name' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setSortBy('name')}
+                      className="gap-1"
+                    >
+                      <ArrowUpDown className="h-3 w-3" />
+                      A-Z
+                    </Button>
+                    <Button
+                      variant={sortBy === 'population' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setSortBy('population')}
+                      className="gap-1"
+                    >
+                      <Users className="h-3 w-3" />
+                      Population
+                    </Button>
+                    <Button
+                      variant={sortBy === 'province' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setSortBy('province')}
+                      className="gap-1"
+                    >
+                      <MapPin className="h-3 w-3" />
+                      Province
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Province Filter */}
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button
+                    variant={selectedProvince === null ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedProvince(null)}
+                    className="gap-1"
+                  >
+                    <Filter className="h-3 w-3" />
+                    Toutes ({mairies.length})
+                  </Button>
+                  {provinces.map((province) => {
+                    const count = mairies.filter(m => m.province === province).length;
+                    return (
+                      <Button
+                        key={province}
+                        variant={selectedProvince === province ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setSelectedProvince(province)}
+                      >
+                        {province} ({count})
+                      </Button>
+                    );
+                  })}
+                </div>
+
+                {/* Active Filters Summary */}
+                {(selectedProvince || searchQuery) && (
+                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                    <span>{filteredAndSortedMairies.length} résultat{filteredAndSortedMairies.length > 1 ? 's' : ''}</span>
+                    <Button variant="ghost" size="sm" onClick={clearFilters} className="h-auto py-1 px-2">
+                      <X className="h-3 w-3 mr-1" />
+                      Effacer les filtres
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+                {filteredAndSortedMairies.map((mairie, index) => (
+                  <motion.div
+                    key={mairie.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.03, duration: 0.3 }}
+                    layout
+                  >
+                    <Card 
+                      className="group h-full overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-2 hover:border-primary/30 cursor-pointer"
+                      onClick={() => handleMairieClick(mairie)}
+                    >
+                      <CardContent className="p-4 md:p-6 flex flex-col items-center text-center">
+                        {/* Logo */}
+                        <div className="relative w-16 h-16 md:w-20 md:h-20 mb-4 rounded-full overflow-hidden bg-gradient-to-br from-primary/10 to-primary/20 p-1 transition-transform group-hover:scale-110">
+                          {mairie.logo_url ? (
+                            <img 
+                              src={mairie.logo_url} 
+                              alt={`Logo ${mairie.name}`}
+                              className="w-full h-full object-contain rounded-full bg-white"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.src = '/placeholder.svg';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full rounded-full bg-primary/10 flex items-center justify-center">
+                              <Building2 className="h-8 w-8 text-primary" />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Nom */}
+                        <h3 className="font-semibold text-sm md:text-base mb-1 line-clamp-2 group-hover:text-primary transition-colors">
+                          {mairie.name}
+                        </h3>
+
+                        {/* Province */}
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
+                          <MapPin className="h-3 w-3" />
+                          <span>{mairie.province}</span>
+                        </div>
+
+                        {/* Population */}
+                        {mairie.population && (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Users className="h-3 w-3" />
+                            <span>{mairie.population.toLocaleString()} hab.</span>
+                          </div>
+                        )}
+
+                        {/* Contact info on hover (desktop only) */}
+                        <div className="hidden md:flex flex-col gap-1 mt-3 pt-3 border-t w-full opacity-0 group-hover:opacity-100 transition-opacity">
+                          {mairie.contact_phone && (
+                            <div className="flex items-center justify-center gap-1 text-[10px] text-muted-foreground">
+                              <Phone className="h-2.5 w-2.5" />
+                              <span className="truncate">{mairie.contact_phone}</span>
+                            </div>
+                          )}
+                          {mairie.contact_email && (
+                            <div className="flex items-center justify-center gap-1 text-[10px] text-muted-foreground">
+                              <Mail className="h-2.5 w-2.5" />
+                              <span className="truncate">{mairie.contact_email}</span>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Stats Footer */}
         <div className="mt-12 flex flex-wrap justify-center gap-6 md:gap-12">
