@@ -883,7 +883,9 @@ export type Database = {
           enabled_services: string[] | null
           id: string
           jurisdiction: string[]
+          latitude: number | null
           logo_url: string | null
+          longitude: number | null
           maire_name: string | null
           name: string
           population: number | null
@@ -905,7 +907,9 @@ export type Database = {
           enabled_services?: string[] | null
           id?: string
           jurisdiction: string[]
+          latitude?: number | null
           logo_url?: string | null
+          longitude?: number | null
           maire_name?: string | null
           name: string
           population?: number | null
@@ -927,7 +931,9 @@ export type Database = {
           enabled_services?: string[] | null
           id?: string
           jurisdiction?: string[]
+          latitude?: number | null
           logo_url?: string | null
+          longitude?: number | null
           maire_name?: string | null
           name?: string
           population?: number | null
