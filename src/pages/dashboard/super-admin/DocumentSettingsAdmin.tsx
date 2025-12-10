@@ -29,7 +29,9 @@ import {
   History,
   Building,
   Filter,
-  Clock
+  Clock,
+  Copy,
+  ArrowRight
 } from 'lucide-react';
 
 interface DocumentSettings {
@@ -102,7 +104,11 @@ export default function DocumentSettingsAdmin() {
   const [saving, setSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false);
   const [editingSettings, setEditingSettings] = useState<Partial<DocumentSettings> | null>(null);
+  const [settingToCopy, setSettingToCopy] = useState<DocumentSettings | null>(null);
+  const [targetOrganization, setTargetOrganization] = useState<string>('');
+  const [copying, setCopying] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('');
   const [selectedOrganization, setSelectedOrganization] = useState<string>('all');
   const [generatingPDF, setGeneratingPDF] = useState(false);
@@ -350,6 +356,120 @@ export default function DocumentSettingsAdmin() {
       setEditingSettings({ ...DEFAULT_VALUES });
     }
     setDialogOpen(true);
+  };
+
+  const openCopyDialog = (setting: DocumentSettings) => {
+    setSettingToCopy(setting);
+    setTargetOrganization('');
+    setCopyDialogOpen(true);
+  };
+
+  const handleCopySettings = async () => {
+    if (!settingToCopy || !targetOrganization) return;
+    
+    setCopying(true);
+    try {
+      // Check if settings already exist for target organization + service role
+      const { data: existing } = await supabase
+        .from('service_document_settings')
+        .select('id')
+        .eq('service_role', settingToCopy.service_role)
+        .eq('organization_id', targetOrganization === 'global' ? null : targetOrganization)
+        .maybeSingle();
+
+      if (existing) {
+        const confirmed = confirm(
+          `Des paramètres existent déjà pour ce service et cette organisation. Voulez-vous les remplacer ?`
+        );
+        if (!confirmed) {
+          setCopying(false);
+          return;
+        }
+        
+        // Update existing
+        const { error } = await supabase
+          .from('service_document_settings')
+          .update({
+            province: settingToCopy.province,
+            commune: settingToCopy.commune,
+            cabinet: settingToCopy.cabinet,
+            republic: settingToCopy.republic,
+            motto: settingToCopy.motto,
+            signature_title: settingToCopy.signature_title,
+            footer_address: settingToCopy.footer_address,
+            footer_email: settingToCopy.footer_email,
+            logo_url: settingToCopy.logo_url,
+            primary_color: settingToCopy.primary_color,
+          })
+          .eq('id', existing.id);
+
+        if (error) throw error;
+        
+        await logAuditEntry(existing.id, 'UPDATE', undefined, {
+          ...settingToCopy,
+          organization_id: targetOrganization === 'global' ? null : targetOrganization
+        });
+      } else {
+        // Insert new
+        const { data: newData, error } = await supabase
+          .from('service_document_settings')
+          .insert({
+            service_role: settingToCopy.service_role,
+            organization_id: targetOrganization === 'global' ? null : targetOrganization,
+            province: settingToCopy.province,
+            commune: settingToCopy.commune,
+            cabinet: settingToCopy.cabinet,
+            republic: settingToCopy.republic,
+            motto: settingToCopy.motto,
+            signature_title: settingToCopy.signature_title,
+            footer_address: settingToCopy.footer_address,
+            footer_email: settingToCopy.footer_email,
+            logo_url: settingToCopy.logo_url,
+            primary_color: settingToCopy.primary_color,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        
+        if (newData) {
+          await logAuditEntry(newData.id, 'CREATE', undefined, {
+            ...settingToCopy,
+            organization_id: targetOrganization === 'global' ? null : targetOrganization
+          });
+        }
+      }
+
+      const targetName = targetOrganization === 'global' 
+        ? 'Global' 
+        : organizations.find(o => o.id === targetOrganization)?.name || 'Organisation';
+      
+      toast.success(`Paramètres copiés vers ${targetName}`);
+      setCopyDialogOpen(false);
+      setSettingToCopy(null);
+      setTargetOrganization('');
+      fetchSettings();
+    } catch (error: any) {
+      toast.error(error.message || 'Erreur lors de la copie');
+      console.error('Error:', error);
+    } finally {
+      setCopying(false);
+    }
+  };
+
+  const getAvailableTargetOrganizations = () => {
+    if (!settingToCopy) return [];
+    
+    // Filter out the source organization
+    const availableOrgs = organizations.filter(org => org.id !== settingToCopy.organization_id);
+    
+    // Add global option if source is not global
+    const options: { id: string; name: string }[] = [];
+    if (settingToCopy.organization_id !== null) {
+      options.push({ id: 'global', name: 'Global (toutes les organisations)' });
+    }
+    
+    return [...options, ...availableOrgs];
   };
 
   const getRoleLabel = (role: string) => {
@@ -756,6 +876,100 @@ export default function DocumentSettingsAdmin() {
         </DialogContent>
       </Dialog>
 
+      {/* Copy Settings Dialog */}
+      <Dialog open={copyDialogOpen} onOpenChange={setCopyDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Copy className="h-5 w-5" />
+              Copier les paramètres
+            </DialogTitle>
+            <DialogDescription>
+              Copiez les paramètres de "{settingToCopy ? getRoleLabel(settingToCopy.service_role) : ''}" 
+              vers une autre organisation
+            </DialogDescription>
+          </DialogHeader>
+          
+          {settingToCopy && (
+            <div className="space-y-4">
+              {/* Source info */}
+              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                <div className="text-sm font-medium">Source:</div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">{getRoleLabel(settingToCopy.service_role)}</Badge>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">
+                    {settingToCopy.organization 
+                      ? settingToCopy.organization.name 
+                      : 'Global'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Target selection */}
+              <div className="space-y-2">
+                <Label>Organisation cible</Label>
+                <Select value={targetOrganization} onValueChange={setTargetOrganization}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner une organisation cible" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getAvailableTargetOrganizations().map(org => (
+                      <SelectItem key={org.id} value={org.id}>
+                        {org.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Les paramètres seront copiés pour le rôle "{getRoleLabel(settingToCopy.service_role)}" 
+                  vers l'organisation sélectionnée
+                </p>
+              </div>
+
+              {/* What will be copied */}
+              <div className="bg-muted/30 rounded-lg p-3 text-sm">
+                <div className="font-medium mb-2">Paramètres à copier:</div>
+                <ul className="grid grid-cols-2 gap-1 text-muted-foreground text-xs">
+                  <li>• Province</li>
+                  <li>• Commune</li>
+                  <li>• Cabinet</li>
+                  <li>• République</li>
+                  <li>• Devise</li>
+                  <li>• Signature</li>
+                  <li>• Adresse pied de page</li>
+                  <li>• Email pied de page</li>
+                  <li>• Logo</li>
+                  <li>• Couleur principale</li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCopyDialogOpen(false)}>
+              Annuler
+            </Button>
+            <Button 
+              onClick={handleCopySettings}
+              disabled={copying || !targetOrganization}
+            >
+              {copying ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Copie en cours...
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copier
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Settings by Service */}
       {getFilteredSettings().length === 0 ? (
         <Card>
@@ -818,7 +1032,7 @@ export default function DocumentSettingsAdmin() {
                         {' • '}Mis à jour le {new Date(setting.updated_at).toLocaleDateString('fr-FR')}
                       </CardDescription>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       <Button 
                         variant="outline" 
                         size="sm" 
@@ -832,12 +1046,22 @@ export default function DocumentSettingsAdmin() {
                         )}
                         PDF Test
                       </Button>
+                      {isSuperAdmin && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => openCopyDialog(setting)}
+                        >
+                          <Copy className="h-4 w-4 mr-1" />
+                          Copier vers
+                        </Button>
+                      )}
                       <Button variant="outline" size="sm" onClick={() => openEditDialog(setting)}>
                         <Pencil className="h-4 w-4 mr-1" />
                         Modifier
                       </Button>
                       {isSuperAdmin && (
-                        <Button 
+                        <Button
                           variant="outline" 
                           size="sm" 
                           className="text-destructive hover:text-destructive"
