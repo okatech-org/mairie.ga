@@ -661,12 +661,15 @@ export type Database = {
           file_size: number | null
           file_type: string | null
           id: string
+          is_archived: boolean | null
+          is_favorite: boolean | null
           is_verified: boolean | null
           last_used_at: string | null
           metadata: Json | null
           name: string
           original_name: string | null
           source: string | null
+          tags: string[] | null
           thumbnail_path: string | null
           updated_at: string
           user_id: string
@@ -679,12 +682,15 @@ export type Database = {
           file_size?: number | null
           file_type?: string | null
           id?: string
+          is_archived?: boolean | null
+          is_favorite?: boolean | null
           is_verified?: boolean | null
           last_used_at?: string | null
           metadata?: Json | null
           name: string
           original_name?: string | null
           source?: string | null
+          tags?: string[] | null
           thumbnail_path?: string | null
           updated_at?: string
           user_id: string
@@ -697,12 +703,15 @@ export type Database = {
           file_size?: number | null
           file_type?: string | null
           id?: string
+          is_archived?: boolean | null
+          is_favorite?: boolean | null
           is_verified?: boolean | null
           last_used_at?: string | null
           metadata?: Json | null
           name?: string
           original_name?: string | null
           source?: string | null
+          tags?: string[] | null
           thumbnail_path?: string | null
           updated_at?: string
           user_id?: string
