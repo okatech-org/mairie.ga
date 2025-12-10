@@ -1,10 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format, isAfter, isBefore, startOfDay, endOfDay, subDays, subMonths } from "date-fns";
+import { fr } from "date-fns/locale";
 import {
   Bell,
   Mail,
@@ -18,7 +23,10 @@ import {
   RefreshCw,
   CheckCircle,
   XCircle,
-  BarChart3
+  BarChart3,
+  Filter,
+  CalendarIcon,
+  X
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -63,12 +71,19 @@ interface SubscriptionStats {
   sms: number;
 }
 
+type NotificationTypeFilter = 'all' | 'arretes' | 'deliberations' | 'services' | 'urgences' | 'sms';
+type DatePreset = 'all' | 'today' | 'week' | 'month' | '3months' | 'custom';
+
 const COLORS = ['hsl(var(--primary))', 'hsl(142, 76%, 36%)', 'hsl(221, 83%, 53%)', 'hsl(38, 92%, 50%)', 'hsl(262, 83%, 58%)'];
 
 export default function NotificationPreferencesAdmin() {
   const [preferences, setPreferences] = useState<NotificationPreference[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState<NotificationTypeFilter>('all');
+  const [datePreset, setDatePreset] = useState<DatePreset>('all');
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [stats, setStats] = useState<SubscriptionStats>({
     total: 0,
     arretes: 0,
@@ -82,10 +97,37 @@ export default function NotificationPreferencesAdmin() {
     loadPreferences();
   }, []);
 
+  // Handle date preset changes
+  useEffect(() => {
+    const now = new Date();
+    switch (datePreset) {
+      case 'today':
+        setDateFrom(startOfDay(now));
+        setDateTo(endOfDay(now));
+        break;
+      case 'week':
+        setDateFrom(subDays(now, 7));
+        setDateTo(now);
+        break;
+      case 'month':
+        setDateFrom(subMonths(now, 1));
+        setDateTo(now);
+        break;
+      case '3months':
+        setDateFrom(subMonths(now, 3));
+        setDateTo(now);
+        break;
+      case 'all':
+        setDateFrom(undefined);
+        setDateTo(undefined);
+        break;
+      // 'custom' - don't change dates
+    }
+  }, [datePreset]);
+
   const loadPreferences = async () => {
     setLoading(true);
     try {
-      // Fetch notification preferences
       const { data: prefsData, error: prefsError } = await supabase
         .from('notification_preferences')
         .select('*')
@@ -93,7 +135,6 @@ export default function NotificationPreferencesAdmin() {
 
       if (prefsError) throw prefsError;
 
-      // Fetch profile data for each user
       const prefsWithProfiles: NotificationPreference[] = [];
       for (const pref of prefsData || []) {
         const { data: profileData } = await supabase
@@ -110,7 +151,6 @@ export default function NotificationPreferencesAdmin() {
 
       setPreferences(prefsWithProfiles);
 
-      // Calculate stats
       const statsData: SubscriptionStats = {
         total: prefsWithProfiles.length,
         arretes: prefsWithProfiles.filter(p => p.email_arretes).length,
@@ -128,6 +168,61 @@ export default function NotificationPreferencesAdmin() {
     setLoading(false);
   };
 
+  const clearFilters = () => {
+    setSearchQuery('');
+    setTypeFilter('all');
+    setDatePreset('all');
+    setDateFrom(undefined);
+    setDateTo(undefined);
+  };
+
+  const hasActiveFilters = searchQuery || typeFilter !== 'all' || datePreset !== 'all';
+
+  const filteredPreferences = useMemo(() => {
+    return preferences.filter(p => {
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesSearch = (
+          p.profile?.first_name?.toLowerCase().includes(query) ||
+          p.profile?.last_name?.toLowerCase().includes(query) ||
+          p.profile?.email?.toLowerCase().includes(query)
+        );
+        if (!matchesSearch) return false;
+      }
+
+      // Type filter
+      if (typeFilter !== 'all') {
+        switch (typeFilter) {
+          case 'arretes':
+            if (!p.email_arretes) return false;
+            break;
+          case 'deliberations':
+            if (!p.email_deliberations) return false;
+            break;
+          case 'services':
+            if (!p.email_services) return false;
+            break;
+          case 'urgences':
+            if (!p.email_urgences) return false;
+            break;
+          case 'sms':
+            if (!p.sms_enabled) return false;
+            break;
+        }
+      }
+
+      // Date filter
+      if (dateFrom || dateTo) {
+        const updatedAt = new Date(p.updated_at);
+        if (dateFrom && isBefore(updatedAt, startOfDay(dateFrom))) return false;
+        if (dateTo && isAfter(updatedAt, endOfDay(dateTo))) return false;
+      }
+
+      return true;
+    });
+  }, [preferences, searchQuery, typeFilter, dateFrom, dateTo]);
+
   const chartData = [
     { name: 'Arrêtés', value: stats.arretes, percentage: stats.total > 0 ? Math.round((stats.arretes / stats.total) * 100) : 0 },
     { name: 'Délibérations', value: stats.deliberations, percentage: stats.total > 0 ? Math.round((stats.deliberations / stats.total) * 100) : 0 },
@@ -137,16 +232,6 @@ export default function NotificationPreferencesAdmin() {
   ];
 
   const pieData = chartData.filter(d => d.value > 0);
-
-  const filteredPreferences = preferences.filter(p => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      p.profile?.first_name?.toLowerCase().includes(query) ||
-      p.profile?.last_name?.toLowerCase().includes(query) ||
-      p.profile?.email?.toLowerCase().includes(query)
-    );
-  });
 
   if (loading) {
     return (
@@ -384,23 +469,146 @@ export default function NotificationPreferencesAdmin() {
         </TabsContent>
 
         <TabsContent value="users" className="space-y-4">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher un utilisateur..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+          {/* Advanced Filters */}
+          <Card className="neu-card border-none">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Filter className="h-4 w-4 text-primary" />
+                <span className="font-medium">Filtres avancés</span>
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="ml-auto text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Effacer les filtres
+                  </Button>
+                )}
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Rechercher un utilisateur..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+
+                {/* Type Filter */}
+                <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as NotificationTypeFilter)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Type de notification" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les types</SelectItem>
+                    <SelectItem value="arretes">Arrêtés</SelectItem>
+                    <SelectItem value="deliberations">Délibérations</SelectItem>
+                    <SelectItem value="services">Services</SelectItem>
+                    <SelectItem value="urgences">Urgences</SelectItem>
+                    <SelectItem value="sms">SMS activé</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Date Preset */}
+                <Select value={datePreset} onValueChange={(v) => setDatePreset(v as DatePreset)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Période" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Toutes les dates</SelectItem>
+                    <SelectItem value="today">Aujourd'hui</SelectItem>
+                    <SelectItem value="week">7 derniers jours</SelectItem>
+                    <SelectItem value="month">30 derniers jours</SelectItem>
+                    <SelectItem value="3months">3 derniers mois</SelectItem>
+                    <SelectItem value="custom">Personnalisé</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Custom Date Range */}
+                {datePreset === 'custom' && (
+                  <div className="flex gap-2">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="flex-1 justify-start text-left font-normal">
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dateFrom ? format(dateFrom, 'dd/MM/yyyy', { locale: fr }) : 'Du'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={dateFrom}
+                          onSelect={setDateFrom}
+                          locale={fr}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="flex-1 justify-start text-left font-normal">
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dateTo ? format(dateTo, 'dd/MM/yyyy', { locale: fr }) : 'Au'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={dateTo}
+                          onSelect={setDateTo}
+                          locale={fr}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
+              </div>
+
+              {/* Active Filters Summary */}
+              {hasActiveFilters && (
+                <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t">
+                  {searchQuery && (
+                    <Badge variant="secondary" className="gap-1">
+                      Recherche: "{searchQuery}"
+                      <X className="h-3 w-3 cursor-pointer" onClick={() => setSearchQuery('')} />
+                    </Badge>
+                  )}
+                  {typeFilter !== 'all' && (
+                    <Badge variant="secondary" className="gap-1">
+                      Type: {typeFilter}
+                      <X className="h-3 w-3 cursor-pointer" onClick={() => setTypeFilter('all')} />
+                    </Badge>
+                  )}
+                  {datePreset !== 'all' && (
+                    <Badge variant="secondary" className="gap-1">
+                      {datePreset === 'custom' && dateFrom && dateTo
+                        ? `${format(dateFrom, 'dd/MM/yy')} - ${format(dateTo, 'dd/MM/yy')}`
+                        : datePreset === 'today' ? "Aujourd'hui"
+                        : datePreset === 'week' ? '7 derniers jours'
+                        : datePreset === 'month' ? '30 derniers jours'
+                        : '3 derniers mois'
+                      }
+                      <X className="h-3 w-3 cursor-pointer" onClick={() => setDatePreset('all')} />
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Users List */}
           <Card className="neu-card border-none">
             <CardHeader>
               <CardTitle className="text-lg">Préférences des utilisateurs</CardTitle>
               <CardDescription>
-                {filteredPreferences.length} utilisateur(s) trouvé(s)
+                {filteredPreferences.length} utilisateur(s) sur {preferences.length} trouvé(s)
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -408,7 +616,12 @@ export default function NotificationPreferencesAdmin() {
                 {filteredPreferences.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Aucun utilisateur avec des préférences configurées</p>
+                    <p>{hasActiveFilters ? 'Aucun résultat pour ces filtres' : 'Aucun utilisateur avec des préférences configurées'}</p>
+                    {hasActiveFilters && (
+                      <Button variant="link" onClick={clearFilters} className="mt-2">
+                        Effacer les filtres
+                      </Button>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-3">
