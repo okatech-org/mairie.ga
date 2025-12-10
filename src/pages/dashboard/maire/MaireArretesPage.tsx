@@ -23,8 +23,11 @@ import {
     Pencil,
     Trash2,
     Globe,
-    XCircle
+    XCircle,
+    Mail,
+    Send
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { 
     arreteService, 
     Arrete, 
@@ -85,6 +88,7 @@ export default function MaireArretesPage() {
     const [selectedArrete, setSelectedArrete] = useState<Arrete | null>(null);
     const [formData, setFormData] = useState<ArreteForm>(defaultForm);
     const [downloadingPDF, setDownloadingPDF] = useState(false);
+    const [sendingNotification, setSendingNotification] = useState(false);
 
     useEffect(() => {
         loadArretes();
@@ -235,6 +239,33 @@ export default function MaireArretesPage() {
             toast.error("Erreur lors de la génération du PDF");
         }
         setDownloadingPDF(false);
+    };
+
+    const handleSendNotification = async (arrete: Arrete) => {
+        if (!confirm("Envoyer une notification par email à tous les citoyens inscrits ?")) return;
+        
+        setSendingNotification(true);
+        try {
+            const { data, error } = await supabase.functions.invoke('send-arrete-notification', {
+                body: {
+                    arreteId: arrete.id,
+                    arreteNumero: arrete.numero,
+                    arreteTitle: arrete.title,
+                    arreteType: arrete.type,
+                    datePublication: arrete.datePublication || new Date().toISOString(),
+                    signataire: arrete.signataire,
+                    notifyAllCitizens: true
+                }
+            });
+            
+            if (error) throw error;
+            
+            toast.success(data?.message || "Notifications envoyées avec succès");
+        } catch (err) {
+            console.error('Error sending notification:', err);
+            toast.error("Erreur lors de l'envoi des notifications");
+        }
+        setSendingNotification(false);
     };
 
     const filteredArretes = arretes.filter(a => {
@@ -459,15 +490,31 @@ export default function MaireArretesPage() {
                                                         </Button>
                                                     )}
                                                     {arrete.status === 'PUBLISHED' && (
-                                                        <Button 
-                                                            size="sm" 
-                                                            variant="outline"
-                                                            className="text-xs text-destructive"
-                                                            onClick={() => handleAbrogate(arrete)}
-                                                        >
-                                                            <XCircle className="h-3 w-3 mr-1" />
-                                                            Abroger
-                                                        </Button>
+                                                        <>
+                                                            <Button 
+                                                                size="sm" 
+                                                                variant="outline"
+                                                                className="text-xs"
+                                                                onClick={() => handleSendNotification(arrete)}
+                                                                disabled={sendingNotification}
+                                                            >
+                                                                {sendingNotification ? (
+                                                                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                                                ) : (
+                                                                    <Mail className="h-3 w-3 mr-1" />
+                                                                )}
+                                                                Notifier
+                                                            </Button>
+                                                            <Button 
+                                                                size="sm" 
+                                                                variant="outline"
+                                                                className="text-xs text-destructive"
+                                                                onClick={() => handleAbrogate(arrete)}
+                                                            >
+                                                                <XCircle className="h-3 w-3 mr-1" />
+                                                                Abroger
+                                                            </Button>
+                                                        </>
                                                     )}
                                                 </div>
                                             </div>

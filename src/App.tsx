@@ -74,6 +74,7 @@ import MentionsLegales from "./pages/MentionsLegales";
 import PolitiqueConfidentialite from "./pages/PolitiqueConfidentialite";
 import CGU from "./pages/CGU";
 import ArretesPublicsPage from "./pages/ArretesPublicsPage";
+import DeliberationsPubliquesPage from "./pages/DeliberationsPubliquesPage";
 import { InactivityHandler } from "@/components/auth/InactivityHandler";
 
 const queryClient = new QueryClient();
@@ -100,6 +101,7 @@ const App = () => (
                       <Route path="/politique-confidentialite" element={<PolitiqueConfidentialite />} />
                       <Route path="/cgu" element={<CGU />} />
                       <Route path="/arretes" element={<ArretesPublicsPage />} />
+                      <Route path="/deliberations" element={<DeliberationsPubliquesPage />} />
 
                       <Route path="/actualites" element={<Actualites />} />
                       <Route path="/login" element={<Login />} />

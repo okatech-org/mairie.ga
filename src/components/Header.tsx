@@ -58,6 +58,26 @@ export const Header = () => {
             <FileText className="h-4 w-4" />
             Services
           </Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-1">
+              <Landmark className="h-4 w-4" />
+              Documents officiels
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem asChild>
+                <Link to="/arretes" className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Arrêtés municipaux
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/deliberations" className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Délibérations
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Link to="/sensibilisation" className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-1">
             <Heart className="h-4 w-4" />
             Sensibilisation
