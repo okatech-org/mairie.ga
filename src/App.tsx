@@ -79,6 +79,7 @@ import CGU from "./pages/CGU";
 import ArretesPublicsPage from "./pages/ArretesPublicsPage";
 import DeliberationsPubliquesPage from "./pages/DeliberationsPubliquesPage";
 import ContactsPage from "./pages/ContactsPage";
+import AppointmentBookingPage from "./pages/AppointmentBookingPage";
 import { InactivityHandler } from "@/components/auth/InactivityHandler";
 
 const queryClient = new QueryClient();
@@ -118,6 +119,7 @@ const App = () => (
                       <Route path="/register/etranger" element={<RegisterForeigner />} />
 
                       <Route path="/portal/:entityId" element={<EntityPortal />} />
+                      <Route path="/rendez-vous" element={<AppointmentBookingPage />} />
 
                       {/* COMPANIES & ASSOCIATIONS */}
                       <Route path="/companies" element={<CompaniesPage />} />
