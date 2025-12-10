@@ -6,9 +6,11 @@ import { provinces } from '@/data/mock-mairies-gabon';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Loader2, MapPin, Building2, Users, Search, X } from 'lucide-react';
+import { Loader2, MapPin, Building2, Users, Search, X, ExternalLink, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { organizationService, Organization } from '@/services/organizationService';
+import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 interface SelectedMairie {
   id: string;
@@ -20,10 +22,19 @@ interface SelectedMairie {
   coordinates: [number, number];
 }
 
+interface Service {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  price: number | null;
+}
+
 const GabonMairiesMap = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<Map<string, { marker: mapboxgl.Marker; province: string }>>(new Map());
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedMairie, setSelectedMairie] = useState<SelectedMairie | null>(null);
@@ -32,6 +43,8 @@ const GabonMairiesMap = () => {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [activeProvinceFilter, setActiveProvinceFilter] = useState<string | null>(null);
   const [mairies, setMairies] = useState<Organization[]>([]);
+  const [selectedMairieServices, setSelectedMairieServices] = useState<Service[]>([]);
+  const [loadingServices, setLoadingServices] = useState(false);
 
   // Fetch mairies from database
   useEffect(() => {
@@ -45,6 +58,36 @@ const GabonMairiesMap = () => {
     };
     fetchMairies();
   }, []);
+
+  // Fetch services when a mairie is selected
+  useEffect(() => {
+    const fetchServices = async () => {
+      if (!selectedMairie?.id) {
+        setSelectedMairieServices([]);
+        return;
+      }
+      
+      setLoadingServices(true);
+      try {
+        const { data, error } = await supabase
+          .from('services')
+          .select('id, name, description, category, price')
+          .eq('organization_id', selectedMairie.id)
+          .eq('is_active', true)
+          .order('name');
+          
+        if (error) throw error;
+        setSelectedMairieServices(data || []);
+      } catch (err) {
+        console.error('Failed to fetch services:', err);
+        setSelectedMairieServices([]);
+      } finally {
+        setLoadingServices(false);
+      }
+    };
+    
+    fetchServices();
+  }, [selectedMairie?.id]);
 
   // Filter mairies based on search query
   const searchResults = useMemo(() => {
@@ -491,7 +534,7 @@ const GabonMairiesMap = () => {
         </div>
       </div>
 
-      {/* Selected Mairie Card */}
+      {/* Selected Mairie Card with Services */}
       {selectedMairie && (
         <Card className="mt-6 border-primary/30 animate-fade-in">
           <CardHeader className="pb-3">
@@ -500,12 +543,18 @@ const GabonMairiesMap = () => {
                 <Building2 className="h-5 w-5 text-primary" />
                 {selectedMairie.name}
               </CardTitle>
-              {selectedMairie.isCapitalProvince && (
-                <Badge className="bg-primary">Chef-lieu</Badge>
-              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(`/entity/${selectedMairie.id}`)}
+                className="gap-1"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Voir la fiche
+              </Button>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground">Province</p>
@@ -523,6 +572,53 @@ const GabonMairiesMap = () => {
                   </p>
                   <p className="font-medium">{selectedMairie.population.toLocaleString()} hab.</p>
                 </div>
+              )}
+            </div>
+            
+            {/* Services Section */}
+            <div className="pt-4 border-t">
+              <div className="flex items-center gap-2 mb-3">
+                <Briefcase className="h-4 w-4 text-primary" />
+                <h4 className="font-medium text-sm">Services disponibles</h4>
+              </div>
+              
+              {loadingServices ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Chargement des services...
+                </div>
+              ) : selectedMairieServices.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {selectedMairieServices.slice(0, 6).map((service) => (
+                    <div
+                      key={service.id}
+                      className="p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
+                      onClick={() => navigate(`/entity/${selectedMairie.id}?service=${service.id}`)}
+                    >
+                      <p className="font-medium text-xs line-clamp-1">{service.name}</p>
+                      {service.category && (
+                        <Badge variant="secondary" className="text-[10px] mt-1">
+                          {service.category}
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Aucun service disponible pour cette mairie
+                </p>
+              )}
+              
+              {selectedMairieServices.length > 6 && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() => navigate(`/entity/${selectedMairie.id}`)}
+                  className="mt-2 p-0 h-auto"
+                >
+                  Voir tous les {selectedMairieServices.length} services →
+                </Button>
               )}
             </div>
           </CardContent>
