@@ -33,6 +33,7 @@ import { Link } from "react-router-dom";
 import { IAstedDemoButton } from "@/components/iasted/IAstedDemoButton";
 import { IAstedGuideInline } from "@/components/iasted/IAstedGuideInline";
 import { GabonMairiesSection } from "@/components/home/GabonMairiesSection";
+import { MairiesLogosSection } from "@/components/home/MairiesLogosSection";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { DemoUserCard } from "@/components/DemoUserCard";
@@ -398,6 +399,9 @@ export default function Home() {
           </Suspense>
         </div>
       </section>
+
+      {/* Mairies avec Logos Section */}
+      <MairiesLogosSection />
 
       {/* Stats Section */}
       <section className="py-16 bg-primary text-primary-foreground">
