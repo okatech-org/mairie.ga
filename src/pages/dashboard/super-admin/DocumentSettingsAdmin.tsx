@@ -9,6 +9,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useDemo } from '@/contexts/DemoContext';
+import DocumentPreview from '@/components/admin/DocumentPreview';
+import { generateOfficialPDF } from '@/utils/generateOfficialPDF';
 import { 
   FileText, 
   Settings, 
@@ -21,7 +24,8 @@ import {
   Palette,
   Image,
   Mail,
-  MapPin
+  MapPin,
+  Eye
 } from 'lucide-react';
 
 interface DocumentSettings {
@@ -70,6 +74,12 @@ export default function DocumentSettingsAdmin() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSettings, setEditingSettings] = useState<Partial<DocumentSettings> | null>(null);
   const [activeTab, setActiveTab] = useState<string>('');
+  const [previewSettings, setPreviewSettings] = useState<DocumentSettings | null>(null);
+  const [generatingPDF, setGeneratingPDF] = useState(false);
+  
+  const { currentUser } = useDemo();
+  const isSuperAdmin = currentUser?.role === 'ADMIN' && currentUser?.id === 'admin-system';
+  const isMaire = currentUser?.role === 'MAIRE' || currentUser?.role === 'MAIRE_ADJOINT';
 
   useEffect(() => {
     fetchSettings();
@@ -185,6 +195,34 @@ export default function DocumentSettingsAdmin() {
     return found ? found.label : role;
   };
 
+  const handleGenerateTestPDF = async (setting: DocumentSettings) => {
+    setGeneratingPDF(true);
+    try {
+      const blob = await generateOfficialPDF({
+        type: 'lettre',
+        subject: 'Document de test - Aperçu des paramètres',
+        recipient: 'Monsieur le Directeur',
+        recipientOrg: 'Direction Générale des Services',
+        content_points: [
+          "Ceci est un document de test généré automatiquement pour prévisualiser les paramètres de mise en page.",
+          "Vous pouvez vérifier l'apparence de l'en-tête, du pied de page et de la signature.",
+        ],
+        signature_authority: setting.signature_title,
+        signature_name: 'M. LE MAIRE',
+        serviceContext: setting.service_role,
+      });
+      
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      toast.success('PDF de test généré avec succès');
+    } catch (error: any) {
+      toast.error('Erreur lors de la génération du PDF');
+      console.error('Error:', error);
+    } finally {
+      setGeneratingPDF(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -206,13 +244,14 @@ export default function DocumentSettingsAdmin() {
             Configurez la mise en page des documents PDF par service
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => openEditDialog()}>
-              <Plus className="h-4 w-4 mr-2" />
-              Ajouter un service
-            </Button>
-          </DialogTrigger>
+        {isSuperAdmin && (
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => openEditDialog()}>
+                <Plus className="h-4 w-4 mr-2" />
+                Ajouter un service
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
@@ -406,6 +445,7 @@ export default function DocumentSettingsAdmin() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -462,122 +502,148 @@ export default function DocumentSettingsAdmin() {
 
           {settings.map(setting => (
             <TabsContent key={setting.service_role} value={setting.service_role}>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      {getRoleLabel(setting.service_role)}
-                      <Badge variant="outline" className="font-mono text-xs">
-                        {setting.service_role}
-                      </Badge>
-                    </CardTitle>
-                    <CardDescription>
-                      Mis à jour le {new Date(setting.updated_at).toLocaleDateString('fr-FR')}
-                    </CardDescription>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => openEditDialog(setting)}>
-                      <Pencil className="h-4 w-4 mr-1" />
-                      Modifier
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => handleDelete(setting.id, setting.service_role)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {/* Header Info */}
-                    <div className="space-y-3">
-                      <h4 className="font-medium flex items-center gap-2 text-sm">
-                        <Building2 className="h-4 w-4" />
-                        En-tête
-                      </h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Province:</span>
-                          <span className="font-medium">{setting.province}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Commune:</span>
-                          <span className="font-medium">{setting.commune}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Cabinet:</span>
-                          <span className="font-medium">{setting.cabinet}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">République:</span>
-                          <span className="font-medium">{setting.republic}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Devise:</span>
-                          <span className="font-medium">{setting.motto}</span>
-                        </div>
-                      </div>
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                {/* Settings Card */}
+                <Card className="xl:col-span-2">
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        {getRoleLabel(setting.service_role)}
+                        <Badge variant="outline" className="font-mono text-xs">
+                          {setting.service_role}
+                        </Badge>
+                      </CardTitle>
+                      <CardDescription>
+                        Mis à jour le {new Date(setting.updated_at).toLocaleDateString('fr-FR')}
+                      </CardDescription>
                     </div>
-
-                    {/* Signature & Footer */}
-                    <div className="space-y-3">
-                      <h4 className="font-medium flex items-center gap-2 text-sm">
-                        <Mail className="h-4 w-4" />
-                        Signature & Pied de page
-                      </h4>
-                      <div className="space-y-2 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">Titre de signature:</span>
-                          <p className="font-medium">{setting.signature_title}</p>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Adresse:</span>
-                          <p className="font-medium">{setting.footer_address}</p>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Email:</span>
-                          <p className="font-medium">{setting.footer_email}</p>
-                        </div>
-                      </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleGenerateTestPDF(setting)}
+                        disabled={generatingPDF}
+                      >
+                        {generatingPDF ? (
+                          <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                        ) : (
+                          <Eye className="h-4 w-4 mr-1" />
+                        )}
+                        PDF Test
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => openEditDialog(setting)}>
+                        <Pencil className="h-4 w-4 mr-1" />
+                        Modifier
+                      </Button>
+                      {isSuperAdmin && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleDelete(setting.id, setting.service_role)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
-
-                    {/* Branding */}
-                    <div className="space-y-3">
-                      <h4 className="font-medium flex items-center gap-2 text-sm">
-                        <Palette className="h-4 w-4" />
-                        Identité visuelle
-                      </h4>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {/* Header Info */}
                       <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                          <div 
-                            className="w-10 h-10 rounded border"
-                            style={{ backgroundColor: setting.primary_color }}
-                          />
-                          <div>
-                            <span className="text-sm text-muted-foreground">Couleur principale</span>
-                            <p className="font-mono text-sm">{setting.primary_color}</p>
+                        <h4 className="font-medium flex items-center gap-2 text-sm">
+                          <Building2 className="h-4 w-4" />
+                          En-tête
+                        </h4>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Province:</span>
+                            <span className="font-medium">{setting.province}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Commune:</span>
+                            <span className="font-medium">{setting.commune}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Cabinet:</span>
+                            <span className="font-medium">{setting.cabinet}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">République:</span>
+                            <span className="font-medium">{setting.republic}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Devise:</span>
+                            <span className="font-medium">{setting.motto}</span>
                           </div>
                         </div>
-                        <div>
-                          <span className="text-sm text-muted-foreground">Logo:</span>
-                          <p className="font-mono text-xs truncate">{setting.logo_url}</p>
-                          {setting.logo_url && (
-                            <img 
-                              src={setting.logo_url} 
-                              alt="Logo" 
-                              className="h-12 mt-2 object-contain"
-                              onError={(e) => (e.currentTarget.style.display = 'none')}
+                      </div>
+
+                      {/* Signature & Footer */}
+                      <div className="space-y-3">
+                        <h4 className="font-medium flex items-center gap-2 text-sm">
+                          <Mail className="h-4 w-4" />
+                          Signature & Pied de page
+                        </h4>
+                        <div className="space-y-2 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Titre de signature:</span>
+                            <p className="font-medium">{setting.signature_title}</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Adresse:</span>
+                            <p className="font-medium">{setting.footer_address}</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Email:</span>
+                            <p className="font-medium">{setting.footer_email}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Branding */}
+                      <div className="space-y-3">
+                        <h4 className="font-medium flex items-center gap-2 text-sm">
+                          <Palette className="h-4 w-4" />
+                          Identité visuelle
+                        </h4>
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-3">
+                            <div 
+                              className="w-10 h-10 rounded border"
+                              style={{ backgroundColor: setting.primary_color }}
                             />
-                          )}
+                            <div>
+                              <span className="text-sm text-muted-foreground">Couleur principale</span>
+                              <p className="font-mono text-sm">{setting.primary_color}</p>
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-sm text-muted-foreground">Logo:</span>
+                            <p className="font-mono text-xs truncate">{setting.logo_url}</p>
+                            {setting.logo_url && (
+                              <img 
+                                src={setting.logo_url} 
+                                alt="Logo" 
+                                className="h-12 mt-2 object-contain"
+                                onError={(e) => (e.currentTarget.style.display = 'none')}
+                              />
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+
+                {/* Preview Panel */}
+                <div className="xl:col-span-1">
+                  <DocumentPreview 
+                    settings={setting} 
+                    onGeneratePDF={() => handleGenerateTestPDF(setting)}
+                  />
+                </div>
+              </div>
             </TabsContent>
           ))}
         </Tabs>
