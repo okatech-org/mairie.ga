@@ -5,11 +5,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Building2, MapPin, Users, Phone, Mail, Filter, Search, X, ArrowUpDown, Map, Grid3X3, List, Globe, ExternalLink } from 'lucide-react';
+import { Building2, MapPin, Users, Phone, Mail, Filter, Search, X, ArrowUpDown, Map, Grid3X3, List, Globe, ExternalLink, FileDown, FileSpreadsheet } from 'lucide-react';
 import { organizationService, Organization } from '@/services/organizationService';
 import { Skeleton } from '@/components/ui/skeleton';
 import GabonMairiesMap from '@/components/home/GabonMairiesMap';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { exportMairiesToPDF, exportMairiesToExcel } from '@/utils/export-mairies';
+import { toast } from 'sonner';
 
 type SortOption = 'name' | 'population' | 'province';
 type ViewMode = 'grid' | 'list' | 'map';
@@ -79,6 +81,31 @@ export const MairiesLogosSection = () => {
   const clearFilters = () => {
     setSelectedProvince(null);
     setSearchQuery('');
+  };
+
+  const handleExportPDF = () => {
+    try {
+      const dataToExport = filteredAndSortedMairies.length > 0 ? filteredAndSortedMairies : mairies;
+      const title = selectedProvince 
+        ? `Mairies de la province ${selectedProvince}` 
+        : 'Liste des Mairies du Gabon';
+      exportMairiesToPDF(dataToExport, title);
+      toast.success('Export PDF généré avec succès');
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('Erreur lors de l\'export PDF');
+    }
+  };
+
+  const handleExportExcel = () => {
+    try {
+      const dataToExport = filteredAndSortedMairies.length > 0 ? filteredAndSortedMairies : mairies;
+      exportMairiesToExcel(dataToExport);
+      toast.success('Export Excel (CSV) généré avec succès');
+    } catch (error) {
+      console.error('Excel export error:', error);
+      toast.error('Erreur lors de l\'export Excel');
+    }
   };
 
   const handleMairieClick = (mairie: Organization) => {
@@ -360,6 +387,30 @@ export const MairiesLogosSection = () => {
             >
               <Map className="h-4 w-4" />
               <span className="hidden sm:inline">Carte</span>
+            </Button>
+          </div>
+          
+          {/* Export Buttons */}
+          <div className="inline-flex rounded-lg border bg-muted p-1 ml-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleExportPDF}
+              className="gap-2"
+              title="Exporter en PDF"
+            >
+              <FileDown className="h-4 w-4" />
+              <span className="hidden sm:inline">PDF</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleExportExcel}
+              className="gap-2"
+              title="Exporter en Excel (CSV)"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              <span className="hidden sm:inline">Excel</span>
             </Button>
           </div>
         </div>

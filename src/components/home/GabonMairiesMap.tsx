@@ -2,14 +2,16 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { invokeWithDemoFallback } from '@/utils/demoMode';
-import { mairiesGabon, provinces, MairieGabon } from '@/data/mock-mairies-gabon';
+import { provinces } from '@/data/mock-mairies-gabon';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Loader2, MapPin, Building2, Users, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { organizationService, Organization } from '@/services/organizationService';
 
 interface SelectedMairie {
+  id: string;
   name: string;
   province: string;
   departement: string;
@@ -29,17 +31,31 @@ const GabonMairiesMap = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [activeProvinceFilter, setActiveProvinceFilter] = useState<string | null>(null);
+  const [mairies, setMairies] = useState<Organization[]>([]);
+
+  // Fetch mairies from database
+  useEffect(() => {
+    const fetchMairies = async () => {
+      try {
+        const data = await organizationService.getAll();
+        setMairies(data);
+      } catch (err) {
+        console.error('Failed to fetch mairies:', err);
+      }
+    };
+    fetchMairies();
+  }, []);
 
   // Filter mairies based on search query
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return [];
     const query = searchQuery.toLowerCase();
-    return mairiesGabon.filter(m =>
+    return mairies.filter(m =>
       m.name.toLowerCase().includes(query) ||
-      m.province.toLowerCase().includes(query) ||
-      m.departement.toLowerCase().includes(query)
+      m.province?.toLowerCase().includes(query) ||
+      m.departement?.toLowerCase().includes(query)
     ).slice(0, 8);
-  }, [searchQuery]);
+  }, [searchQuery, mairies]);
 
   // Update marker visibility when filter changes
   useEffect(() => {
@@ -56,23 +72,26 @@ const GabonMairiesMap = () => {
   }, [activeProvinceFilter]);
 
   // Handle selecting a mairie from search
-  const handleSelectMairie = (mairie: MairieGabon) => {
+  const handleSelectMairie = (mairie: Organization) => {
+    if (!mairie.longitude || !mairie.latitude) return;
+    
     setSelectedMairie({
+      id: mairie.id,
       name: mairie.name,
-      province: mairie.province,
-      departement: mairie.departement,
-      population: mairie.population,
-      isCapitalProvince: mairie.isCapitalProvince,
-      coordinates: mairie.coordinates
+      province: mairie.province || '',
+      departement: mairie.departement || '',
+      population: mairie.population || undefined,
+      isCapitalProvince: false,
+      coordinates: [mairie.longitude, mairie.latitude]
     });
     setSearchQuery('');
     setIsSearchFocused(false);
-    setActiveProvinceFilter(mairie.province);
+    setActiveProvinceFilter(mairie.province || null);
 
     // Fly to the selected mairie
     if (map.current) {
       map.current.flyTo({
-        center: mairie.coordinates,
+        center: [mairie.longitude, mairie.latitude],
         zoom: 10,
         duration: 1500
       });
@@ -101,10 +120,11 @@ const GabonMairiesMap = () => {
     }
 
     setActiveProvinceFilter(provinceName);
-    const provinceCapital = mairiesGabon.find(m => m.province === provinceName && m.isCapitalProvince);
-    if (provinceCapital && map.current) {
+    // Find first mairie in province with coordinates
+    const provinceMairie = mairies.find(m => m.province === provinceName && m.latitude && m.longitude);
+    if (provinceMairie && map.current) {
       map.current.flyTo({
-        center: provinceCapital.coordinates,
+        center: [provinceMairie.longitude!, provinceMairie.latitude!],
         zoom: 8,
         duration: 1500
       });
@@ -162,26 +182,29 @@ const GabonMairiesMap = () => {
         );
 
         map.current.on('load', () => {
-          // Add markers for each mairie
-          mairiesGabon.forEach((mairie) => {
+          // Add markers for each mairie from database with GPS coordinates
+          mairies.forEach((mairie) => {
+            // Skip mairies without coordinates
+            if (!mairie.latitude || !mairie.longitude) return;
+            
             const province = provinces.find(p => p.name === mairie.province);
             const color = province?.color || '#009e49';
 
             // Create marker element
             const el = document.createElement('div');
             el.className = 'mairie-marker';
-            el.style.width = mairie.isCapitalProvince ? '20px' : '12px';
-            el.style.height = mairie.isCapitalProvince ? '20px' : '12px';
+            el.style.width = '16px';
+            el.style.height = '16px';
             el.style.backgroundColor = color;
             el.style.borderRadius = '50%';
-            el.style.border = mairie.isCapitalProvince ? '3px solid white' : '2px solid white';
+            el.style.border = '2px solid white';
             el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
             el.style.cursor = 'pointer';
             el.style.transition = 'transform 0.2s ease';
 
             el.addEventListener('mouseenter', () => {
               el.style.transform = 'scale(1.3)';
-              setHoveredProvince(mairie.province);
+              setHoveredProvince(mairie.province || null);
             });
 
             el.addEventListener('mouseleave', () => {
@@ -197,28 +220,29 @@ const GabonMairiesMap = () => {
             }).setHTML(`
               <div style="padding: 8px; min-width: 180px;">
                 <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${mairie.name}</div>
-                <div style="color: #666; font-size: 12px;">${mairie.province}</div>
+                <div style="color: #666; font-size: 12px;">${mairie.province || ''}</div>
                 ${mairie.population ? `<div style="color: #888; font-size: 11px; margin-top: 4px;">${mairie.population.toLocaleString()} habitants</div>` : ''}
-                ${mairie.isCapitalProvince ? `<div style="color: ${color}; font-size: 11px; font-weight: 500; margin-top: 4px;">🏛️ Chef-lieu de province</div>` : ''}
+                ${mairie.maire_name ? `<div style="color: #666; font-size: 11px; margin-top: 4px;">👤 ${mairie.maire_name}</div>` : ''}
               </div>
             `);
 
             const marker = new mapboxgl.Marker(el)
-              .setLngLat(mairie.coordinates)
+              .setLngLat([mairie.longitude, mairie.latitude])
               .setPopup(popup)
               .addTo(map.current!);
 
             // Store marker reference with province info
-            markersRef.current.set(mairie.id, { marker, province: mairie.province });
+            markersRef.current.set(mairie.id, { marker, province: mairie.province || '' });
 
             el.addEventListener('click', () => {
               setSelectedMairie({
+                id: mairie.id,
                 name: mairie.name,
-                province: mairie.province,
-                departement: mairie.departement,
-                population: mairie.population,
-                isCapitalProvince: mairie.isCapitalProvince,
-                coordinates: mairie.coordinates
+                province: mairie.province || '',
+                departement: mairie.departement || '',
+                population: mairie.population || undefined,
+                isCapitalProvince: false,
+                coordinates: [mairie.longitude!, mairie.latitude!]
               });
             });
           });
@@ -233,17 +257,22 @@ const GabonMairiesMap = () => {
       }
     };
 
-    initMap();
+    if (mairies.length > 0) {
+      initMap();
+    }
 
     return () => {
       map.current?.remove();
     };
-  }, []);
+  }, [mairies]);
 
   const provinceCounts = provinces.map(p => ({
     ...p,
-    count: mairiesGabon.filter(m => m.province === p.name).length
+    count: mairies.filter(m => m.province === p.name).length
   }));
+
+  // Count mairies with GPS coordinates
+  const mairiesWithCoords = mairies.filter(m => m.latitude && m.longitude).length;
 
   if (error) {
     return (
@@ -304,9 +333,6 @@ const GabonMairiesMap = () => {
                       {mairie.province} • {mairie.departement}
                     </p>
                   </div>
-                  {mairie.isCapitalProvince && (
-                    <Badge variant="secondary" className="text-xs flex-shrink-0">Chef-lieu</Badge>
-                  )}
                 </button>
               );
             })}
@@ -452,10 +478,14 @@ const GabonMairiesMap = () => {
             ))}
           </div>
 
-          <div className="pt-4 border-t mt-4">
+          <div className="pt-4 border-t mt-4 space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Total Communes</span>
-              <Badge className="bg-primary">{mairiesGabon.length}</Badge>
+              <Badge className="bg-primary">{mairies.length}</Badge>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">Avec coordonnées GPS</span>
+              <Badge variant="secondary">{mairiesWithCoords}</Badge>
             </div>
           </div>
         </div>
