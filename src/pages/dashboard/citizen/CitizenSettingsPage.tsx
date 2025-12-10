@@ -7,6 +7,7 @@ import { User, Bell, Shield, Save, Clock, Monitor } from 'lucide-react';
 import { useSessionConfigStore, InactivityTimeout } from '@/stores/sessionConfigStore';
 import { toast } from 'sonner';
 import { ActiveSessionsManager } from '@/components/auth/ActiveSessionsManager';
+import { NotificationPreferencesForm } from '@/components/notifications/NotificationPreferencesForm';
 
 const timeoutOptions: { value: InactivityTimeout; label: string }[] = [
     { value: 0, label: 'Désactivé' },
@@ -122,31 +123,7 @@ export default function CitizenSettingsPage() {
                 </div>
 
                 {/* Notifications */}
-                <div className="neu-card p-6 rounded-xl space-y-6">
-                    <div className="flex items-center gap-3 border-b pb-4">
-                        <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                            <Bell className="w-5 h-5" />
-                        </div>
-                        <h2 className="text-xl font-bold">Notifications</h2>
-                    </div>
-
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-0.5">
-                                <Label className="text-base">Emails de mise à jour</Label>
-                                <p className="text-sm text-muted-foreground">Recevoir des emails sur l'état de mes demandes.</p>
-                            </div>
-                            <Switch defaultChecked />
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-0.5">
-                                <Label className="text-base">Newsletter</Label>
-                                <p className="text-sm text-muted-foreground">Recevoir les actualités du consulat.</p>
-                            </div>
-                            <Switch />
-                        </div>
-                    </div>
-                </div>
+                <NotificationPreferencesForm />
 
                 {/* Security */}
                 <div className="neu-card p-6 rounded-xl space-y-6">
