@@ -12,6 +12,9 @@ import { supabase } from '@/integrations/supabase/client';
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+// Type assertion helper for tables not yet in generated types
+const cvDataTable = () => (supabase as any).from('cv_data');
+
 class CVService {
     private useSupabase = false; // Will be set to true when table exists
     private mockCV: CV = {
@@ -39,8 +42,7 @@ class CVService {
             }
 
             // Try a simple query to check if table exists
-            const { error } = await supabase
-                .from('cv_data')
+            const { error } = await cvDataTable()
                 .select('id')
                 .limit(1);
 
@@ -73,8 +75,7 @@ class CVService {
                 return this.mockCV;
             }
 
-            const { data, error } = await supabase
-                .from('cv_data')
+            const { data, error } = await cvDataTable()
                 .select('*')
                 .eq('user_id', user.id)
                 .single();
@@ -126,8 +127,7 @@ class CVService {
             const dbData = this.mapToDatabase(data, user.id);
 
             // Upsert - create if doesn't exist, update if it does
-            const { data: result, error } = await supabase
-                .from('cv_data')
+            const { data: result, error } = await cvDataTable()
                 .upsert({
                     ...dbData,
                     user_id: user.id,
@@ -157,22 +157,23 @@ class CVService {
      * Map database row to CV type
      */
     private mapFromDatabase(row: Record<string, unknown>): CV {
+        const personalInfo = row.personal_info as Record<string, unknown> || {};
         return {
             id: row.id as string,
             userId: row.user_id as string,
-            firstName: row.first_name as string || '',
-            lastName: row.last_name as string || '',
-            email: row.email as string || '',
-            phone: row.phone as string || '',
-            address: row.address as string || '',
-            summary: row.summary as string || '',
+            firstName: personalInfo.first_name as string || '',
+            lastName: personalInfo.last_name as string || '',
+            email: personalInfo.email as string || '',
+            phone: personalInfo.phone as string || '',
+            address: personalInfo.address as string || '',
+            summary: personalInfo.summary as string || '',
             experiences: (row.experiences as CV['experiences']) || [],
             education: (row.education as CV['education']) || [],
             skills: (row.skills as CV['skills']) || [],
             languages: (row.languages as CV['languages']) || [],
-            hobbies: (row.hobbies as string[]) || [],
-            portfolioUrl: row.portfolio_url as string,
-            linkedinUrl: row.linkedin_url as string,
+            hobbies: personalInfo.hobbies as string[] || [],
+            portfolioUrl: personalInfo.portfolio_url as string,
+            linkedinUrl: personalInfo.linkedin_url as string,
             updatedAt: row.updated_at as string
         };
     }
@@ -183,19 +184,21 @@ class CVService {
     private mapToDatabase(cv: Partial<CV>, userId: string): Record<string, unknown> {
         return {
             user_id: userId,
-            first_name: cv.firstName,
-            last_name: cv.lastName,
-            email: cv.email,
-            phone: cv.phone,
-            address: cv.address,
-            summary: cv.summary,
+            personal_info: {
+                first_name: cv.firstName,
+                last_name: cv.lastName,
+                email: cv.email,
+                phone: cv.phone,
+                address: cv.address,
+                summary: cv.summary,
+                hobbies: cv.hobbies,
+                portfolio_url: cv.portfolioUrl,
+                linkedin_url: cv.linkedinUrl
+            },
             experiences: cv.experiences,
             education: cv.education,
             skills: cv.skills,
-            languages: cv.languages,
-            hobbies: cv.hobbies,
-            portfolio_url: cv.portfolioUrl,
-            linkedin_url: cv.linkedinUrl
+            languages: cv.languages
         };
     }
 }

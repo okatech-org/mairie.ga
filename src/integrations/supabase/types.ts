@@ -123,6 +123,242 @@ export type Database = {
           },
         ]
       }
+      arretes: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          created_by: string | null
+          date_effet: string | null
+          date_fin: string | null
+          date_publication: string | null
+          date_signature: string | null
+          documents: Json | null
+          id: string
+          metadata: Json | null
+          numero: string
+          organization_id: string | null
+          signataire: string | null
+          status: Database["public"]["Enums"]["arrete_status"] | null
+          title: string
+          type: Database["public"]["Enums"]["arrete_type"]
+          updated_at: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          date_effet?: string | null
+          date_fin?: string | null
+          date_publication?: string | null
+          date_signature?: string | null
+          documents?: Json | null
+          id?: string
+          metadata?: Json | null
+          numero: string
+          organization_id?: string | null
+          signataire?: string | null
+          status?: Database["public"]["Enums"]["arrete_status"] | null
+          title: string
+          type: Database["public"]["Enums"]["arrete_type"]
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          date_effet?: string | null
+          date_fin?: string | null
+          date_publication?: string | null
+          date_signature?: string | null
+          documents?: Json | null
+          id?: string
+          metadata?: Json | null
+          numero?: string
+          organization_id?: string | null
+          signataire?: string | null
+          status?: Database["public"]["Enums"]["arrete_status"] | null
+          title?: string
+          type?: Database["public"]["Enums"]["arrete_type"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arretes_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      associations: {
+        Row: {
+          address: Json | null
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string | null
+          description: string | null
+          documents: Json | null
+          id: string
+          members_count: number | null
+          metadata: Json | null
+          name: string
+          owner_id: string
+          president_name: string | null
+          registration_number: string | null
+          secretary_name: string | null
+          status: Database["public"]["Enums"]["entity_status"] | null
+          treasurer_name: string | null
+          type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: Json | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          description?: string | null
+          documents?: Json | null
+          id?: string
+          members_count?: number | null
+          metadata?: Json | null
+          name: string
+          owner_id: string
+          president_name?: string | null
+          registration_number?: string | null
+          secretary_name?: string | null
+          status?: Database["public"]["Enums"]["entity_status"] | null
+          treasurer_name?: string | null
+          type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: Json | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          description?: string | null
+          documents?: Json | null
+          id?: string
+          members_count?: number | null
+          metadata?: Json | null
+          name?: string
+          owner_id?: string
+          president_name?: string | null
+          registration_number?: string | null
+          secretary_name?: string | null
+          status?: Database["public"]["Enums"]["entity_status"] | null
+          treasurer_name?: string | null
+          type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          new_data: Json | null
+          old_data: Json | null
+          resource_id: string | null
+          resource_type: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          new_data?: Json | null
+          old_data?: Json | null
+          resource_id?: string | null
+          resource_type: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          new_data?: Json | null
+          old_data?: Json | null
+          resource_id?: string | null
+          resource_type?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      companies: {
+        Row: {
+          address: Json | null
+          capital: number | null
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string | null
+          description: string | null
+          documents: Json | null
+          employees_count: number | null
+          id: string
+          legal_form: string | null
+          metadata: Json | null
+          name: string
+          owner_id: string
+          registration_number: string | null
+          sector: string | null
+          status: Database["public"]["Enums"]["entity_status"] | null
+          tax_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: Json | null
+          capital?: number | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          description?: string | null
+          documents?: Json | null
+          employees_count?: number | null
+          id?: string
+          legal_form?: string | null
+          metadata?: Json | null
+          name: string
+          owner_id: string
+          registration_number?: string | null
+          sector?: string | null
+          status?: Database["public"]["Enums"]["entity_status"] | null
+          tax_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: Json | null
+          capital?: number | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          description?: string | null
+          documents?: Json | null
+          employees_count?: number | null
+          id?: string
+          legal_form?: string | null
+          metadata?: Json | null
+          name?: string
+          owner_id?: string
+          registration_number?: string | null
+          sector?: string | null
+          status?: Database["public"]["Enums"]["entity_status"] | null
+          tax_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       conversation_messages: {
         Row: {
           content: string
@@ -187,6 +423,164 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      correspondence_logs: {
+        Row: {
+          attachments: Json | null
+          content: string | null
+          created_at: string | null
+          delivered_at: string | null
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          recipient_email: string
+          recipient_name: string | null
+          sender_id: string
+          sent_at: string | null
+          status: Database["public"]["Enums"]["correspondence_status"] | null
+          subject: string
+          template_used: string | null
+        }
+        Insert: {
+          attachments?: Json | null
+          content?: string | null
+          created_at?: string | null
+          delivered_at?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          recipient_email: string
+          recipient_name?: string | null
+          sender_id: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["correspondence_status"] | null
+          subject: string
+          template_used?: string | null
+        }
+        Update: {
+          attachments?: Json | null
+          content?: string | null
+          created_at?: string | null
+          delivered_at?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          recipient_email?: string
+          recipient_name?: string | null
+          sender_id?: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["correspondence_status"] | null
+          subject?: string
+          template_used?: string | null
+        }
+        Relationships: []
+      }
+      cv_data: {
+        Row: {
+          certifications: Json | null
+          created_at: string | null
+          cv_references: Json | null
+          education: Json | null
+          experiences: Json | null
+          id: string
+          languages: Json | null
+          personal_info: Json | null
+          skills: Json | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          certifications?: Json | null
+          created_at?: string | null
+          cv_references?: Json | null
+          education?: Json | null
+          experiences?: Json | null
+          id?: string
+          languages?: Json | null
+          personal_info?: Json | null
+          skills?: Json | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          certifications?: Json | null
+          created_at?: string | null
+          cv_references?: Json | null
+          education?: Json | null
+          experiences?: Json | null
+          id?: string
+          languages?: Json | null
+          personal_info?: Json | null
+          skills?: Json | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      deliberations: {
+        Row: {
+          abstentions: number | null
+          content: string | null
+          created_at: string | null
+          created_by: string | null
+          documents: Json | null
+          id: string
+          metadata: Json | null
+          numero: string
+          organization_id: string | null
+          rapporteur: string | null
+          resultat: Database["public"]["Enums"]["deliberation_result"] | null
+          session_date: string
+          title: string
+          updated_at: string | null
+          votes_contre: number | null
+          votes_pour: number | null
+        }
+        Insert: {
+          abstentions?: number | null
+          content?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          documents?: Json | null
+          id?: string
+          metadata?: Json | null
+          numero: string
+          organization_id?: string | null
+          rapporteur?: string | null
+          resultat?: Database["public"]["Enums"]["deliberation_result"] | null
+          session_date: string
+          title: string
+          updated_at?: string | null
+          votes_contre?: number | null
+          votes_pour?: number | null
+        }
+        Update: {
+          abstentions?: number | null
+          content?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          documents?: Json | null
+          id?: string
+          metadata?: Json | null
+          numero?: string
+          organization_id?: string | null
+          rapporteur?: string | null
+          resultat?: Database["public"]["Enums"]["deliberation_result"] | null
+          session_date?: string
+          title?: string
+          updated_at?: string | null
+          votes_contre?: number | null
+          votes_pour?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deliberations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       document_vault: {
         Row: {
@@ -291,6 +685,65 @@ export type Database = {
             columns: ["request_id"]
             isOneToOne: false
             referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_base: {
+        Row: {
+          author_id: string | null
+          category: string
+          content: string
+          created_at: string | null
+          helpful_count: number | null
+          id: string
+          metadata: Json | null
+          organization_id: string | null
+          status: Database["public"]["Enums"]["kb_status"] | null
+          subcategory: string | null
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+          view_count: number | null
+        }
+        Insert: {
+          author_id?: string | null
+          category: string
+          content: string
+          created_at?: string | null
+          helpful_count?: number | null
+          id?: string
+          metadata?: Json | null
+          organization_id?: string | null
+          status?: Database["public"]["Enums"]["kb_status"] | null
+          subcategory?: string | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+          view_count?: number | null
+        }
+        Update: {
+          author_id?: string | null
+          category?: string
+          content?: string
+          created_at?: string | null
+          helpful_count?: number | null
+          id?: string
+          metadata?: Json | null
+          organization_id?: string | null
+          status?: Database["public"]["Enums"]["kb_status"] | null
+          subcategory?: string | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+          view_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_base_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -669,6 +1122,80 @@ export type Database = {
         }
         Relationships: []
       }
+      urbanisme_dossiers: {
+        Row: {
+          address: Json | null
+          assigned_to: string | null
+          created_at: string | null
+          date_decision: string | null
+          date_depot: string | null
+          demandeur_id: string
+          description: string | null
+          documents: Json | null
+          id: string
+          metadata: Json | null
+          motif_decision: string | null
+          numero: string
+          organization_id: string | null
+          status: Database["public"]["Enums"]["urbanisme_status"] | null
+          surface_construction: number | null
+          surface_terrain: number | null
+          title: string
+          type: Database["public"]["Enums"]["urbanisme_type"]
+          updated_at: string | null
+        }
+        Insert: {
+          address?: Json | null
+          assigned_to?: string | null
+          created_at?: string | null
+          date_decision?: string | null
+          date_depot?: string | null
+          demandeur_id: string
+          description?: string | null
+          documents?: Json | null
+          id?: string
+          metadata?: Json | null
+          motif_decision?: string | null
+          numero: string
+          organization_id?: string | null
+          status?: Database["public"]["Enums"]["urbanisme_status"] | null
+          surface_construction?: number | null
+          surface_terrain?: number | null
+          title: string
+          type: Database["public"]["Enums"]["urbanisme_type"]
+          updated_at?: string | null
+        }
+        Update: {
+          address?: Json | null
+          assigned_to?: string | null
+          created_at?: string | null
+          date_decision?: string | null
+          date_depot?: string | null
+          demandeur_id?: string
+          description?: string | null
+          documents?: Json | null
+          id?: string
+          metadata?: Json | null
+          motif_decision?: string | null
+          numero?: string
+          organization_id?: string | null
+          status?: Database["public"]["Enums"]["urbanisme_status"] | null
+          surface_construction?: number | null
+          surface_terrain?: number | null
+          title?: string
+          type?: Database["public"]["Enums"]["urbanisme_type"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "urbanisme_dossiers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -712,6 +1239,17 @@ export type Database = {
         | "COMPLETED"
         | "CANCELLED"
         | "NO_SHOW"
+      arrete_status: "DRAFT" | "SIGNED" | "PUBLISHED" | "ABROGATED"
+      arrete_type: "MUNICIPAL" | "INDIVIDUEL" | "REGLEMENTAIRE" | "TEMPORAIRE"
+      correspondence_status:
+        | "PENDING"
+        | "SENT"
+        | "DELIVERED"
+        | "FAILED"
+        | "BOUNCED"
+      deliberation_result: "ADOPTED" | "REJECTED" | "POSTPONED" | "WITHDRAWN"
+      entity_status: "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED"
+      kb_status: "DRAFT" | "PUBLISHED" | "ARCHIVED"
       organization_type:
         | "CONSULAT_GENERAL"
         | "CONSULAT"
@@ -733,6 +1271,19 @@ export type Database = {
         | "LEGALIZATION"
         | "CONSULAR_CARD"
         | "ATTESTATION"
+      urbanisme_status:
+        | "SUBMITTED"
+        | "IN_REVIEW"
+        | "ADDITIONAL_INFO"
+        | "APPROVED"
+        | "REJECTED"
+        | "WITHDRAWN"
+      urbanisme_type:
+        | "PERMIS_CONSTRUIRE"
+        | "DECLARATION_TRAVAUX"
+        | "PERMIS_DEMOLIR"
+        | "PERMIS_AMENAGER"
+        | "CERTIFICAT_URBANISME"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -868,6 +1419,18 @@ export const Constants = {
         "CANCELLED",
         "NO_SHOW",
       ],
+      arrete_status: ["DRAFT", "SIGNED", "PUBLISHED", "ABROGATED"],
+      arrete_type: ["MUNICIPAL", "INDIVIDUEL", "REGLEMENTAIRE", "TEMPORAIRE"],
+      correspondence_status: [
+        "PENDING",
+        "SENT",
+        "DELIVERED",
+        "FAILED",
+        "BOUNCED",
+      ],
+      deliberation_result: ["ADOPTED", "REJECTED", "POSTPONED", "WITHDRAWN"],
+      entity_status: ["PENDING", "APPROVED", "REJECTED", "SUSPENDED"],
+      kb_status: ["DRAFT", "PUBLISHED", "ARCHIVED"],
       organization_type: [
         "CONSULAT_GENERAL",
         "CONSULAT",
@@ -891,6 +1454,21 @@ export const Constants = {
         "LEGALIZATION",
         "CONSULAR_CARD",
         "ATTESTATION",
+      ],
+      urbanisme_status: [
+        "SUBMITTED",
+        "IN_REVIEW",
+        "ADDITIONAL_INFO",
+        "APPROVED",
+        "REJECTED",
+        "WITHDRAWN",
+      ],
+      urbanisme_type: [
+        "PERMIS_CONSTRUIRE",
+        "DECLARATION_TRAVAUX",
+        "PERMIS_DEMOLIR",
+        "PERMIS_AMENAGER",
+        "CERTIFICAT_URBANISME",
       ],
     },
   },

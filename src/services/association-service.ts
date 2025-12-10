@@ -13,6 +13,9 @@ import { supabase } from '@/integrations/supabase/client';
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+// Type assertion helper for tables not yet in generated types
+const associationsTable = () => (supabase as any).from('associations');
+
 class AssociationService {
     private useSupabase = false;
     private mockAssociations: Association[] = [...MOCK_ASSOCIATIONS];
@@ -32,8 +35,7 @@ class AssociationService {
                 return;
             }
 
-            const { error } = await supabase
-                .from('associations')
+            const { error } = await associationsTable()
                 .select('id')
                 .limit(1);
 
@@ -63,7 +65,7 @@ class AssociationService {
         }
 
         try {
-            let query = supabase.from('associations').select('*');
+            let query = associationsTable().select('*');
 
             if (status) {
                 query = query.eq('status', status);
@@ -73,7 +75,7 @@ class AssociationService {
 
             if (error) throw error;
 
-            return (data || []).map(row => this.mapFromDatabase(row));
+            return (data || []).map((row: any) => this.mapFromDatabase(row));
         } catch (err) {
             console.error('[AssociationService] Error fetching associations:', err);
             return status ? this.mockAssociations.filter(a => a.status === status) : this.mockAssociations;
@@ -93,15 +95,14 @@ class AssociationService {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return [];
 
-            const { data, error } = await supabase
-                .from('associations')
+            const { data, error } = await associationsTable()
                 .select('*')
                 .eq('owner_id', user.id)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
 
-            return (data || []).map(row => this.mapFromDatabase(row));
+            return (data || []).map((row: any) => this.mapFromDatabase(row));
         } catch (err) {
             console.error('[AssociationService] Error fetching user associations:', err);
             return [];
@@ -118,8 +119,7 @@ class AssociationService {
         }
 
         try {
-            const { data, error } = await supabase
-                .from('associations')
+            const { data, error } = await associationsTable()
                 .select('*')
                 .eq('id', id)
                 .single();
@@ -156,8 +156,7 @@ class AssociationService {
 
             const dbData = this.mapToDatabase(association);
 
-            const { data, error } = await supabase
-                .from('associations')
+            const { data, error } = await associationsTable()
                 .insert({
                     ...dbData,
                     owner_id: user.id,
@@ -206,8 +205,7 @@ class AssociationService {
         try {
             const dbData = this.mapToDatabase(data);
 
-            const { data: result, error } = await supabase
-                .from('associations')
+            const { data: result, error } = await associationsTable()
                 .update({
                     ...dbData,
                     updated_at: new Date().toISOString()
