@@ -7,8 +7,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import MarkdownEditor from "@/components/editor/MarkdownEditor";
 import { toast } from "sonner";
 import {
     BookOpen,
@@ -423,12 +423,22 @@ export default function SuperAdminKnowledgeBase() {
                         </div>
                         <div className="space-y-2">
                             <Label>Contenu *</Label>
-                            <Textarea
+                            <MarkdownEditor
                                 value={formData.content}
-                                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                                placeholder="Rédigez le contenu de l'article..."
-                                rows={12}
-                                className="font-mono text-sm"
+                                onChange={(content) => setFormData({ ...formData, content })}
+                                placeholder="# Guide
+
+Rédigez le contenu de l'article en Markdown...
+
+## Section 1
+
+Description de la procédure...
+
+## Section 2
+
+- Point 1
+- Point 2"
+                                minHeight="300px"
                             />
                         </div>
                         <div className="space-y-2">
