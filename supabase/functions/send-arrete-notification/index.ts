@@ -43,30 +43,74 @@ const handler = async (req: Request): Promise<Response> => {
       notifyAllCitizens
     }: ArreteNotificationRequest = await req.json();
 
+    console.log(`Processing notification for arrete: ${arreteNumero}`);
+
     let emailList: string[] = recipientEmails || [];
 
-    // If notifyAllCitizens is true, fetch all citizen emails
+    // If notifyAllCitizens is true, fetch citizens who have email_arretes enabled
     if (notifyAllCitizens) {
-      const { data: profiles, error } = await supabase
+      // First get users who have notification preferences with email_arretes = true
+      const { data: prefsWithArretes, error: prefsError } = await supabase
+        .from('notification_preferences')
+        .select('user_id')
+        .eq('email_arretes', true);
+
+      if (prefsError) {
+        console.error('Error fetching notification preferences:', prefsError);
+      }
+
+      const userIdsWithPrefs = prefsWithArretes?.map(p => p.user_id) || [];
+      console.log(`Found ${userIdsWithPrefs.length} users with email_arretes enabled`);
+
+      // Get emails for these users
+      if (userIdsWithPrefs.length > 0) {
+        const { data: profilesWithPrefs, error: profilesError } = await supabase
+          .from('profiles')
+          .select('email')
+          .in('user_id', userIdsWithPrefs)
+          .not('email', 'is', null);
+
+        if (profilesError) {
+          console.error('Error fetching profiles with prefs:', profilesError);
+        } else if (profilesWithPrefs) {
+          emailList = [...emailList, ...profilesWithPrefs.map(p => p.email).filter(Boolean)];
+        }
+      }
+
+      // Also get users who don't have preferences set (default to receiving arretes)
+      const { data: allProfiles, error: allProfilesError } = await supabase
         .from('profiles')
-        .select('email')
+        .select('user_id, email')
         .not('email', 'is', null);
 
-      if (error) {
-        console.error('Error fetching citizen emails:', error);
-      } else if (profiles) {
-        emailList = [...emailList, ...profiles.map(p => p.email).filter(Boolean)];
+      if (allProfilesError) {
+        console.error('Error fetching all profiles:', allProfilesError);
+      } else if (allProfiles) {
+        // Get user IDs who have explicitly set preferences
+        const { data: allPrefs } = await supabase
+          .from('notification_preferences')
+          .select('user_id');
+        
+        const usersWithPrefs = new Set((allPrefs || []).map(p => p.user_id));
+        
+        // Add users who haven't set preferences (default behavior is to receive notifications)
+        const defaultUsers = allProfiles.filter(p => !usersWithPrefs.has(p.user_id));
+        console.log(`Found ${defaultUsers.length} users with default preferences (will receive)`);
+        
+        emailList = [...emailList, ...defaultUsers.map(p => p.email).filter(Boolean)];
       }
     }
 
     // Remove duplicates
     emailList = [...new Set(emailList)];
+    console.log(`Total recipients after filtering: ${emailList.length}`);
 
     if (emailList.length === 0) {
+      console.log('No recipients found after filtering');
       return new Response(
-        JSON.stringify({ success: false, message: "Aucun destinataire trouvé" }),
+        JSON.stringify({ success: false, message: "Aucun destinataire trouvé avec les notifications arrêtés activées" }),
         {
-          status: 400,
+          status: 200,
           headers: { "Content-Type": "application/json", ...corsHeaders },
         }
       );
@@ -94,9 +138,11 @@ const handler = async (req: Request): Promise<Response> => {
 
     let successCount = 0;
     let errorCount = 0;
+    const errors: string[] = [];
 
     for (const batch of batches) {
       try {
+        console.log(`Sending batch of ${batch.length} emails`);
         const emailResponse = await resend.emails.send({
           from: "Mairie de Libreville <notifications@mairie.libreville.ga>",
           to: batch,
@@ -160,7 +206,8 @@ const handler = async (req: Request): Promise<Response> => {
                 <p style="margin: 5px 0;">BP : 44 Boulevard Triomphal/LBV</p>
                 <p style="margin: 5px 0;">Email : libreville@mairie.ga</p>
                 <p style="margin: 15px 0 0 0; font-size: 11px;">
-                  Vous recevez cet email car vous êtes inscrit(e) sur le portail citoyen de la Mairie de Libreville.
+                  Vous recevez cet email car vous avez activé les notifications pour les arrêtés municipaux.
+                  <br/>Pour modifier vos préférences, connectez-vous à votre espace citoyen.
                 </p>
               </footer>
             </body>
@@ -170,30 +217,45 @@ const handler = async (req: Request): Promise<Response> => {
 
         console.log("Batch emails sent:", emailResponse);
         successCount += batch.length;
-      } catch (batchError) {
+      } catch (batchError: any) {
         console.error("Error sending batch:", batchError);
         errorCount += batch.length;
+        errors.push(batchError.message || 'Unknown error');
       }
     }
 
     // Log the notification in correspondence_logs
-    await supabase.from('correspondence_logs').insert({
-      sender_id: (await supabase.auth.getUser()).data.user?.id || '00000000-0000-0000-0000-000000000000',
-      recipient_email: emailList.join(', '),
-      recipient_name: `${emailList.length} destinataires`,
-      subject: `Notification arrêté: ${arreteTitle}`,
-      content: `Notification de publication de l'arrêté ${arreteNumero}`,
-      status: errorCount === 0 ? 'SENT' : 'DELIVERED',
-      sent_at: new Date().toISOString(),
-      metadata: { arreteId, arreteNumero, successCount, errorCount }
-    });
+    try {
+      await supabase.from('correspondence_logs').insert({
+        sender_id: '00000000-0000-0000-0000-000000000000', // System sender
+        recipient_email: `${emailList.length} destinataires`,
+        recipient_name: `Notification arrêté - ${successCount} réussies, ${errorCount} échecs`,
+        subject: `Notification arrêté: ${arreteTitle}`,
+        content: `Notification de publication de l'arrêté ${arreteNumero}`,
+        status: errorCount === 0 ? 'SENT' : (successCount > 0 ? 'DELIVERED' : 'FAILED'),
+        sent_at: new Date().toISOString(),
+        metadata: { 
+          arreteId, 
+          arreteNumero, 
+          arreteType,
+          successCount, 
+          errorCount,
+          totalRecipients: emailList.length,
+          errors: errors.slice(0, 5) // Keep first 5 errors
+        }
+      });
+      console.log('Notification logged to correspondence_logs');
+    } catch (logError) {
+      console.error('Error logging notification:', logError);
+    }
 
     return new Response(
       JSON.stringify({ 
-        success: true, 
-        message: `Notification envoyée à ${successCount} destinataires`,
+        success: successCount > 0, 
+        message: `Notification envoyée à ${successCount} destinataires${errorCount > 0 ? ` (${errorCount} échecs)` : ''}`,
         successCount,
-        errorCount
+        errorCount,
+        totalRecipients: emailList.length
       }),
       {
         status: 200,

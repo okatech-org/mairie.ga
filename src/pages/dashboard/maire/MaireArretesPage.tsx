@@ -35,6 +35,7 @@ import {
     ArreteStatus 
 } from "@/services/arrete-service";
 import { generateArretePDF } from "@/utils/generateArretePDF";
+import { NotificationHistoryPanel } from "@/components/dashboard/maire/NotificationHistoryPanel";
 
 const typeLabels: Record<ArreteType, string> = {
     'MUNICIPAL': 'Arrêté Municipal',
@@ -363,6 +364,9 @@ export default function MaireArretesPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Notification History */}
+            <NotificationHistoryPanel />
 
             {/* Filters */}
             <div className="flex flex-col md:flex-row gap-4">
