@@ -18,13 +18,16 @@ import {
     Users,
     ThumbsUp,
     ThumbsDown,
-    MinusCircle
+    MinusCircle,
+    Download
 } from "lucide-react";
+import { toast } from 'sonner';
 import { 
     deliberationService, 
     Deliberation, 
     DeliberationResult
 } from "@/services/deliberation-service";
+import { generateDeliberationPDF } from "@/utils/generateDeliberationPDF";
 
 const resultLabels: Record<DeliberationResult, string> = {
     'ADOPTED': 'Adoptée',
@@ -325,7 +328,27 @@ export default function DeliberationsPubliquesPage() {
                                         </div>
                                     )}
                                 </div>
-                                <DialogFooter>
+                                <DialogFooter className="flex-col sm:flex-row gap-2">
+                                    <Button 
+                                        variant="outline" 
+                                        onClick={async () => {
+                                            try {
+                                                const { url, filename } = await generateDeliberationPDF(selectedDeliberation);
+                                                const link = document.createElement('a');
+                                                link.href = url;
+                                                link.download = filename;
+                                                link.click();
+                                                URL.revokeObjectURL(url);
+                                                toast.success('PDF généré avec succès');
+                                            } catch (error) {
+                                                console.error('Error generating PDF:', error);
+                                                toast.error('Erreur lors de la génération du PDF');
+                                            }
+                                        }}
+                                    >
+                                        <Download className="h-4 w-4 mr-2" />
+                                        Télécharger PDF
+                                    </Button>
                                     <Button variant="outline" onClick={() => setSelectedDeliberation(null)}>
                                         Fermer
                                     </Button>

@@ -772,6 +772,45 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_preferences: {
+        Row: {
+          created_at: string | null
+          email_arretes: boolean | null
+          email_deliberations: boolean | null
+          email_services: boolean | null
+          email_urgences: boolean | null
+          id: string
+          phone_number: string | null
+          sms_enabled: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          email_arretes?: boolean | null
+          email_deliberations?: boolean | null
+          email_services?: boolean | null
+          email_urgences?: boolean | null
+          id?: string
+          phone_number?: string | null
+          sms_enabled?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          email_arretes?: boolean | null
+          email_deliberations?: boolean | null
+          email_services?: boolean | null
+          email_urgences?: boolean | null
+          id?: string
+          phone_number?: string | null
+          sms_enabled?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       organizations: {
         Row: {
           address: string | null
