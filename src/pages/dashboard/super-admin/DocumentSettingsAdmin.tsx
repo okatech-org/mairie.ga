@@ -25,12 +25,17 @@ import {
   Image,
   Mail,
   MapPin,
-  Eye
+  Eye,
+  History,
+  Building,
+  Filter,
+  Clock
 } from 'lucide-react';
 
 interface DocumentSettings {
   id: string;
   service_role: string;
+  organization_id: string | null;
   province: string;
   commune: string;
   cabinet: string;
@@ -43,6 +48,27 @@ interface DocumentSettings {
   primary_color: string;
   created_at: string;
   updated_at: string;
+  organization?: { id: string; name: string } | null;
+}
+
+interface AuditEntry {
+  id: string;
+  settings_id: string;
+  organization_id: string | null;
+  user_id: string;
+  user_email: string | null;
+  user_name: string | null;
+  action: string;
+  field_changed: string | null;
+  old_value: string | null;
+  new_value: string | null;
+  changes: any;
+  created_at: string;
+}
+
+interface Organization {
+  id: string;
+  name: string;
 }
 
 const PREDEFINED_ROLES = [
@@ -53,8 +79,9 @@ const PREDEFINED_ROLES = [
   { value: 'agent', label: 'Agent' },
 ];
 
-const DEFAULT_VALUES: Omit<DocumentSettings, 'id' | 'created_at' | 'updated_at'> = {
+const DEFAULT_VALUES: Omit<DocumentSettings, 'id' | 'created_at' | 'updated_at' | 'organization'> = {
   service_role: '',
+  organization_id: null,
   province: "Province de l'Estuaire",
   commune: 'Commune de Libreville',
   cabinet: 'CABINET DU MAIRE',
@@ -69,12 +96,15 @@ const DEFAULT_VALUES: Omit<DocumentSettings, 'id' | 'created_at' | 'updated_at'>
 
 export default function DocumentSettingsAdmin() {
   const [settings, setSettings] = useState<DocumentSettings[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [editingSettings, setEditingSettings] = useState<Partial<DocumentSettings> | null>(null);
   const [activeTab, setActiveTab] = useState<string>('');
-  const [previewSettings, setPreviewSettings] = useState<DocumentSettings | null>(null);
+  const [selectedOrganization, setSelectedOrganization] = useState<string>('all');
   const [generatingPDF, setGeneratingPDF] = useState(false);
   
   const { currentUser } = useDemo();
@@ -83,21 +113,45 @@ export default function DocumentSettingsAdmin() {
 
   useEffect(() => {
     fetchSettings();
+    fetchOrganizations();
   }, []);
+
+  useEffect(() => {
+    if (settings.length > 0) {
+      fetchAuditLogs();
+    }
+  }, [settings]);
+
+  const fetchOrganizations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('id, name')
+        .order('name');
+
+      if (error) throw error;
+      setOrganizations(data || []);
+    } catch (error: any) {
+      console.error('Error fetching organizations:', error);
+    }
+  };
 
   const fetchSettings = async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('service_document_settings')
-        .select('*')
+        .select(`
+          *,
+          organization:organizations(id, name)
+        `)
         .order('service_role');
 
       if (error) throw error;
       
       setSettings(data || []);
       if (data && data.length > 0 && !activeTab) {
-        setActiveTab(data[0].service_role);
+        setActiveTab(data[0].id);
       }
     } catch (error: any) {
       toast.error('Erreur lors du chargement des paramètres');
@@ -107,14 +161,71 @@ export default function DocumentSettingsAdmin() {
     }
   };
 
+  const fetchAuditLogs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('document_settings_audit')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      setAuditLogs((data || []) as AuditEntry[]);
+    } catch (error: any) {
+      console.error('Error fetching audit logs:', error);
+    }
+  };
+
+  const logAuditEntry = async (
+    settingsId: string, 
+    action: 'CREATE' | 'UPDATE' | 'DELETE',
+    oldData?: Partial<DocumentSettings>,
+    newData?: Partial<DocumentSettings>
+  ) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const changes: Record<string, { old: string; new: string }> = {};
+      
+      if (action === 'UPDATE' && oldData && newData) {
+        const fields = ['province', 'commune', 'cabinet', 'republic', 'motto', 
+                       'signature_title', 'footer_address', 'footer_email', 'logo_url', 'primary_color'];
+        fields.forEach(field => {
+          const oldVal = (oldData as any)[field];
+          const newVal = (newData as any)[field];
+          if (oldVal !== newVal) {
+            changes[field] = { old: oldVal || '', new: newVal || '' };
+          }
+        });
+      }
+
+      await supabase.from('document_settings_audit').insert({
+        settings_id: settingsId,
+        organization_id: newData?.organization_id || oldData?.organization_id || null,
+        user_id: user.id,
+        user_email: user.email,
+        user_name: currentUser?.name || user.email,
+        action,
+        changes: Object.keys(changes).length > 0 ? changes : null,
+      });
+    } catch (error) {
+      console.error('Error logging audit entry:', error);
+    }
+  };
+
   const handleSave = async (settingsData: Partial<DocumentSettings>) => {
     setSaving(true);
     try {
       if (settingsData.id) {
+        // Get old data for audit
+        const oldSetting = settings.find(s => s.id === settingsData.id);
+        
         // Update existing
         const { error } = await supabase
           .from('service_document_settings')
           .update({
+            organization_id: settingsData.organization_id,
             province: settingsData.province,
             commune: settingsData.commune,
             cabinet: settingsData.cabinet,
@@ -129,13 +240,18 @@ export default function DocumentSettingsAdmin() {
           .eq('id', settingsData.id);
 
         if (error) throw error;
+        
+        // Log audit
+        await logAuditEntry(settingsData.id, 'UPDATE', oldSetting, settingsData);
+        
         toast.success('Paramètres mis à jour avec succès');
       } else {
         // Insert new
-        const { error } = await supabase
+        const { data: newData, error } = await supabase
           .from('service_document_settings')
           .insert({
             service_role: settingsData.service_role,
+            organization_id: settingsData.organization_id,
             province: settingsData.province,
             commune: settingsData.commune,
             cabinet: settingsData.cabinet,
@@ -146,9 +262,17 @@ export default function DocumentSettingsAdmin() {
             footer_email: settingsData.footer_email,
             logo_url: settingsData.logo_url,
             primary_color: settingsData.primary_color,
-          });
+          })
+          .select()
+          .single();
 
         if (error) throw error;
+        
+        // Log audit
+        if (newData) {
+          await logAuditEntry(newData.id, 'CREATE', undefined, settingsData);
+        }
+        
         toast.success('Nouveau service ajouté avec succès');
       }
 
@@ -167,17 +291,55 @@ export default function DocumentSettingsAdmin() {
     if (!confirm(`Êtes-vous sûr de vouloir supprimer les paramètres pour "${role}" ?`)) return;
 
     try {
+      const deletedSetting = settings.find(s => s.id === id);
+      
       const { error } = await supabase
         .from('service_document_settings')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
+      
+      // Log audit
+      if (deletedSetting) {
+        await logAuditEntry(id, 'DELETE', deletedSetting);
+      }
+      
       toast.success('Paramètres supprimés');
       fetchSettings();
     } catch (error: any) {
       toast.error('Erreur lors de la suppression');
       console.error('Error:', error);
+    }
+  };
+
+  const getFilteredSettings = () => {
+    if (selectedOrganization === 'all') return settings;
+    if (selectedOrganization === 'none') return settings.filter(s => !s.organization_id);
+    return settings.filter(s => s.organization_id === selectedOrganization);
+  };
+
+  const getOrganizationName = (orgId: string | null) => {
+    if (!orgId) return 'Global (toutes les organisations)';
+    const org = organizations.find(o => o.id === orgId);
+    return org ? org.name : 'Organisation inconnue';
+  };
+
+  const getActionLabel = (action: string) => {
+    switch (action) {
+      case 'CREATE': return 'Création';
+      case 'UPDATE': return 'Modification';
+      case 'DELETE': return 'Suppression';
+      default: return action;
+    }
+  };
+
+  const getActionColor = (action: string) => {
+    switch (action) {
+      case 'CREATE': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'UPDATE': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'DELETE': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -264,27 +426,61 @@ export default function DocumentSettingsAdmin() {
             
             {editingSettings && (
               <div className="grid gap-4 py-4">
-                {/* Service Role */}
+                {/* Service Role & Organization */}
                 {!editingSettings.id && (
-                  <div className="space-y-2">
-                    <Label htmlFor="service_role">Rôle du service *</Label>
-                    <Select
-                      value={editingSettings.service_role}
-                      onValueChange={(v) => setEditingSettings({ ...editingSettings, service_role: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un rôle" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PREDEFINED_ROLES.filter(r => !settings.some(s => s.service_role === r.value)).map(role => (
-                          <SelectItem key={role.value} value={role.value}>
-                            {role.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="service_role">Rôle du service *</Label>
+                      <Select
+                        value={editingSettings.service_role}
+                        onValueChange={(v) => setEditingSettings({ ...editingSettings, service_role: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner un rôle" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PREDEFINED_ROLES.map(role => (
+                            <SelectItem key={role.value} value={role.value}>
+                              {role.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
                 )}
+
+                {/* Organization selector */}
+                <div className="space-y-2">
+                  <Label htmlFor="organization_id">Organisation</Label>
+                  <Select
+                    value={editingSettings.organization_id || 'global'}
+                    onValueChange={(v) => setEditingSettings({ 
+                      ...editingSettings, 
+                      organization_id: v === 'global' ? null : v 
+                    })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner une organisation" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="global">
+                        <span className="flex items-center gap-2">
+                          <Building className="h-4 w-4" />
+                          Global (toutes les organisations)
+                        </span>
+                      </SelectItem>
+                      {organizations.map(org => (
+                        <SelectItem key={org.id} value={org.id}>
+                          {org.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Laissez "Global" pour appliquer ces paramètres à toutes les organisations
+                  </p>
+                </div>
 
                 {/* Header Section */}
                 <div className="space-y-4">
@@ -448,8 +644,8 @@ export default function DocumentSettingsAdmin() {
         )}
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Filters and Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Services configurés</CardDescription>
@@ -458,50 +654,146 @@ export default function DocumentSettingsAdmin() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Dernière mise à jour</CardDescription>
+            <CardDescription>Organisations</CardDescription>
+            <CardTitle className="text-3xl">{organizations.length}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Dernière modification</CardDescription>
             <CardTitle className="text-lg">
-              {settings.length > 0 
-                ? new Date(Math.max(...settings.map(s => new Date(s.updated_at).getTime()))).toLocaleDateString('fr-FR')
+              {auditLogs.length > 0 
+                ? new Date(auditLogs[0].created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
                 : '-'
               }
             </CardTitle>
           </CardHeader>
         </Card>
-        <Card>
+        <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setHistoryDialogOpen(true)}>
           <CardHeader className="pb-2">
-            <CardDescription>Types de documents</CardDescription>
-            <CardTitle className="text-3xl">12</CardTitle>
+            <CardDescription className="flex items-center gap-2">
+              <History className="h-4 w-4" />
+              Historique
+            </CardDescription>
+            <CardTitle className="text-lg flex items-center gap-2">
+              {auditLogs.length} modifications
+              <Badge variant="outline" className="text-xs">Voir</Badge>
+            </CardTitle>
           </CardHeader>
         </Card>
       </div>
 
+      {/* Organization Filter */}
+      {isSuperAdmin && organizations.length > 0 && (
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <Label className="text-sm">Filtrer par organisation:</Label>
+          </div>
+          <Select value={selectedOrganization} onValueChange={setSelectedOrganization}>
+            <SelectTrigger className="w-[280px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toutes les organisations</SelectItem>
+              <SelectItem value="none">Global uniquement</SelectItem>
+              {organizations.map(org => (
+                <SelectItem key={org.id} value={org.id}>{org.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {/* History Dialog */}
+      <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" />
+              Historique des modifications
+            </DialogTitle>
+            <DialogDescription>
+              Dernières modifications apportées aux paramètres de documents
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+            {auditLogs.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">Aucune modification enregistrée</p>
+            ) : (
+              auditLogs.map(log => (
+                <div key={log.id} className="border rounded-lg p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Badge className={getActionColor(log.action)}>
+                        {getActionLabel(log.action)}
+                      </Badge>
+                      <span className="text-sm font-medium">{log.user_name || log.user_email}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {new Date(log.created_at).toLocaleString('fr-FR')}
+                    </span>
+                  </div>
+                  
+                  {log.changes && Object.keys(log.changes).length > 0 && (
+                    <div className="bg-muted/50 rounded p-3 text-sm space-y-1">
+                      {Object.entries(log.changes).map(([field, values]: [string, any]) => (
+                        <div key={field} className="flex items-start gap-2">
+                          <span className="font-medium min-w-[120px]">{field}:</span>
+                          <span className="text-red-600 dark:text-red-400 line-through">{values.old || '(vide)'}</span>
+                          <span className="text-muted-foreground">→</span>
+                          <span className="text-green-600 dark:text-green-400">{values.new || '(vide)'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Settings by Service */}
-      {settings.length === 0 ? (
+      {getFilteredSettings().length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Settings className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="font-medium text-lg mb-2">Aucun paramètre configuré</h3>
             <p className="text-muted-foreground text-center mb-4">
-              Commencez par ajouter les paramètres de mise en page pour un service
+              {selectedOrganization !== 'all' 
+                ? 'Aucun paramètre pour cette organisation'
+                : 'Commencez par ajouter les paramètres de mise en page pour un service'}
             </p>
-            <Button onClick={() => openEditDialog()}>
-              <Plus className="h-4 w-4 mr-2" />
-              Ajouter un service
-            </Button>
+            {isSuperAdmin && (
+              <Button onClick={() => openEditDialog()}>
+                <Plus className="h-4 w-4 mr-2" />
+                Ajouter un service
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="flex-wrap h-auto">
-            {settings.map(setting => (
-              <TabsTrigger key={setting.service_role} value={setting.service_role}>
-                {getRoleLabel(setting.service_role)}
+            {getFilteredSettings().map(setting => (
+              <TabsTrigger key={setting.id} value={setting.id}>
+                <span className="flex items-center gap-2">
+                  {getRoleLabel(setting.service_role)}
+                  {setting.organization && (
+                    <Badge variant="secondary" className="text-[10px] px-1">
+                      {setting.organization.name.substring(0, 15)}
+                    </Badge>
+                  )}
+                </span>
               </TabsTrigger>
             ))}
           </TabsList>
 
-          {settings.map(setting => (
-            <TabsContent key={setting.service_role} value={setting.service_role}>
+          {getFilteredSettings().map(setting => (
+            <TabsContent key={setting.id} value={setting.id}>
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 {/* Settings Card */}
                 <Card className="xl:col-span-2">
@@ -512,9 +804,18 @@ export default function DocumentSettingsAdmin() {
                         <Badge variant="outline" className="font-mono text-xs">
                           {setting.service_role}
                         </Badge>
+                        {setting.organization && (
+                          <Badge variant="secondary" className="text-xs">
+                            <Building className="h-3 w-3 mr-1" />
+                            {setting.organization.name}
+                          </Badge>
+                        )}
                       </CardTitle>
                       <CardDescription>
-                        Mis à jour le {new Date(setting.updated_at).toLocaleDateString('fr-FR')}
+                        {setting.organization_id 
+                          ? `Organisation: ${getOrganizationName(setting.organization_id)}`
+                          : 'Paramètres globaux (toutes organisations)'}
+                        {' • '}Mis à jour le {new Date(setting.updated_at).toLocaleDateString('fr-FR')}
                       </CardDescription>
                     </div>
                     <div className="flex gap-2">
