@@ -76,9 +76,12 @@ interface Organization {
 const PREDEFINED_ROLES = [
   { value: 'maire', label: 'Maire' },
   { value: 'secretaire_general', label: 'Secrétaire Général' },
+  { value: 'directeur', label: 'Directeur Général' },
   { value: 'chef_service', label: 'Chef de Service' },
-  { value: 'directeur', label: 'Directeur' },
-  { value: 'agent', label: 'Agent' },
+  { value: 'agent', label: 'Agent Municipal' },
+  { value: 'etat_civil', label: 'État Civil' },
+  { value: 'urbanisme', label: 'Urbanisme' },
+  { value: 'comptabilite', label: 'Comptabilité' },
 ];
 
 const DEFAULT_VALUES: Omit<DocumentSettings, 'id' | 'created_at' | 'updated_at' | 'organization'> = {
