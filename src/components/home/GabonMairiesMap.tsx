@@ -940,8 +940,7 @@ const GabonMairiesMap = () => {
             <Button 
               onClick={() => {
                 if (selectedMairie && selectedServiceForRdv) {
-                  navigate(`/entity/${selectedMairie.id}?service=${selectedServiceForRdv.id}&action=rdv`);
-                  toast.success('Redirection vers la prise de rendez-vous...');
+                  navigate(`/rendez-vous?organization=${selectedMairie.id}&service=${selectedServiceForRdv.id}`);
                 }
                 setShowAppointmentDialog(false);
               }}
