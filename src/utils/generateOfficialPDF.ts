@@ -139,29 +139,33 @@ const DEFAULT_MUNICIPAL_SETTINGS: MunicipalSettings = {
 
 async function fetchMunicipalSettings(serviceRole: string): Promise<MunicipalSettings> {
     try {
-        const { data } = await supabase
-            .from('service_document_settings' as any)
+        const { data, error } = await supabase
+            .from('service_document_settings')
             .select('*')
             .eq('service_role', serviceRole)
-            .single();
+            .maybeSingle();
+
+        if (error) {
+            console.warn('Error fetching document settings:', error.message);
+            return DEFAULT_MUNICIPAL_SETTINGS;
+        }
 
         if (data) {
-            const s = data as any;
             return {
-                province: s.province || DEFAULT_MUNICIPAL_SETTINGS.province,
-                commune: s.commune || DEFAULT_MUNICIPAL_SETTINGS.commune,
-                cabinet: s.cabinet || DEFAULT_MUNICIPAL_SETTINGS.cabinet,
-                republic: s.republic || DEFAULT_MUNICIPAL_SETTINGS.republic,
-                motto: s.motto || DEFAULT_MUNICIPAL_SETTINGS.motto,
-                signature_default_title: s.signature_title || DEFAULT_MUNICIPAL_SETTINGS.signature_default_title,
-                footer_address: s.footer_address || DEFAULT_MUNICIPAL_SETTINGS.footer_address,
-                footer_email: s.footer_email || DEFAULT_MUNICIPAL_SETTINGS.footer_email,
-                logo_url: s.logo_url || DEFAULT_MUNICIPAL_SETTINGS.logo_url,
-                primary_color: s.primary_color || DEFAULT_MUNICIPAL_SETTINGS.primary_color
+                province: data.province?.toUpperCase() || DEFAULT_MUNICIPAL_SETTINGS.province,
+                commune: data.commune?.toUpperCase() || DEFAULT_MUNICIPAL_SETTINGS.commune,
+                cabinet: data.cabinet?.toUpperCase() || DEFAULT_MUNICIPAL_SETTINGS.cabinet,
+                republic: data.republic?.toUpperCase() || DEFAULT_MUNICIPAL_SETTINGS.republic,
+                motto: data.motto || DEFAULT_MUNICIPAL_SETTINGS.motto,
+                signature_default_title: data.signature_title || DEFAULT_MUNICIPAL_SETTINGS.signature_default_title,
+                footer_address: data.footer_address || DEFAULT_MUNICIPAL_SETTINGS.footer_address,
+                footer_email: data.footer_email || DEFAULT_MUNICIPAL_SETTINGS.footer_email,
+                logo_url: data.logo_url || DEFAULT_MUNICIPAL_SETTINGS.logo_url,
+                primary_color: data.primary_color || DEFAULT_MUNICIPAL_SETTINGS.primary_color
             };
         }
     } catch (e) {
-        // Silently fallback to defaults if table doesn't exist
+        console.warn('Fallback to default document settings');
     }
     return DEFAULT_MUNICIPAL_SETTINGS;
 }

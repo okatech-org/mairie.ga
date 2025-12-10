@@ -87,6 +87,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {
                     title: "SYSTÈME",
                     items: [
+                        { label: "Paramètres Documents", icon: FileText, path: "/dashboard/super-admin/document-settings" },
                         { label: "Paramètres", icon: Settings, path: "/dashboard/super-admin/settings" },
                         { label: "Sécurité & Logs", icon: Shield, path: "/dashboard/super-admin/settings?tab=security" },
                     ]
