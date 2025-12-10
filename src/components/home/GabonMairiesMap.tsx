@@ -6,7 +6,7 @@ import { provinces } from '@/data/mock-mairies-gabon';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Loader2, MapPin, Building2, Users, Search, X, ExternalLink, Briefcase } from 'lucide-react';
+import { Loader2, MapPin, Building2, Users, Search, X, ExternalLink, Briefcase, Navigation, LocateFixed } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { organizationService, Organization } from '@/services/organizationService';
 import { supabase } from '@/integrations/supabase/client';
@@ -45,6 +45,9 @@ const GabonMairiesMap = () => {
   const [mairies, setMairies] = useState<Organization[]>([]);
   const [selectedMairieServices, setSelectedMairieServices] = useState<Service[]>([]);
   const [loadingServices, setLoadingServices] = useState(false);
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [locatingUser, setLocatingUser] = useState(false);
+  const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
 
   // Fetch mairies from database
   useEffect(() => {
@@ -172,6 +175,77 @@ const GabonMairiesMap = () => {
         duration: 1500
       });
     }
+  };
+
+  // Handle geolocation
+  const handleGeolocate = () => {
+    if (!navigator.geolocation) {
+      alert('La géolocalisation n\'est pas supportée par votre navigateur');
+      return;
+    }
+    
+    setLocatingUser(true);
+    
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { longitude, latitude } = position.coords;
+        setUserLocation([longitude, latitude]);
+        
+        // Add or update user marker
+        if (map.current) {
+          // Remove existing user marker
+          if (userMarkerRef.current) {
+            userMarkerRef.current.remove();
+          }
+          
+          // Create user marker element
+          const el = document.createElement('div');
+          el.className = 'user-location-marker';
+          el.style.width = '20px';
+          el.style.height = '20px';
+          el.style.backgroundColor = '#3b82f6';
+          el.style.borderRadius = '50%';
+          el.style.border = '3px solid white';
+          el.style.boxShadow = '0 0 10px rgba(59, 130, 246, 0.5)';
+          el.style.animation = 'pulse 2s infinite';
+          
+          // Add pulse animation style
+          const style = document.createElement('style');
+          style.textContent = `
+            @keyframes pulse {
+              0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
+              70% { box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); }
+              100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+            }
+          `;
+          document.head.appendChild(style);
+          
+          userMarkerRef.current = new mapboxgl.Marker(el)
+            .setLngLat([longitude, latitude])
+            .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML('<div style="padding: 8px;"><strong>Ma position</strong></div>'))
+            .addTo(map.current);
+          
+          // Fly to user location
+          map.current.flyTo({
+            center: [longitude, latitude],
+            zoom: 10,
+            duration: 1500
+          });
+        }
+        
+        setLocatingUser(false);
+      },
+      (error) => {
+        console.error('Geolocation error:', error);
+        let message = 'Impossible de vous localiser';
+        if (error.code === 1) message = 'Accès à la localisation refusé';
+        if (error.code === 2) message = 'Position non disponible';
+        if (error.code === 3) message = 'Délai d\'attente dépassé';
+        alert(message);
+        setLocatingUser(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
   };
 
   // Clear filter
@@ -407,6 +481,22 @@ const GabonMairiesMap = () => {
             </div>
           )}
 
+          {/* Geolocation Button */}
+          <Button
+            variant="secondary"
+            size="icon"
+            className="absolute top-4 left-4 bg-card/95 backdrop-blur-sm shadow-lg hover:bg-card"
+            onClick={handleGeolocate}
+            disabled={locatingUser}
+            title="Me localiser"
+          >
+            {locatingUser ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <LocateFixed className="h-4 w-4" />
+            )}
+          </Button>
+
           {/* Legend Overlay */}
           <div className="absolute bottom-4 left-4 bg-card/95 backdrop-blur-sm rounded-lg p-3 shadow-lg max-w-[200px]">
             <p className="text-xs font-medium mb-2">Légende</p>
@@ -414,10 +504,16 @@ const GabonMairiesMap = () => {
               <div className="w-4 h-4 rounded-full bg-primary border-2 border-white shadow" />
               <span>Chef-lieu province</span>
             </div>
-            <div className="flex items-center gap-2 text-xs">
+            <div className="flex items-center gap-2 text-xs mb-1">
               <div className="w-3 h-3 rounded-full bg-muted-foreground border border-white shadow" />
               <span>Commune</span>
             </div>
+            {userLocation && (
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-3 h-3 rounded-full bg-blue-500 border border-white shadow" />
+                <span>Ma position</span>
+              </div>
+            )}
           </div>
         </div>
 
