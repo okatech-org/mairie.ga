@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
@@ -31,6 +31,7 @@ import {
     ArreteType, 
     ArreteStatus 
 } from "@/services/arrete-service";
+import { generateArretePDF } from "@/utils/generateArretePDF";
 
 const typeLabels: Record<ArreteType, string> = {
     'MUNICIPAL': 'Arrêté Municipal',
@@ -83,6 +84,7 @@ export default function MaireArretesPage() {
     const [submitting, setSubmitting] = useState(false);
     const [selectedArrete, setSelectedArrete] = useState<Arrete | null>(null);
     const [formData, setFormData] = useState<ArreteForm>(defaultForm);
+    const [downloadingPDF, setDownloadingPDF] = useState(false);
 
     useEffect(() => {
         loadArretes();
@@ -214,6 +216,25 @@ export default function MaireArretesPage() {
         } catch (err) {
             toast.error("Erreur lors de la suppression");
         }
+    };
+
+    const handleDownloadPDF = async (arrete: Arrete) => {
+        setDownloadingPDF(true);
+        try {
+            const { url, filename } = await generateArretePDF(arrete);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            toast.success("PDF téléchargé avec succès");
+        } catch (err) {
+            console.error('Error generating PDF:', err);
+            toast.error("Erreur lors de la génération du PDF");
+        }
+        setDownloadingPDF(false);
     };
 
     const filteredArretes = arretes.filter(a => {
@@ -640,8 +661,16 @@ Rédigez le contenu de l'arrêté...
                                 <Button variant="outline" onClick={() => setSelectedArrete(null)}>
                                     Fermer
                                 </Button>
-                                <Button variant="outline" className="gap-2">
-                                    <Download className="h-4 w-4" />
+                                <Button 
+                                    className="gap-2"
+                                    onClick={() => handleDownloadPDF(selectedArrete)}
+                                    disabled={downloadingPDF}
+                                >
+                                    {downloadingPDF ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <Download className="h-4 w-4" />
+                                    )}
                                     Télécharger PDF
                                 </Button>
                             </DialogFooter>
