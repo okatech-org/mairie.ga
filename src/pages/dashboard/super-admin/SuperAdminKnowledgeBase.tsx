@@ -429,6 +429,17 @@ export default function SuperAdminKnowledgeBase() {
                                                             <StatusIcon className="h-3 w-3 mr-1" />
                                                             {statusConfig[article.status]?.label}
                                                         </Badge>
+                                                        {article.hasEmbedding ? (
+                                                            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                                                                <Sparkles className="h-3 w-3 mr-1" />
+                                                                Indexé
+                                                            </Badge>
+                                                        ) : (
+                                                            <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/20">
+                                                                <Database className="h-3 w-3 mr-1" />
+                                                                Non indexé
+                                                            </Badge>
+                                                        )}
                                                     </div>
                                                     <h3 className="font-semibold">{article.title}</h3>
                                                     <p className="text-sm text-muted-foreground mt-1 line-clamp-2">

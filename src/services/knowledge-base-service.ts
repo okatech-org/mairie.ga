@@ -21,6 +21,7 @@ export interface KBArticle {
   metadata: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
+  hasEmbedding?: boolean;
 }
 
 const kbTable = () => (supabase as any).from('knowledge_base');
@@ -284,7 +285,8 @@ class KnowledgeBaseService {
       helpfulCount: row.helpful_count as number || 0,
       metadata: (row.metadata as Record<string, unknown>) || {},
       createdAt: row.created_at as string,
-      updatedAt: row.updated_at as string
+      updatedAt: row.updated_at as string,
+      hasEmbedding: row.embedding !== null && row.embedding !== undefined
     };
   }
 }
