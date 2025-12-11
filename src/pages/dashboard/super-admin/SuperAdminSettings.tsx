@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Save, AlertTriangle, Bell, Shield, Database, Mail, RefreshCw, XCircle, CheckCircle2, Bot, Clock, Loader2 } from "lucide-react";
-import DashboardLayout from "@/layouts/DashboardLayout";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -174,14 +173,13 @@ export default function SuperAdminSettings() {
     };
 
     return (
-        <DashboardLayout>
-            <div className="space-y-8 max-w-4xl mx-auto pb-20">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-800">Paramètres Système</h1>
-                    <p className="text-muted-foreground">
-                        Configuration globale de la plateforme consulaire
-                    </p>
-                </div>
+        <div className="space-y-8 max-w-4xl mx-auto pb-20">
+            <div>
+                <h1 className="text-3xl font-bold text-foreground">Paramètres Système</h1>
+                <p className="text-muted-foreground">
+                    Configuration globale de la plateforme consulaire
+                </p>
+            </div>
 
                 {/* ALERTS */}
                 {error && (
@@ -699,6 +697,5 @@ export default function SuperAdminSettings() {
                     </Button>
                 </div>
             </div>
-        </DashboardLayout>
     );
 }
