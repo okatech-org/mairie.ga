@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import DashboardLayout from "@/layouts/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -96,21 +95,18 @@ export default function OrganizationSettingsPage() {
 
     if (!organization) {
         return (
-            <DashboardLayout>
-                <div className="flex items-center justify-center h-96">
-                    <div className="text-center space-y-3">
-                        <Building2 className="w-16 h-16 mx-auto text-muted-foreground/50" />
-                        <h2 className="text-xl font-semibold text-muted-foreground">Organisation non trouvée</h2>
-                        <p className="text-sm text-muted-foreground">Veuillez sélectionner une organisation valide.</p>
-                    </div>
+            <div className="flex items-center justify-center h-96">
+                <div className="text-center space-y-3">
+                    <Building2 className="w-16 h-16 mx-auto text-muted-foreground/50" />
+                    <h2 className="text-xl font-semibold text-muted-foreground">Organisation non trouvée</h2>
+                    <p className="text-sm text-muted-foreground">Veuillez sélectionner une organisation valide.</p>
                 </div>
-            </DashboardLayout>
+            </div>
         );
     }
 
     return (
-        <DashboardLayout>
-            <div className="space-y-6 animate-fade-in">
+        <div className="space-y-6 animate-fade-in">
                 {/* Header */}
                 <div className="neu-raised p-6 rounded-xl">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -464,6 +460,5 @@ export default function OrganizationSettingsPage() {
                     })}
                 </Tabs>
             </div>
-        </DashboardLayout>
     );
 }
