@@ -190,6 +190,10 @@ export interface IBoiteConversation {
     participants?: IBoiteParticipant[];
     messages?: IBoiteMessage[];
     unreadCount?: number;
+
+    // Champs calculés (peuplés par le service pour l'affichage)
+    displayName?: string;
+    avatarUrl?: string;
 }
 
 /**
@@ -255,6 +259,9 @@ export interface IBoiteMessage {
     };
     replyTo?: IBoiteMessage;
     isRead?: boolean;
+
+    // Champs calculés (peuplés par le service pour l'affichage)
+    senderName?: string;
 }
 
 /**

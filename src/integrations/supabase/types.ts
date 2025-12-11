@@ -1782,6 +1782,53 @@ export type Database = {
           },
         ]
       }
+      user_environments: {
+        Row: {
+          created_at: string | null
+          environment: string
+          id: string
+          is_active: boolean | null
+          metadata: Json | null
+          organization_id: string | null
+          permissions: Json | null
+          role: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          environment: string
+          id?: string
+          is_active?: boolean | null
+          metadata?: Json | null
+          organization_id?: string | null
+          permissions?: Json | null
+          role: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          environment?: string
+          id?: string
+          is_active?: boolean | null
+          metadata?: Json | null
+          organization_id?: string | null
+          permissions?: Json | null
+          role?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_environments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string

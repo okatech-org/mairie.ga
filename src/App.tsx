@@ -74,6 +74,7 @@ import CitizenSettingsPage from './pages/dashboard/citizen/CitizenSettingsPage';
 import DashboardServicesPage from './pages/dashboard/DashboardServicesPage';
 import SettingsPage from './pages/SettingsPage';
 import MessagingPage from "./pages/MessagingPage";
+import IBoitePage from "./pages/IBoitePage";
 import IAstedInterfaceWrapper from "@/components/iasted/IAstedInterfaceWrapper";
 import ServicesCatalog from "./pages/ServicesCatalog";
 
@@ -140,7 +141,7 @@ const App = () => (
                         </Route>
 
                         <Route path="/messaging" element={<MessagingPage />} />
-                        <Route path="/iboite" element={<MessagingPage />} />
+                        <Route path="/iboite" element={<IBoitePage />} />
                         <Route path="/correspondance" element={<CorrespondancePage />} />
                         <Route path="/settings" element={<SettingsPage />} />
 

@@ -630,6 +630,14 @@ class IBoiteServiceClass {
     }
 
     private mapConversation(data: any, participants: any[]): IBoiteConversation {
+        // Calculer le displayName à partir des participants
+        const otherParticipants = (participants || data.participants || []).filter(
+            (p: any) => p.user
+        );
+        const firstOther = otherParticipants[0]?.user;
+        const displayName = data.subject ||
+            (firstOther ? `${firstOther.first_name || ''} ${firstOther.last_name || ''}`.trim() : 'Conversation');
+
         return {
             id: data.id,
             conversationType: data.conversation_type as ConversationType,
@@ -645,7 +653,9 @@ class IBoiteServiceClass {
             lastMessageSenderId: undefined,
             unreadCount: 0,
             createdAt: data.created_at,
-            updatedAt: data.updated_at || data.created_at
+            updatedAt: data.updated_at || data.created_at,
+            displayName,
+            avatarUrl: firstOther?.avatar_url
         };
     }
 
@@ -682,6 +692,7 @@ class IBoiteServiceClass {
 
     private mapMessage(data: any): IBoiteMessage {
         const sender = data.sender || {};
+        const senderName = `${sender.first_name || ''} ${sender.last_name || ''}`.trim() || 'Utilisateur';
         return {
             id: data.id,
             conversationId: data.conversation_id,
@@ -698,9 +709,10 @@ class IBoiteServiceClass {
             editedAt: data.edited_at,
             createdAt: data.created_at,
             sender: {
-                displayName: `${sender.first_name || ''} ${sender.last_name || ''}`.trim() || 'Utilisateur',
+                displayName: senderName,
                 avatarUrl: sender.avatar_url
-            }
+            },
+            senderName
         };
     }
 
