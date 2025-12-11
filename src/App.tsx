@@ -82,7 +82,6 @@ import ArretesPublicsPage from "./pages/ArretesPublicsPage";
 import DeliberationsPubliquesPage from "./pages/DeliberationsPubliquesPage";
 import ContactsPage from "./pages/ContactsPage";
 import AppointmentBookingPage from "./pages/AppointmentBookingPage";
-import KnowledgeSearchPage from "./pages/KnowledgeSearchPage";
 import { InactivityHandler } from "@/components/auth/InactivityHandler";
 import { SecurityNotificationProvider } from "@/components/notifications/SecurityNotificationProvider";
 
@@ -101,126 +100,125 @@ const App = () => (
                   <Sonner />
                   <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                     <InactivityHandler />
-                  <Routes>
-                    {/* PUBLIC PORTAL (Citizens) */}
-                    <Route element={<PublicLayout />}>
-                      <Route path="/" element={<Home />} />
-                      <Route path="/services" element={<ServicesCatalog />} />
-                      <Route path="/sensibilisation" element={<Sensibilisation />} />
-                      <Route path="/mentions-legales" element={<MentionsLegales />} />
-                      <Route path="/politique-confidentialite" element={<PolitiqueConfidentialite />} />
-                      <Route path="/cgu" element={<CGU />} />
-                      <Route path="/arretes" element={<ArretesPublicsPage />} />
-                      <Route path="/deliberations" element={<DeliberationsPubliquesPage />} />
-                      <Route path="/recherche-kb" element={<KnowledgeSearchPage />} />
+                    <Routes>
+                      {/* PUBLIC PORTAL (Citizens) */}
+                      <Route element={<PublicLayout />}>
+                        <Route path="/" element={<Home />} />
+                        <Route path="/services" element={<ServicesCatalog />} />
+                        <Route path="/sensibilisation" element={<Sensibilisation />} />
+                        <Route path="/mentions-legales" element={<MentionsLegales />} />
+                        <Route path="/politique-confidentialite" element={<PolitiqueConfidentialite />} />
+                        <Route path="/cgu" element={<CGU />} />
+                        <Route path="/arretes" element={<ArretesPublicsPage />} />
+                        <Route path="/deliberations" element={<DeliberationsPubliquesPage />} />
 
-                      <Route path="/actualites" element={<Actualites />} />
-                      <Route path="/login" element={<Login />} />
-                      <Route path="/forgot-password" element={<ForgotPassword />} />
-                      <Route path="/reset-password" element={<ResetPassword />} />
+                        <Route path="/actualites" element={<Actualites />} />
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/forgot-password" element={<ForgotPassword />} />
+                        <Route path="/reset-password" element={<ResetPassword />} />
 
-                      {/* REGISTRATION FLOW */}
-                      <Route path="/register" element={<RegistrationChoice />} />
-                      <Route path="/register/gabonais" element={<RegisterGabonais />} />
-                      <Route path="/register/etranger" element={<RegisterForeigner />} />
+                        {/* REGISTRATION FLOW */}
+                        <Route path="/register" element={<RegistrationChoice />} />
+                        <Route path="/register/gabonais" element={<RegisterGabonais />} />
+                        <Route path="/register/etranger" element={<RegisterForeigner />} />
 
-                      <Route path="/portal/:entityId" element={<EntityPortal />} />
-                      <Route path="/rendez-vous" element={<AppointmentBookingPage />} />
+                        <Route path="/portal/:entityId" element={<EntityPortal />} />
+                        <Route path="/rendez-vous" element={<AppointmentBookingPage />} />
 
-                      {/* COMPANIES & ASSOCIATIONS */}
-                      <Route path="/companies" element={<CompaniesPage />} />
-                      <Route path="/companies/new" element={<NewCompanyPage />} />
-                      <Route path="/companies/:id" element={<CompanyDetailsPage />} />
+                        {/* COMPANIES & ASSOCIATIONS */}
+                        <Route path="/companies" element={<CompaniesPage />} />
+                        <Route path="/companies/new" element={<NewCompanyPage />} />
+                        <Route path="/companies/:id" element={<CompanyDetailsPage />} />
 
-                      <Route path="/associations" element={<AssociationsPage />} />
-                      <Route path="/associations/new" element={<NewAssociationPage />} />
-                      <Route path="/associations/:id" element={<AssociationDetailsPage />} />
-                    </Route>
+                        <Route path="/associations" element={<AssociationsPage />} />
+                        <Route path="/associations/new" element={<NewAssociationPage />} />
+                        <Route path="/associations/:id" element={<AssociationDetailsPage />} />
+                      </Route>
 
-                    <Route path="/messaging" element={<MessagingPage />} />
-                    <Route path="/iboite" element={<MessagingPage />} />
-                    <Route path="/correspondance" element={<CorrespondancePage />} />
-                    <Route path="/settings" element={<SettingsPage />} />
+                      <Route path="/messaging" element={<MessagingPage />} />
+                      <Route path="/iboite" element={<MessagingPage />} />
+                      <Route path="/correspondance" element={<CorrespondancePage />} />
+                      <Route path="/settings" element={<SettingsPage />} />
 
-                    {/* DASHBOARDS (Protected in real app) */}
+                      {/* DASHBOARDS (Protected in real app) */}
 
-                    {/* Citizen Dashboard Layout Route */}
-                    <Route path="/dashboard/citizen" element={<DashboardLayout><Outlet /></DashboardLayout>}>
-                      <Route index element={<CitizenDashboard />} />
-                      <Route path="requests" element={<CitizenRequestsPage />} />
-                      <Route path="services" element={<ServicesCatalog />} />
-                      <Route path="associations" element={<CitizenAssociationsPage />} />
-                      <Route path="companies" element={<CitizenCompaniesPage />} />
-                      <Route path="cv" element={<CitizenCVPage />} />
-                      <Route path="documents" element={<CitizenDocumentsPage />} />
-                      <Route path="settings" element={<CitizenSettingsPage />} />
-                      <Route path="child/:childId" element={<ChildRegistrationPage />} />
-                    </Route>
+                      {/* Citizen Dashboard Layout Route */}
+                      <Route path="/dashboard/citizen" element={<DashboardLayout><Outlet /></DashboardLayout>}>
+                        <Route index element={<CitizenDashboard />} />
+                        <Route path="requests" element={<CitizenRequestsPage />} />
+                        <Route path="services" element={<ServicesCatalog />} />
+                        <Route path="associations" element={<CitizenAssociationsPage />} />
+                        <Route path="companies" element={<CitizenCompaniesPage />} />
+                        <Route path="cv" element={<CitizenCVPage />} />
+                        <Route path="documents" element={<CitizenDocumentsPage />} />
+                        <Route path="settings" element={<CitizenSettingsPage />} />
+                        <Route path="child/:childId" element={<ChildRegistrationPage />} />
+                      </Route>
 
-                    <Route path="/dashboard/foreigner" element={<DashboardLayout><ForeignerDashboard /></DashboardLayout>} />
+                      <Route path="/dashboard/foreigner" element={<DashboardLayout><ForeignerDashboard /></DashboardLayout>} />
 
-                    {/* Services Catalog (accessible from sidebar) */}
-                    <Route path="/dashboard/services" element={<DashboardLayout><DashboardServicesPage /></DashboardLayout>} />
+                      {/* Services Catalog (accessible from sidebar) */}
+                      <Route path="/dashboard/services" element={<DashboardLayout><DashboardServicesPage /></DashboardLayout>} />
 
-                    {/* Super Admin Routes */}
-                    <Route path="/dashboard/super-admin" element={<DashboardLayout><SuperAdminDashboard /></DashboardLayout>} />
-                    <Route path="/dashboard/super-admin/organizations" element={<DashboardLayout><SuperAdminOrganizations /></DashboardLayout>} />
-                    <Route path="/dashboard/super-admin/organizations/:entityId" element={<DashboardLayout><OrganizationDetails /></DashboardLayout>} />
-                    <Route path="/dashboard/super-admin/users" element={<DashboardLayout><SuperAdminUsers /></DashboardLayout>} />
-                    <Route path="/dashboard/super-admin/services" element={<DashboardLayout><SuperAdminServices /></DashboardLayout>} />
-                    <Route path="/dashboard/super-admin/settings" element={<DashboardLayout><SuperAdminSettings /></DashboardLayout>} />
-                    <Route path="/dashboard/super-admin/iasted" element={<DashboardLayout><SuperAdminIAsted /></DashboardLayout>} />
-                    <Route path="/dashboard/super-admin/knowledge-base" element={<DashboardLayout><SuperAdminKnowledgeBase /></DashboardLayout>} />
-                    <Route path="/dashboard/super-admin/analytics" element={<DashboardLayout><SuperAdminAnalytics /></DashboardLayout>} />
-                    <Route path="/dashboard/super-admin/notifications" element={<DashboardLayout><NotificationPreferencesAdmin /></DashboardLayout>} />
-                    <Route path="/dashboard/super-admin/document-settings" element={<DashboardLayout><DocumentSettingsAdmin /></DashboardLayout>} />
-                    <Route path="/dashboard/super-admin/audit-logs" element={<DashboardLayout><SuperAdminAuditLogs /></DashboardLayout>} />
-                    <Route path="/dashboard/super-admin/security-rules" element={<SecurityRulesConfig />} />
+                      {/* Super Admin Routes */}
+                      <Route path="/dashboard/super-admin" element={<DashboardLayout><SuperAdminDashboard /></DashboardLayout>} />
+                      <Route path="/dashboard/super-admin/organizations" element={<DashboardLayout><SuperAdminOrganizations /></DashboardLayout>} />
+                      <Route path="/dashboard/super-admin/organizations/:entityId" element={<DashboardLayout><OrganizationDetails /></DashboardLayout>} />
+                      <Route path="/dashboard/super-admin/users" element={<DashboardLayout><SuperAdminUsers /></DashboardLayout>} />
+                      <Route path="/dashboard/super-admin/services" element={<DashboardLayout><SuperAdminServices /></DashboardLayout>} />
+                      <Route path="/dashboard/super-admin/settings" element={<DashboardLayout><SuperAdminSettings /></DashboardLayout>} />
+                      <Route path="/dashboard/super-admin/iasted" element={<DashboardLayout><SuperAdminIAsted /></DashboardLayout>} />
+                      <Route path="/dashboard/super-admin/knowledge-base" element={<DashboardLayout><SuperAdminKnowledgeBase /></DashboardLayout>} />
+                      <Route path="/dashboard/super-admin/analytics" element={<DashboardLayout><SuperAdminAnalytics /></DashboardLayout>} />
+                      <Route path="/dashboard/super-admin/notifications" element={<DashboardLayout><NotificationPreferencesAdmin /></DashboardLayout>} />
+                      <Route path="/dashboard/super-admin/document-settings" element={<DashboardLayout><DocumentSettingsAdmin /></DashboardLayout>} />
+                      <Route path="/dashboard/super-admin/audit-logs" element={<DashboardLayout><SuperAdminAuditLogs /></DashboardLayout>} />
+                      <Route path="/dashboard/super-admin/security-rules" element={<SecurityRulesConfig />} />
 
-                    {/* Municipal Personnel Routes */}
-                    <Route path="/dashboard/maire" element={<DashboardLayout><MaireDashboard /></DashboardLayout>} />
-                    <Route path="/dashboard/maire/analytics" element={<DashboardLayout><MaireAnalyticsPage /></DashboardLayout>} />
-                    <Route path="/dashboard/maire/budget" element={<DashboardLayout><MaireBudgetPage /></DashboardLayout>} />
-                    <Route path="/dashboard/maire/deliberations" element={<DashboardLayout><MaireDeliberationsPage /></DashboardLayout>} />
-                    <Route path="/dashboard/maire/arretes" element={<DashboardLayout><MaireArretesPage /></DashboardLayout>} />
-                    <Route path="/dashboard/maire/agenda" element={<DashboardLayout><MaireAgendaPage /></DashboardLayout>} />
-                    <Route path="/dashboard/maire/urbanisme" element={<DashboardLayout><MaireUrbanismePage /></DashboardLayout>} />
-                    <Route path="/dashboard/maire/documents" element={<DashboardLayout><MaireDocumentsPage /></DashboardLayout>} />
-                    <Route path="/dashboard/maire/document-settings" element={<DashboardLayout><DocumentSettingsAdmin /></DashboardLayout>} />
-                    <Route path="/dashboard/maire/communications" element={<DashboardLayout><CommunicationsDashboard /></DashboardLayout>} />
-                    <Route path="/dashboard/maire/contacts" element={<DashboardLayout><ContactsPage /></DashboardLayout>} />
-                    <Route path="/contacts" element={<ContactsPage />} />
-                    <Route path="/dashboard/sg" element={<DashboardLayout><AgentDashboard /></DashboardLayout>} />
-                    <Route path="/dashboard/chef-service" element={<DashboardLayout><AgentDashboard /></DashboardLayout>} />
+                      {/* Municipal Personnel Routes */}
+                      <Route path="/dashboard/maire" element={<DashboardLayout><MaireDashboard /></DashboardLayout>} />
+                      <Route path="/dashboard/maire/analytics" element={<DashboardLayout><MaireAnalyticsPage /></DashboardLayout>} />
+                      <Route path="/dashboard/maire/budget" element={<DashboardLayout><MaireBudgetPage /></DashboardLayout>} />
+                      <Route path="/dashboard/maire/deliberations" element={<DashboardLayout><MaireDeliberationsPage /></DashboardLayout>} />
+                      <Route path="/dashboard/maire/arretes" element={<DashboardLayout><MaireArretesPage /></DashboardLayout>} />
+                      <Route path="/dashboard/maire/agenda" element={<DashboardLayout><MaireAgendaPage /></DashboardLayout>} />
+                      <Route path="/dashboard/maire/urbanisme" element={<DashboardLayout><MaireUrbanismePage /></DashboardLayout>} />
+                      <Route path="/dashboard/maire/documents" element={<DashboardLayout><MaireDocumentsPage /></DashboardLayout>} />
+                      <Route path="/dashboard/maire/document-settings" element={<DashboardLayout><DocumentSettingsAdmin /></DashboardLayout>} />
+                      <Route path="/dashboard/maire/communications" element={<DashboardLayout><CommunicationsDashboard /></DashboardLayout>} />
+                      <Route path="/dashboard/maire/contacts" element={<DashboardLayout><ContactsPage /></DashboardLayout>} />
+                      <Route path="/contacts" element={<ContactsPage />} />
+                      <Route path="/dashboard/sg" element={<DashboardLayout><AgentDashboard /></DashboardLayout>} />
+                      <Route path="/dashboard/chef-service" element={<DashboardLayout><AgentDashboard /></DashboardLayout>} />
 
-                    {/* Agent Routes */}
-                    <Route path="/dashboard/agent" element={<DashboardLayout><AgentDashboard /></DashboardLayout>} />
-                    <Route path="/dashboard/agent/appointments" element={<DashboardLayout><AgentAppointmentsPage /></DashboardLayout>} />
-                    <Route path="/dashboard/agent/requests" element={<DashboardLayout><AgentRequestsPage /></DashboardLayout>} />
+                      {/* Agent Routes */}
+                      <Route path="/dashboard/agent" element={<DashboardLayout><AgentDashboard /></DashboardLayout>} />
+                      <Route path="/dashboard/agent/appointments" element={<DashboardLayout><AgentAppointmentsPage /></DashboardLayout>} />
+                      <Route path="/dashboard/agent/requests" element={<DashboardLayout><AgentRequestsPage /></DashboardLayout>} />
 
-                    {/* Consul General / Admin Routes */}
-                    <Route path="/dashboard/admin/agents" element={<DashboardLayout><AgentsPage /></DashboardLayout>} />
-                    <Route path="/dashboard/admin/settings" element={<DashboardLayout><OrganizationSettingsPage /></DashboardLayout>} />
+                      {/* Consul General / Admin Routes */}
+                      <Route path="/dashboard/admin/agents" element={<DashboardLayout><AgentsPage /></DashboardLayout>} />
+                      <Route path="/dashboard/admin/settings" element={<DashboardLayout><OrganizationSettingsPage /></DashboardLayout>} />
 
-                    {/* ADMIN PORTAL (Back-Office) */}
-                    <Route path="/admin" element={<AdminLayout />}>
-                      <Route index element={<AdminDashboard />} />
-                    </Route>
+                      {/* ADMIN PORTAL (Back-Office) */}
+                      <Route path="/admin" element={<AdminLayout />}>
+                        <Route index element={<AdminDashboard />} />
+                      </Route>
 
-                    {/* DEMO & UTILS */}
-                    <Route path="/demo-portal" element={<DemoPortal />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                  <IAstedInterfaceWrapper />
-                </BrowserRouter>
-              </SecurityNotificationProvider>
-            </PresentationProvider>
-          </CallProvider>
-        </DemoProvider>
-      </TooltipProvider>
-    </LanguageProvider>
-  </ThemeProvider>
-</QueryClientProvider>
+                      {/* DEMO & UTILS */}
+                      <Route path="/demo-portal" element={<DemoPortal />} />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                    <IAstedInterfaceWrapper />
+                  </BrowserRouter>
+                </SecurityNotificationProvider>
+              </PresentationProvider>
+            </CallProvider>
+          </DemoProvider>
+        </TooltipProvider>
+      </LanguageProvider>
+    </ThemeProvider>
+  </QueryClientProvider>
 );
 
 export default App;

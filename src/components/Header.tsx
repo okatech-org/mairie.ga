@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Landmark, Menu, X, MapPin, FileText, Heart, LogOut, User, TestTube2, XCircle, Brain } from "lucide-react";
+import { Landmark, Menu, X, MapPin, FileText, Heart, LogOut, User, TestTube2, XCircle } from "lucide-react";
 import { useState } from "react";
 import { useDemo } from "@/contexts/DemoContext";
 import { GlobalSettings } from "@/components/GlobalSettings";
@@ -82,10 +82,6 @@ export const Header = () => {
             <Heart className="h-4 w-4" />
             Sensibilisation
           </Link>
-          <Link to="/recherche-kb" className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-1">
-            <Brain className="h-4 w-4" />
-            Base de connaissances
-          </Link>
           <Link to="/actualites" className="text-sm font-medium hover:text-primary transition-colors">
             {t('header.news')}
           </Link>
@@ -96,18 +92,18 @@ export const Header = () => {
                 initial={{ opacity: 0, scale: 0.8, x: 20 }}
                 animate={{ opacity: 1, scale: 1, x: 0 }}
                 exit={{ opacity: 0, scale: 0.8, x: -20 }}
-                transition={{ 
-                  type: "spring", 
-                  stiffness: 300, 
+                transition={{
+                  type: "spring",
+                  stiffness: 300,
                   damping: 25,
-                  duration: 0.3 
+                  duration: 0.3
                 }}
               >
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="flex items-center gap-2 cursor-pointer group">
-                      <Badge 
-                        variant="outline" 
+                      <Badge
+                        variant="outline"
                         className="bg-amber-500/10 border-amber-500/50 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
                       >
                         <motion.div
@@ -121,7 +117,7 @@ export const Header = () => {
                         <span>{currentUser.badge}</span>
                         <span className="ml-1">{currentUser.name}</span>
                       </Badge>
-                      <motion.button 
+                      <motion.button
                         onClick={clearSimulation}
                         className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded-full"
                         whileHover={{ scale: 1.1 }}
@@ -215,7 +211,7 @@ export const Header = () => {
           <nav className="container mx-auto py-4 flex flex-col gap-4">
             <AnimatePresence mode="wait">
               {isSimulating && currentUser && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, height: 0, marginBottom: 0 }}
                   animate={{ opacity: 1, height: "auto", marginBottom: 16 }}
                   exit={{ opacity: 0, height: 0, marginBottom: 0 }}
@@ -239,7 +235,7 @@ export const Header = () => {
                         </span>
                       )}
                     </div>
-                    <motion.button 
+                    <motion.button
                       onClick={() => { clearSimulation(); setMobileMenuOpen(false); }}
                       className="p-1 hover:bg-destructive/10 rounded-full"
                       whileHover={{ scale: 1.1 }}
@@ -266,14 +262,6 @@ export const Header = () => {
             >
               <Heart className="h-4 w-4" />
               Sensibilisation
-            </Link>
-            <Link
-              to="/recherche-kb"
-              className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-2"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <Brain className="h-4 w-4" />
-              Base de connaissances
             </Link>
             <Link
               to="/actualites"
