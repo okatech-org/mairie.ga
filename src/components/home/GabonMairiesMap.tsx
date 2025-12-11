@@ -451,8 +451,8 @@ const GabonMairiesMap = () => {
           style: 'mapbox://styles/mapbox/light-v11',
           center: [11.5, -0.8], // Centre du Gabon
           zoom: 5.5,
-          minZoom: 4,
-          maxZoom: 12,
+          minZoom: 5.5, // Zoom minimum = vue du Gabon complet
+          maxZoom: 14,
           preserveDrawingBuffer: true, // Prevents visual glitches
         });
 
