@@ -793,10 +793,15 @@ export type Database = {
           category: string
           content: string
           created_at: string | null
+          embedding: string | null
           helpful_count: number | null
           id: string
+          is_active: boolean | null
+          keywords: string[] | null
           metadata: Json | null
           organization_id: string | null
+          priority: number | null
+          source: string | null
           status: Database["public"]["Enums"]["kb_status"] | null
           subcategory: string | null
           tags: string[] | null
@@ -809,10 +814,15 @@ export type Database = {
           category: string
           content: string
           created_at?: string | null
+          embedding?: string | null
           helpful_count?: number | null
           id?: string
+          is_active?: boolean | null
+          keywords?: string[] | null
           metadata?: Json | null
           organization_id?: string | null
+          priority?: number | null
+          source?: string | null
           status?: Database["public"]["Enums"]["kb_status"] | null
           subcategory?: string | null
           tags?: string[] | null
@@ -825,10 +835,15 @@ export type Database = {
           category?: string
           content?: string
           created_at?: string | null
+          embedding?: string | null
           helpful_count?: number | null
           id?: string
+          is_active?: boolean | null
+          keywords?: string[] | null
           metadata?: Json | null
           organization_id?: string | null
+          priority?: number | null
+          source?: string | null
           status?: Database["public"]["Enums"]["kb_status"] | null
           subcategory?: string | null
           tags?: string[] | null
