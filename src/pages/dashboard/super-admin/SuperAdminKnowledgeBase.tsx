@@ -85,11 +85,16 @@ interface EmbeddingProgress {
 
 interface EmbeddingHistoryEntry {
     id: string;
-    timestamp: Date;
+    user_id: string;
+    started_at: string;
+    completed_at: string | null;
     processed: number;
     failed: number;
     total: number;
-    status: 'completed' | 'cancelled' | 'error';
+    status: 'in_progress' | 'completed' | 'cancelled' | 'error';
+    error_message: string | null;
+    failed_articles: Array<{ id: string; title: string; error: string }>;
+    created_at: string;
 }
 
 export default function SuperAdminKnowledgeBase() {
@@ -122,7 +127,79 @@ export default function SuperAdminKnowledgeBase() {
     useEffect(() => {
         loadArticles();
         loadEmbeddingStats();
+        loadEmbeddingHistory();
     }, []);
+
+    const loadEmbeddingHistory = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('embedding_generation_history')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(10);
+
+            if (error) {
+                console.error('Error loading embedding history:', error);
+                return;
+            }
+
+            setEmbeddingHistory((data || []).map(item => ({
+                ...item,
+                status: item.status as EmbeddingHistoryEntry['status'],
+                failed_articles: (item.failed_articles || []) as EmbeddingHistoryEntry['failed_articles']
+            })));
+        } catch (err) {
+            console.error('Error loading embedding history:', err);
+        }
+    };
+
+    const saveHistoryEntry = async (entry: Omit<EmbeddingHistoryEntry, 'id' | 'created_at'>) => {
+        try {
+            const { data: userData } = await supabase.auth.getUser();
+            if (!userData.user) return null;
+
+            const { data, error } = await supabase
+                .from('embedding_generation_history')
+                .insert({
+                    user_id: userData.user.id,
+                    started_at: entry.started_at,
+                    completed_at: entry.completed_at,
+                    processed: entry.processed,
+                    failed: entry.failed,
+                    total: entry.total,
+                    status: entry.status,
+                    error_message: entry.error_message,
+                    failed_articles: entry.failed_articles
+                })
+                .select()
+                .single();
+
+            if (error) {
+                console.error('Error saving history entry:', error);
+                return null;
+            }
+
+            return data;
+        } catch (err) {
+            console.error('Error saving history entry:', err);
+            return null;
+        }
+    };
+
+    const updateHistoryEntry = async (id: string, updates: Partial<EmbeddingHistoryEntry>) => {
+        try {
+            const { error } = await supabase
+                .from('embedding_generation_history')
+                .update(updates)
+                .eq('id', id);
+
+            if (error) {
+                console.error('Error updating history entry:', error);
+            }
+        } catch (err) {
+            console.error('Error updating history entry:', err);
+        }
+    };
 
     const loadArticles = async () => {
         setLoading(true);
@@ -255,24 +332,24 @@ export default function SuperAdminKnowledgeBase() {
         withEmbeddings: 0 // Will be calculated from DB
     };
 
-    const handleCancelGeneration = () => {
+    const [currentHistoryId, setCurrentHistoryId] = useState<string | null>(null);
+
+    const handleCancelGeneration = async () => {
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
             abortControllerRef.current = null;
             
-            // Add cancelled entry to history
-            if (embeddingProgress) {
-                const historyEntry: EmbeddingHistoryEntry = {
-                    id: crypto.randomUUID(),
-                    timestamp: new Date(),
-                    processed: embeddingProgress.current,
-                    failed: 0,
-                    total: embeddingProgress.total,
-                    status: 'cancelled'
-                };
-                setEmbeddingHistory(prev => [historyEntry, ...prev].slice(0, 10));
+            // Update the current history entry as cancelled
+            if (currentHistoryId && embeddingProgress) {
+                await updateHistoryEntry(currentHistoryId, {
+                    status: 'cancelled',
+                    completed_at: new Date().toISOString(),
+                    processed: embeddingProgress.current
+                });
+                loadEmbeddingHistory();
             }
             
+            setCurrentHistoryId(null);
             setGeneratingEmbeddings(false);
             setEmbeddingProgress(null);
             toast.info("Génération des embeddings annulée");
@@ -286,6 +363,32 @@ export default function SuperAdminKnowledgeBase() {
         // Create abort controller for cancellation
         abortControllerRef.current = new AbortController();
         const signal = abortControllerRef.current.signal;
+        
+        const startTime = new Date().toISOString();
+        
+        // Create initial history entry
+        const { data: userData } = await supabase.auth.getUser();
+        let historyId: string | null = null;
+        
+        if (userData.user) {
+            const { data: historyData } = await supabase
+                .from('embedding_generation_history')
+                .insert({
+                    user_id: userData.user.id,
+                    started_at: startTime,
+                    status: 'in_progress',
+                    processed: 0,
+                    failed: 0,
+                    total: 0
+                })
+                .select()
+                .single();
+            
+            if (historyData) {
+                historyId = historyData.id;
+                setCurrentHistoryId(historyId);
+            }
+        }
         
         try {
             const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -316,7 +419,7 @@ export default function SuperAdminKnowledgeBase() {
                 throw new Error('No response body');
             }
 
-            let finalResult: { processed: number; failed: number; total: number } | null = null;
+            let finalResult: { processed: number; failed: number; total: number; failedArticles?: Array<{ id: string; title: string; error: string }> } | null = null;
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -331,6 +434,13 @@ export default function SuperAdminKnowledgeBase() {
                         
                         if (data.type === 'start') {
                             setEmbeddingProgress({ current: 0, total: data.total });
+                            // Update history with total count
+                            if (historyId) {
+                                await supabase
+                                    .from('embedding_generation_history')
+                                    .update({ total: data.total })
+                                    .eq('id', historyId);
+                            }
                         } else if (data.type === 'progress') {
                             setEmbeddingProgress({
                                 current: data.current,
@@ -343,7 +453,8 @@ export default function SuperAdminKnowledgeBase() {
                             finalResult = {
                                 processed: data.processed,
                                 failed: data.failed,
-                                total: data.total
+                                total: data.total,
+                                failedArticles: data.details?.failed || []
                             };
                         }
                     } catch (e) {
@@ -353,15 +464,22 @@ export default function SuperAdminKnowledgeBase() {
             }
 
             if (finalResult) {
-                const historyEntry: EmbeddingHistoryEntry = {
-                    id: crypto.randomUUID(),
-                    timestamp: new Date(),
-                    processed: finalResult.processed,
-                    failed: finalResult.failed,
-                    total: finalResult.total,
-                    status: 'completed'
-                };
-                setEmbeddingHistory(prev => [historyEntry, ...prev].slice(0, 10));
+                // Update history entry with final results
+                if (historyId) {
+                    await supabase
+                        .from('embedding_generation_history')
+                        .update({
+                            status: 'completed',
+                            completed_at: new Date().toISOString(),
+                            processed: finalResult.processed,
+                            failed: finalResult.failed,
+                            total: finalResult.total,
+                            failed_articles: finalResult.failedArticles || []
+                        })
+                        .eq('id', historyId);
+                    
+                    loadEmbeddingHistory();
+                }
                 
                 toast.success(`Embeddings générés: ${finalResult.processed} articles traités, ${finalResult.failed} échecs`);
                 loadEmbeddingStats();
@@ -375,19 +493,23 @@ export default function SuperAdminKnowledgeBase() {
             console.error('Error calling generate-kb-embeddings:', err);
             toast.error("Erreur lors de l'appel à la fonction");
             
-            // Add error entry to history
-            const historyEntry: EmbeddingHistoryEntry = {
-                id: crypto.randomUUID(),
-                timestamp: new Date(),
-                processed: embeddingProgress?.current || 0,
-                failed: 0,
-                total: embeddingProgress?.total || 0,
-                status: 'error'
-            };
-            setEmbeddingHistory(prev => [historyEntry, ...prev].slice(0, 10));
+            // Update history entry with error
+            if (historyId) {
+                await supabase
+                    .from('embedding_generation_history')
+                    .update({
+                        status: 'error',
+                        completed_at: new Date().toISOString(),
+                        error_message: err instanceof Error ? err.message : 'Unknown error'
+                    })
+                    .eq('id', historyId);
+                
+                loadEmbeddingHistory();
+            }
         } finally {
             setGeneratingEmbeddings(false);
             setEmbeddingProgress(null);
+            setCurrentHistoryId(null);
             abortControllerRef.current = null;
         }
     };
@@ -649,7 +771,7 @@ export default function SuperAdminKnowledgeBase() {
                                             <AlertCircle className="h-4 w-4 text-destructive" />
                                         )}
                                         <span className="text-muted-foreground">
-                                            {format(entry.timestamp, "d MMM yyyy 'à' HH:mm", { locale: fr })}
+                                            {format(new Date(entry.started_at), "d MMM yyyy 'à' HH:mm", { locale: fr })}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-4">

@@ -787,6 +787,48 @@ export type Database = {
           },
         ]
       }
+      embedding_generation_history: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          failed: number
+          failed_articles: Json | null
+          id: string
+          processed: number
+          started_at: string
+          status: string
+          total: number
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          failed?: number
+          failed_articles?: Json | null
+          id?: string
+          processed?: number
+          started_at?: string
+          status?: string
+          total?: number
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          failed?: number
+          failed_articles?: Json | null
+          id?: string
+          processed?: number
+          started_at?: string
+          status?: string
+          total?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       knowledge_base: {
         Row: {
           author_id: string | null
