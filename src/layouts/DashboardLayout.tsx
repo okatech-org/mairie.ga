@@ -1,5 +1,5 @@
 import React from "react";
-import { LayoutDashboard, Settings, LogOut, FileText, Building2, Users, ShieldCheck, Globe, Mail, Bot, Database, LineChart, ScrollText, Shield, UserCheck, Briefcase, BookOpen, Calendar, ClipboardList, Home, FolderOpen, Wallet, Gavel, FileSignature, CalendarDays, Building, BarChart3, Bell } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, FileText, Building2, Users, ShieldCheck, Globe, Mail, Bot, Database, LineChart, ScrollText, Shield, UserCheck, Briefcase, BookOpen, Calendar, ClipboardList, Home, FolderOpen, Wallet, Gavel, FileSignature, CalendarDays, Building, BarChart3, Bell, History } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { GlobalSettings } from "@/components/GlobalSettings";
 import { useDemo } from "@/contexts/DemoContext";
@@ -87,6 +87,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {
                     title: "SYSTÈME",
                     items: [
+                        { label: "Journal d'Audit", icon: History, path: "/dashboard/super-admin/audit-logs" },
                         { label: "Paramètres Documents", icon: FileText, path: "/dashboard/super-admin/document-settings" },
                         { label: "Paramètres", icon: Settings, path: "/dashboard/super-admin/settings" },
                         { label: "Sécurité & Logs", icon: Shield, path: "/dashboard/super-admin/settings?tab=security" },
