@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,16 +23,13 @@ import {
   GraduationCap,
   Phone,
   Mic,
-  MessageSquare,
   Calendar,
   Navigation,
-  Headphones,
   TestTube2
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { IAstedDemoButton } from "@/components/iasted/IAstedDemoButton";
 import { IAstedGuideInline } from "@/components/iasted/IAstedGuideInline";
-import { GabonMairiesSection } from "@/components/home/GabonMairiesSection";
 import { MairiesLogosSection } from "@/components/home/MairiesLogosSection";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
@@ -44,9 +41,6 @@ import heroImage from "@/assets/mairie-accueil.jpg";
 import serviceImage from "@/assets/service-municipal.jpg";
 import familleImage from "@/assets/famille-acte-naissance.jpg";
 import entrepreneurImage from "@/assets/entrepreneur-patente.jpg";
-
-// Lazy load the map component
-const GabonMairiesMap = lazy(() => import("@/components/home/GabonMairiesMap"));
 
 export default function Home() {
   const [scrollY, setScrollY] = useState(0);
@@ -230,9 +224,9 @@ export default function Home() {
                       Nos Services
                     </Button>
                   </Link>
-                  <Button 
-                    size="lg" 
-                    variant="outline" 
+                  <Button
+                    size="lg"
+                    variant="outline"
                     className="w-full sm:w-auto min-w-[180px] gap-2 h-12 text-base bg-amber-500/20 border-amber-400/40 text-white hover:bg-amber-500/30 backdrop-blur-sm"
                     onClick={() => setShowDemoModal(true)}
                   >
@@ -370,37 +364,7 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      {/* Interactive Map Section */}
-      <section className="py-20 md:py-24 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <Badge variant="outline" className="mb-4">
-              <MapPin className="h-3 w-3 mr-1" />
-              Couverture Nationale
-            </Badge>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              9 Provinces, <span className="text-primary">52 Communes</span>
-            </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Explorez le réseau municipal unifié couvrant l'ensemble du territoire gabonais
-            </p>
-          </div>
-
-          <Suspense fallback={
-            <div className="w-full h-[500px] bg-card rounded-2xl flex items-center justify-center">
-              <div className="text-center">
-                <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                <p className="text-muted-foreground">Chargement de la carte...</p>
-              </div>
-            </div>
-          }>
-            <GabonMairiesMap />
-          </Suspense>
-        </div>
-      </section>
-
-      {/* Mairies avec Logos Section */}
+      {/* Unified Map & Mairies Section - Combines "9 Provinces, 52 Communes" with "Les Communes Connectées" */}
       <MairiesLogosSection />
 
       {/* Stats Section */}

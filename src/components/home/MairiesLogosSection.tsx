@@ -22,7 +22,7 @@ export const MairiesLogosSection = () => {
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('name');
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [viewMode, setViewMode] = useState<ViewMode>('map');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -47,14 +47,14 @@ export const MairiesLogosSection = () => {
 
   const filteredAndSortedMairies = useMemo(() => {
     let result = mairies;
-    
+
     if (selectedProvince) {
       result = result.filter(m => m.province === selectedProvince);
     }
-    
+
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      result = result.filter(m => 
+      result = result.filter(m =>
         m.name.toLowerCase().includes(query) ||
         m.city?.toLowerCase().includes(query) ||
         m.province?.toLowerCase().includes(query)
@@ -74,7 +74,7 @@ export const MairiesLogosSection = () => {
           return 0;
       }
     });
-    
+
     return result;
   }, [mairies, selectedProvince, searchQuery, sortBy]);
 
@@ -86,8 +86,8 @@ export const MairiesLogosSection = () => {
   const handleExportPDF = () => {
     try {
       const dataToExport = filteredAndSortedMairies.length > 0 ? filteredAndSortedMairies : mairies;
-      const title = selectedProvince 
-        ? `Mairies de la province ${selectedProvince}` 
+      const title = selectedProvince
+        ? `Mairies de la province ${selectedProvince}`
         : 'Liste des Mairies du Gabon';
       exportMairiesToPDF(dataToExport, title);
       toast.success('Export PDF généré avec succès');
@@ -151,15 +151,15 @@ export const MairiesLogosSection = () => {
           transition={{ delay: index * 0.03, duration: 0.3 }}
           layout
         >
-          <Card 
+          <Card
             className="group h-full overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-2 hover:border-primary/30 cursor-pointer"
             onClick={() => handleMairieClick(mairie)}
           >
             <CardContent className="p-4 md:p-6 flex flex-col items-center text-center">
               <div className="relative w-16 h-16 md:w-20 md:h-20 mb-4 rounded-full overflow-hidden bg-gradient-to-br from-primary/10 to-primary/20 p-1 transition-transform group-hover:scale-110">
                 {mairie.logo_url ? (
-                  <img 
-                    src={mairie.logo_url} 
+                  <img
+                    src={mairie.logo_url}
                     alt={`Logo ${mairie.name}`}
                     className="w-full h-full object-contain rounded-full bg-white"
                     onError={(e) => {
@@ -235,8 +235,8 @@ export const MairiesLogosSection = () => {
                 <TableCell>
                   <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-primary/10 to-primary/20 p-0.5">
                     {mairie.logo_url ? (
-                      <img 
-                        src={mairie.logo_url} 
+                      <img
+                        src={mairie.logo_url}
                         alt={`Logo ${mairie.name}`}
                         className="w-full h-full object-contain rounded-full bg-white"
                         onError={(e) => {
@@ -297,9 +297,9 @@ export const MairiesLogosSection = () => {
                     {mairie.website && (
                       <div className="flex items-center gap-1.5 text-xs">
                         <Globe className="h-3 w-3 text-muted-foreground" />
-                        <a 
-                          href={mairie.website} 
-                          target="_blank" 
+                        <a
+                          href={mairie.website}
+                          target="_blank"
                           rel="noopener noreferrer"
                           className="text-primary hover:underline"
                           onClick={(e) => e.stopPropagation()}
@@ -321,8 +321,8 @@ export const MairiesLogosSection = () => {
                   )}
                 </TableCell>
                 <TableCell className="text-center">
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="sm"
                     className="gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={(e) => {
@@ -343,24 +343,57 @@ export const MairiesLogosSection = () => {
   );
 
   return (
-    <section className="py-16 bg-gradient-to-b from-muted/30 to-background">
+    <section className="py-16 md:py-20 bg-gradient-to-b from-muted/30 to-background">
       <div className="container mx-auto px-4">
+        {/* Enhanced Header with Province Stats */}
         <div className="text-center mb-8">
           <Badge variant="outline" className="mb-4">
-            <Building2 className="h-3 w-3 mr-1" />
-            Nos Mairies
+            <MapPin className="h-3 w-3 mr-1" />
+            Couverture Nationale
           </Badge>
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Les Communes <span className="text-primary">Connectées</span>
+            9 Provinces, <span className="text-primary">{mairies.length} Communes</span>
           </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Découvrez les mairies du réseau MAIRIE.GA et accédez à leurs services en ligne
+          <p className="text-muted-foreground max-w-2xl mx-auto mb-6">
+            Explorez le réseau municipal unifié couvrant l'ensemble du territoire gabonais.
+            Cliquez sur une mairie pour accéder à ses services.
           </p>
+
+          {/* Quick Province Stats */}
+          <div className="flex flex-wrap justify-center gap-2 mb-6">
+            {provinces.slice(0, 5).map((province) => {
+              const count = mairies.filter(m => m.province === province).length;
+              return (
+                <Badge
+                  key={province}
+                  variant={selectedProvince === province ? "default" : "secondary"}
+                  className="cursor-pointer hover:bg-primary/20 transition-colors"
+                  onClick={() => setSelectedProvince(selectedProvince === province ? null : province)}
+                >
+                  {province} ({count})
+                </Badge>
+              );
+            })}
+            {provinces.length > 5 && (
+              <Badge variant="outline" className="cursor-default">
+                +{provinces.length - 5} autres
+              </Badge>
+            )}
+          </div>
         </div>
 
         {/* View Toggle */}
         <div className="flex justify-center mb-6">
           <div className="inline-flex rounded-lg border bg-muted p-1">
+            <Button
+              variant={viewMode === 'map' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('map')}
+              className="gap-2"
+            >
+              <Map className="h-4 w-4" />
+              <span className="hidden sm:inline">Carte</span>
+            </Button>
             <Button
               variant={viewMode === 'grid' ? 'default' : 'ghost'}
               size="sm"
@@ -379,17 +412,8 @@ export const MairiesLogosSection = () => {
               <List className="h-4 w-4" />
               <span className="hidden sm:inline">Liste</span>
             </Button>
-            <Button
-              variant={viewMode === 'map' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('map')}
-              className="gap-2"
-            >
-              <Map className="h-4 w-4" />
-              <span className="hidden sm:inline">Carte</span>
-            </Button>
           </div>
-          
+
           {/* Export Buttons */}
           <div className="inline-flex rounded-lg border bg-muted p-1 ml-4">
             <Button
@@ -456,7 +480,7 @@ export const MairiesLogosSection = () => {
                       </button>
                     )}
                   </div>
-                  
+
                   {/* Sort Dropdown */}
                   <div className="flex gap-2">
                     <Button
