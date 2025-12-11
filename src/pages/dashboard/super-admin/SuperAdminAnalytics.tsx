@@ -1,4 +1,3 @@
-import DashboardLayout from "@/layouts/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
 import { Activity, TrendingUp, Users, Building, MousePointerClick, Globe } from "lucide-react";
@@ -34,9 +33,8 @@ export default function SuperAdminAnalytics() {
     const [period, setPeriod] = useState("6m");
 
     return (
-        <DashboardLayout>
-            <div className="space-y-8 pb-20">
-                <div className="flex justify-between items-center">
+        <div className="space-y-8 pb-20">
+            <div className="flex justify-between items-center">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-800">Analytique Avancée</h1>
                         <p className="text-muted-foreground">Vision globale de l'utilisation de la plateforme</p>
@@ -190,8 +188,7 @@ export default function SuperAdminAnalytics() {
                             </div>
                         </CardContent>
                     </Card>
-                </div>
             </div>
-        </DashboardLayout>
+        </div>
     );
 }

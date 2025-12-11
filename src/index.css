@@ -407,3 +407,52 @@
   scrollbar-width: none;
   /* Firefox */
 }
+
+/* ====== RESPONSIVE UTILITIES ====== */
+
+/* Images fluides - pour que les images ne cassent jamais le layout */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Container responsive avec marges automatiques */
+.container-responsive {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+  .container-responsive {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-responsive {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+/* Utilitaires pour le responsive */
+.full-bleed {
+  width: 100vw;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+}
+
+/* Text truncation responsive */
+.text-responsive {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  hyphens: auto;
+}

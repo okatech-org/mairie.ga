@@ -1,5 +1,4 @@
 import { Building2, Plus, Search, MapPin, Globe, Settings, LayoutDashboard, Users, Flag } from "lucide-react";
-import DashboardLayout from "@/layouts/DashboardLayout";
 import { COUNTRY_FLAGS, Organization, OrganizationType } from "@/types/organization";
 import { useState, useEffect } from "react";
 import { OrganizationDialog } from "@/components/super-admin/OrganizationDialog";
@@ -114,8 +113,7 @@ export default function SuperAdminOrganizations() {
     };
 
     return (
-        <DashboardLayout>
-            <div className="space-y-6">
+        <div className="space-y-6">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Municipalités</h1>
@@ -268,8 +266,7 @@ export default function SuperAdminOrganizations() {
                     onOpenChange={setIsDialogOpen}
                     initialData={selectedEntity}
                     onSave={handleSave}
-                />
-            </div>
-        </DashboardLayout>
+            />
+        </div>
     );
 }

@@ -6,7 +6,6 @@ import {
     Clock, CheckCircle2, AlertTriangle, FileCheck, ShoppingCart, Plus, Minus,
     Download, FileDown, AlertCircle
 } from "lucide-react";
-import DashboardLayout from "@/layouts/DashboardLayout";
 import { Organization } from "@/types/organization";
 import { organizationService } from "@/services/organizationService";
 import { Button } from "@/components/ui/button";
@@ -232,13 +231,12 @@ export default function OrganizationDetails() {
         }
     };
 
-    if (loading) return <DashboardLayout><div className="flex items-center justify-center h-96">Chargement...</div></DashboardLayout>;
-    if (!organization) return <DashboardLayout><div className="flex items-center justify-center h-96">Organisation introuvable</div></DashboardLayout>;
+    if (loading) return <div className="flex items-center justify-center h-96">Chargement...</div>;
+    if (!organization) return <div className="flex items-center justify-center h-96">Organisation introuvable</div>;
     const metadata = organization.metadata as any || {};
 
     return (
-        <DashboardLayout>
-            <div className="space-y-6">
+        <div className="space-y-6">
                 {/* Header */}
                 <div className="flex items-center gap-4">
                     <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard/super-admin/organizations')}>
@@ -618,6 +616,5 @@ export default function OrganizationDetails() {
                     </TabsContent>
                 </Tabs>
             </div>
-        </DashboardLayout>
     );
 }
