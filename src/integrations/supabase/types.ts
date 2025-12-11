@@ -829,6 +829,309 @@ export type Database = {
         }
         Relationships: []
       }
+      iboite_contacts: {
+        Row: {
+          avatar_url: string | null
+          category: string | null
+          contact_service_id: string | null
+          contact_user_id: string | null
+          created_at: string | null
+          display_name: string
+          display_organization: string | null
+          display_role: string | null
+          id: string
+          is_favorite: boolean | null
+          last_contact_at: string | null
+          notes: string | null
+          owner_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          category?: string | null
+          contact_service_id?: string | null
+          contact_user_id?: string | null
+          created_at?: string | null
+          display_name: string
+          display_organization?: string | null
+          display_role?: string | null
+          id?: string
+          is_favorite?: boolean | null
+          last_contact_at?: string | null
+          notes?: string | null
+          owner_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          category?: string | null
+          contact_service_id?: string | null
+          contact_user_id?: string | null
+          created_at?: string | null
+          display_name?: string
+          display_organization?: string | null
+          display_role?: string | null
+          id?: string
+          is_favorite?: boolean | null
+          last_contact_at?: string | null
+          notes?: string | null
+          owner_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "iboite_contacts_contact_service_id_fkey"
+            columns: ["contact_service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      iboite_conversation_participants: {
+        Row: {
+          conversation_id: string
+          id: string
+          is_active: boolean | null
+          is_muted: boolean | null
+          joined_at: string | null
+          last_read_at: string | null
+          left_at: string | null
+          participant_role: string | null
+          unread_count: number | null
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          id?: string
+          is_active?: boolean | null
+          is_muted?: boolean | null
+          joined_at?: string | null
+          last_read_at?: string | null
+          left_at?: string | null
+          participant_role?: string | null
+          unread_count?: number | null
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          id?: string
+          is_active?: boolean | null
+          is_muted?: boolean | null
+          joined_at?: string | null
+          last_read_at?: string | null
+          left_at?: string | null
+          participant_role?: string | null
+          unread_count?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "iboite_conversation_participants_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "iboite_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      iboite_conversations: {
+        Row: {
+          conversation_type: string
+          created_at: string | null
+          id: string
+          is_archived: boolean | null
+          is_external: boolean | null
+          is_locked: boolean | null
+          last_message_at: string | null
+          last_message_preview: string | null
+          metadata: Json | null
+          organization_id: string | null
+          service_id: string | null
+          subject: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          conversation_type?: string
+          created_at?: string | null
+          id?: string
+          is_archived?: boolean | null
+          is_external?: boolean | null
+          is_locked?: boolean | null
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          metadata?: Json | null
+          organization_id?: string | null
+          service_id?: string | null
+          subject?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          conversation_type?: string
+          created_at?: string | null
+          id?: string
+          is_archived?: boolean | null
+          is_external?: boolean | null
+          is_locked?: boolean | null
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          metadata?: Json | null
+          organization_id?: string | null
+          service_id?: string | null
+          subject?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "iboite_conversations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "iboite_conversations_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      iboite_external_correspondence: {
+        Row: {
+          attachments: Json | null
+          content: string | null
+          created_at: string | null
+          delivered_at: string | null
+          direction: string
+          error_message: string | null
+          external_email: string
+          external_name: string | null
+          external_organization: string | null
+          id: string
+          metadata: Json | null
+          organization_id: string | null
+          sender_id: string
+          sent_at: string | null
+          status: string | null
+          subject: string
+          updated_at: string | null
+        }
+        Insert: {
+          attachments?: Json | null
+          content?: string | null
+          created_at?: string | null
+          delivered_at?: string | null
+          direction?: string
+          error_message?: string | null
+          external_email: string
+          external_name?: string | null
+          external_organization?: string | null
+          id?: string
+          metadata?: Json | null
+          organization_id?: string | null
+          sender_id: string
+          sent_at?: string | null
+          status?: string | null
+          subject: string
+          updated_at?: string | null
+        }
+        Update: {
+          attachments?: Json | null
+          content?: string | null
+          created_at?: string | null
+          delivered_at?: string | null
+          direction?: string
+          error_message?: string | null
+          external_email?: string
+          external_name?: string | null
+          external_organization?: string | null
+          id?: string
+          metadata?: Json | null
+          organization_id?: string | null
+          sender_id?: string
+          sent_at?: string | null
+          status?: string | null
+          subject?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "iboite_external_correspondence_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      iboite_messages: {
+        Row: {
+          attachments: Json | null
+          content: string
+          content_type: string | null
+          conversation_id: string
+          created_at: string | null
+          edited_at: string | null
+          id: string
+          is_deleted: boolean | null
+          is_edited: boolean | null
+          is_official: boolean | null
+          mentions: string[] | null
+          official_reference: string | null
+          reply_to_id: string | null
+          sender_id: string
+        }
+        Insert: {
+          attachments?: Json | null
+          content: string
+          content_type?: string | null
+          conversation_id: string
+          created_at?: string | null
+          edited_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          is_official?: boolean | null
+          mentions?: string[] | null
+          official_reference?: string | null
+          reply_to_id?: string | null
+          sender_id: string
+        }
+        Update: {
+          attachments?: Json | null
+          content?: string
+          content_type?: string | null
+          conversation_id?: string
+          created_at?: string | null
+          edited_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          is_official?: boolean | null
+          mentions?: string[] | null
+          official_reference?: string | null
+          reply_to_id?: string | null
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "iboite_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "iboite_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "iboite_messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "iboite_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       knowledge_base: {
         Row: {
           author_id: string | null
@@ -1532,6 +1835,36 @@ export type Database = {
           tags: string[]
           title: string
           view_count: number
+        }[]
+      }
+      search_iboite_services: {
+        Args: {
+          limit_count?: number
+          organization_filter?: string
+          search_query: string
+        }
+        Returns: {
+          organization_id: string
+          organization_name: string
+          responsible_name: string
+          service_code: string
+          service_id: string
+          service_name: string
+        }[]
+      }
+      search_iboite_users: {
+        Args: {
+          limit_count?: number
+          search_query: string
+          searcher_id: string
+        }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          environment: string
+          organization_name: string
+          role_label: string
+          user_id: string
         }[]
       }
     }

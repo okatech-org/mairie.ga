@@ -5,6 +5,9 @@
  * - BACK_OFFICE (Super Admin, collaborateurs)
  * - MUNICIPAL_STAFF (Personnel municipal)
  * - PUBLIC_USER (Citoyens, associations, entreprises)
+ * 
+ * NOTE: Ce service utilise une table user_environments qui peut ne pas exister.
+ * Il fournit un fallback vers l'ancien système user_roles.
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -15,8 +18,7 @@ import {
     MunicipalStaffRole,
     PublicUserRole,
     EnvironmentPermissions,
-    getEnvironmentPermissions,
-    getEnvironmentFromRole
+    getEnvironmentPermissions
 } from '@/types/environments';
 
 // ============================================================
@@ -63,9 +65,6 @@ class UserEnvironmentService {
     // OBTENIR L'ENVIRONNEMENT DE L'UTILISATEUR
     // ========================================================
 
-    /**
-     * Obtenir l'environnement actuel de l'utilisateur connecté
-     */
     async getCurrentUserEnvironment(): Promise<UserEnvironmentInfo | null> {
         try {
             const { data: session } = await supabase.auth.getSession();
@@ -80,9 +79,6 @@ class UserEnvironmentService {
         }
     }
 
-    /**
-     * Obtenir l'environnement d'un utilisateur spécifique
-     */
     async getUserEnvironment(userId: string): Promise<UserEnvironmentInfo | null> {
         // Check cache first
         const cached = this.cache.get(userId);
@@ -90,43 +86,8 @@ class UserEnvironmentService {
             return cached;
         }
 
-        try {
-            const { data, error } = await supabase
-                .from('user_environments')
-                .select(`
-                    *,
-                    organization:organizations(id, name)
-                `)
-                .eq('user_id', userId)
-                .eq('is_active', true)
-                .or('valid_until.is.null,valid_until.gt.now()')
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
-
-            if (error || !data) {
-                // Fallback: check legacy user_roles table
-                return this.getLegacyEnvironment(userId);
-            }
-
-            const role = data.backoffice_role || data.municipal_role || data.public_role;
-            const envInfo: UserEnvironmentInfo = {
-                environment: data.environment as UserEnvironment,
-                role,
-                organizationId: data.organization_id,
-                organizationName: data.organization?.name,
-                permissions: getEnvironmentPermissions(data.environment as UserEnvironment, role),
-                isActive: data.is_active
-            };
-
-            // Cache it
-            this.cache.set(userId, envInfo);
-
-            return envInfo;
-        } catch (error) {
-            console.error('[UserEnvironment] Error getting user environment:', error);
-            return null;
-        }
+        // The user_environments table may not exist yet, so we use the legacy fallback
+        return this.getLegacyEnvironment(userId);
     }
 
     /**
@@ -186,9 +147,6 @@ class UserEnvironmentService {
     // VÉRIFICATIONS DE PERMISSIONS
     // ========================================================
 
-    /**
-     * Vérifier si l'utilisateur est Super Admin
-     */
     async isSuperAdmin(userId?: string): Promise<boolean> {
         const targetUserId = userId || (await this.getCurrentUserId());
         if (!targetUserId) return false;
@@ -198,9 +156,6 @@ class UserEnvironmentService {
             && env?.role === BackOfficeRole.SUPER_ADMIN;
     }
 
-    /**
-     * Vérifier si l'utilisateur est du Back Office
-     */
     async isBackOffice(userId?: string): Promise<boolean> {
         const targetUserId = userId || (await this.getCurrentUserId());
         if (!targetUserId) return false;
@@ -209,9 +164,6 @@ class UserEnvironmentService {
         return env?.environment === UserEnvironment.BACK_OFFICE;
     }
 
-    /**
-     * Vérifier si l'utilisateur est Personnel Municipal
-     */
     async isMunicipalStaff(userId?: string): Promise<boolean> {
         const targetUserId = userId || (await this.getCurrentUserId());
         if (!targetUserId) return false;
@@ -220,9 +172,6 @@ class UserEnvironmentService {
         return env?.environment === UserEnvironment.MUNICIPAL_STAFF;
     }
 
-    /**
-     * Vérifier si l'utilisateur est un Usager Public
-     */
     async isPublicUser(userId?: string): Promise<boolean> {
         const targetUserId = userId || (await this.getCurrentUserId());
         if (!targetUserId) return false;
@@ -231,9 +180,6 @@ class UserEnvironmentService {
         return env?.environment === UserEnvironment.PUBLIC_USER;
     }
 
-    /**
-     * Vérifier si deux utilisateurs sont dans la même organisation
-     */
     async sameOrganization(userId1: string, userId2: string): Promise<boolean> {
         const [env1, env2] = await Promise.all([
             this.getUserEnvironment(userId1),
@@ -244,9 +190,6 @@ class UserEnvironmentService {
         return env1.organizationId === env2.organizationId;
     }
 
-    /**
-     * Obtenir les organisations accessibles par un utilisateur
-     */
     async getAccessibleOrganizations(userId?: string): Promise<string[]> {
         const targetUserId = userId || (await this.getCurrentUserId());
         if (!targetUserId) return [];
@@ -274,57 +217,60 @@ class UserEnvironmentService {
     // GESTION DES ENVIRONNEMENTS (ADMIN)
     // ========================================================
 
-    /**
-     * Assigner un environnement à un utilisateur
-     * Réservé aux Super Admins
-     */
     async assignEnvironment(params: AssignEnvironmentParams): Promise<boolean> {
         try {
-            // Check if current user is super admin
             const isSuperAdmin = await this.isSuperAdmin();
             if (!isSuperAdmin) {
                 console.error('[UserEnvironment] Only super admins can assign environments');
                 return false;
             }
 
-            // Build insert object based on environment
-            const insertData: any = {
-                user_id: params.userId,
-                environment: params.environment,
-                organization_id: params.organizationId,
-                is_active: true,
-                valid_from: new Date().toISOString(),
-                valid_until: params.validUntil
-            };
-
+            // For now, we update the legacy user_roles table
+            let appRole = 'citizen';
+            
             switch (params.environment) {
                 case UserEnvironment.BACK_OFFICE:
-                    insertData.backoffice_role = params.role;
+                    appRole = 'super_admin';
                     break;
                 case UserEnvironment.MUNICIPAL_STAFF:
-                    insertData.municipal_role = params.role;
-                    if (!params.organizationId) {
-                        console.error('[UserEnvironment] Municipal staff requires organization');
-                        return false;
+                    if ([MunicipalStaffRole.MAIRE, MunicipalStaffRole.MAIRE_ADJOINT, MunicipalStaffRole.SECRETAIRE_GENERAL].includes(params.role as MunicipalStaffRole)) {
+                        appRole = 'admin';
+                    } else {
+                        appRole = 'agent';
                     }
                     break;
                 case UserEnvironment.PUBLIC_USER:
-                    insertData.public_role = params.role;
+                    appRole = 'citizen';
                     break;
             }
 
-            const { error } = await supabase
-                .from('user_environments')
-                .insert(insertData);
+            // Check if role exists first
+            const { data: existing } = await supabase
+                .from('user_roles')
+                .select('id')
+                .eq('user_id', params.userId)
+                .maybeSingle();
 
-            if (error) {
-                console.error('[UserEnvironment] Assign error:', error);
-                return false;
+            if (existing) {
+                const { error } = await supabase
+                    .from('user_roles')
+                    .update({ role: appRole as any })
+                    .eq('user_id', params.userId);
+                if (error) {
+                    console.error('[UserEnvironment] Assign error:', error);
+                    return false;
+                }
+            } else {
+                const { error } = await supabase
+                    .from('user_roles')
+                    .insert({ user_id: params.userId, role: appRole as any });
+                if (error) {
+                    console.error('[UserEnvironment] Assign error:', error);
+                    return false;
+                }
             }
 
-            // Clear cache
             this.cache.delete(params.userId);
-
             return true;
         } catch (error) {
             console.error('[UserEnvironment] Assign error:', error);
@@ -332,20 +278,17 @@ class UserEnvironmentService {
         }
     }
 
-    /**
-     * Désactiver l'environnement d'un utilisateur
-     */
-    async deactivateEnvironment(userId: string, environmentId: string): Promise<boolean> {
+    async deactivateEnvironment(userId: string, _environmentId: string): Promise<boolean> {
         try {
             const isSuperAdmin = await this.isSuperAdmin();
             if (!isSuperAdmin) {
                 return false;
             }
 
+            // For legacy system, we remove the user role
             const { error } = await supabase
-                .from('user_environments')
-                .update({ is_active: false })
-                .eq('id', environmentId)
+                .from('user_roles')
+                .delete()
                 .eq('user_id', userId);
 
             if (error) return false;
@@ -357,10 +300,7 @@ class UserEnvironmentService {
         }
     }
 
-    /**
-     * Lister tous les environnements assignés (admin)
-     */
-    async listAllEnvironments(options?: {
+    async listAllEnvironments(_options?: {
         environment?: UserEnvironment;
         organizationId?: string;
         isActive?: boolean;
@@ -371,28 +311,15 @@ class UserEnvironmentService {
                 return [];
             }
 
-            let query = supabase
-                .from('user_environments')
+            // For legacy system, we return mapped user_roles
+            const { data, error } = await supabase
+                .from('user_roles')
                 .select('*')
                 .order('created_at', { ascending: false });
 
-            if (options?.environment) {
-                query = query.eq('environment', options.environment);
-            }
-
-            if (options?.organizationId) {
-                query = query.eq('organization_id', options.organizationId);
-            }
-
-            if (options?.isActive !== undefined) {
-                query = query.eq('is_active', options.isActive);
-            }
-
-            const { data, error } = await query;
-
             if (error) return [];
 
-            return (data || []).map(this.mapAssignment);
+            return (data || []).map(this.mapLegacyToAssignment);
         } catch (error) {
             return [];
         }
@@ -407,27 +334,44 @@ class UserEnvironmentService {
         return session?.session?.user?.id || null;
     }
 
-    private mapAssignment(data: any): UserEnvironmentAssignment {
+    private mapLegacyToAssignment(data: any): UserEnvironmentAssignment {
+        let environment = UserEnvironment.PUBLIC_USER;
+        let backofficeRole: BackOfficeRole | undefined;
+        let municipalRole: MunicipalStaffRole | undefined;
+        let publicRole: PublicUserRole | undefined;
+
+        switch (data.role) {
+            case 'super_admin':
+                environment = UserEnvironment.BACK_OFFICE;
+                backofficeRole = BackOfficeRole.SUPER_ADMIN;
+                break;
+            case 'admin':
+                environment = UserEnvironment.MUNICIPAL_STAFF;
+                municipalRole = MunicipalStaffRole.MAIRE;
+                break;
+            case 'agent':
+                environment = UserEnvironment.MUNICIPAL_STAFF;
+                municipalRole = MunicipalStaffRole.AGENT_MUNICIPAL;
+                break;
+            default:
+                environment = UserEnvironment.PUBLIC_USER;
+                publicRole = PublicUserRole.CITOYEN;
+        }
+
         return {
             id: data.id,
             userId: data.user_id,
-            environment: data.environment,
-            organizationId: data.organization_id,
-            backofficeRole: data.backoffice_role,
-            municipalRole: data.municipal_role,
-            publicRole: data.public_role,
-            isActive: data.is_active,
-            validFrom: data.valid_from,
-            validUntil: data.valid_until,
+            environment,
+            backofficeRole,
+            municipalRole,
+            publicRole,
+            isActive: true,
+            validFrom: data.created_at,
             createdAt: data.created_at,
-            updatedAt: data.updated_at,
-            createdBy: data.created_by
+            updatedAt: data.created_at
         };
     }
 
-    /**
-     * Invalider le cache pour un utilisateur
-     */
     clearCache(userId?: string): void {
         if (userId) {
             this.cache.delete(userId);
@@ -436,9 +380,6 @@ class UserEnvironmentService {
         }
     }
 
-    /**
-     * Obtenir le dashboard approprié pour l'environnement
-     */
     getDashboardRoute(env: UserEnvironmentInfo): string {
         switch (env.environment) {
             case UserEnvironment.BACK_OFFICE:
