@@ -28,6 +28,7 @@ import {
     RefreshCw,
     MessageSquare,
     Phone,
+    ExternalLink,
     Video,
     Users,
     FolderPlus,
@@ -378,33 +379,53 @@ const MessageBubble: React.FC<{
                                             </div>
                                         </div>
 
-                                        {/* PDF Viewer avec object au lieu d'iframe */}
+                                        {/* PDF Viewer - Direct iframe with fallback */}
                                         <div className="flex-1 p-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                                            <object
-                                                data={`${fullscreenDoc.url}#page=${pdfPage}&zoom=${pdfZoom}`}
-                                                type="application/pdf"
-                                                className="w-full h-full rounded-lg border border-border bg-background"
-                                                style={{ transform: `scale(${pdfZoom / 100})`, transformOrigin: 'top center' }}
-                                            >
-                                                <div className="flex flex-col items-center justify-center h-full gap-4 text-center p-8">
-                                                    <FileText className="w-16 h-16 text-muted-foreground" />
-                                                    <div>
-                                                        <p className="text-lg font-medium mb-2">Prévisualisation non disponible</p>
-                                                        <p className="text-sm text-muted-foreground mb-4">
-                                                            Votre navigateur ne peut pas afficher ce PDF directement.
-                                                        </p>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleDownloadDocument(fullscreenDoc);
-                                                            }}
-                                                            className="px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                                                        >
-                                                            Télécharger le PDF
-                                                        </button>
+                                            <div className="w-full h-full rounded-lg border border-border bg-background relative">
+                                                {/* Essai avec iframe d'abord */}
+                                                <iframe
+                                                    src={`${fullscreenDoc.url}#toolbar=1&navpanes=0&scrollbar=1&page=${pdfPage}`}
+                                                    className="w-full h-full rounded-lg"
+                                                    title="PDF Viewer"
+                                                    onError={() => {
+                                                        // Le fallback s'affichera si l'iframe échoue
+                                                    }}
+                                                />
+                                                {/* Fallback overlay qui s'affiche si l'iframe ne fonctionne pas */}
+                                                <noscript>
+                                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 text-center p-8 bg-background/95 backdrop-blur-sm">
+                                                        <FileText className="w-20 h-20 text-primary/60" />
+                                                        <div className="space-y-2">
+                                                            <p className="text-xl font-semibold">Document PDF généré</p>
+                                                            <p className="text-muted-foreground max-w-md">
+                                                                Cliquez sur le bouton ci-dessous pour télécharger et consulter le document.
+                                                            </p>
+                                                        </div>
+                                                        <div className="flex gap-3">
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    window.open(fullscreenDoc.url, '_blank');
+                                                                }}
+                                                                className="px-6 py-3 rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors flex items-center gap-2"
+                                                            >
+                                                                <ExternalLink className="w-4 h-4" />
+                                                                Ouvrir dans un nouvel onglet
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleDownloadDocument(fullscreenDoc);
+                                                                }}
+                                                                className="px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-2"
+                                                            >
+                                                                <Download className="w-4 h-4" />
+                                                                Télécharger le PDF
+                                                            </button>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </object>
+                                                </noscript>
+                                            </div>
                                         </div>
                                     </motion.div>
                                 )}
