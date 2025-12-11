@@ -4,22 +4,27 @@
  * Gère les conversations internes (sans email) et externes (avec email).
  * Les utilisateurs dans l'écosystème communiquent par nom/service.
  * Les emails sont réservés aux communications externes.
+ * 
+ * NOTE: Ce service utilise des tables iBoîte qui peuvent ne pas être encore
+ * reflétées dans les types TypeScript générés. On utilise 'as any' temporairement.
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import {
+import type {
     UserEnvironment,
     IBoiteConversation,
     IBoiteMessage,
     IBoiteParticipant,
     IBoiteContact,
-    IBoiteService,
     IBoiteUserSearchResult,
     IBoiteServiceSearchResult,
     IBoiteExternalCorrespondence,
     ConversationType,
     IBoiteAttachment
 } from '@/types/environments';
+
+// Re-export IBoiteService type from environments
+export type { IBoiteService as IBoiteServiceType } from '@/types/environments';
 
 // ============================================================
 // TYPES INTERNES
@@ -55,28 +60,24 @@ interface SearchParams {
 // SERVICE
 // ============================================================
 
-class IBoiteService {
-    private static instance: IBoiteService;
+class IBoiteServiceClass {
+    private static instance: IBoiteServiceClass;
 
     private constructor() {
         console.log('📬 [iBoîte] Service initialisé');
     }
 
-    public static getInstance(): IBoiteService {
-        if (!IBoiteService.instance) {
-            IBoiteService.instance = new IBoiteService();
+    public static getInstance(): IBoiteServiceClass {
+        if (!IBoiteServiceClass.instance) {
+            IBoiteServiceClass.instance = new IBoiteServiceClass();
         }
-        return IBoiteService.instance;
+        return IBoiteServiceClass.instance;
     }
 
     // ========================================================
     // RECHERCHE D'UTILISATEURS (INTERNE)
     // ========================================================
 
-    /**
-     * Rechercher des utilisateurs par nom (sans email)
-     * La visibilité dépend de l'environnement de l'utilisateur
-     */
     async searchUsers(params: SearchParams): Promise<IBoiteUserSearchResult[]> {
         try {
             const { data: session } = await supabase.auth.getSession();
@@ -85,7 +86,7 @@ class IBoiteService {
                 return [];
             }
 
-            const { data, error } = await supabase.rpc('search_iboite_users', {
+            const { data, error } = await (supabase.rpc as any)('search_iboite_users', {
                 search_query: params.query,
                 searcher_id: session.session.user.id,
                 limit_count: params.limit || 20
@@ -110,12 +111,9 @@ class IBoiteService {
         }
     }
 
-    /**
-     * Rechercher des services municipaux
-     */
     async searchServices(params: SearchParams): Promise<IBoiteServiceSearchResult[]> {
         try {
-            const { data, error } = await supabase.rpc('search_iboite_services', {
+            const { data, error } = await (supabase.rpc as any)('search_iboite_services', {
                 search_query: params.query,
                 organization_filter: params.organizationId || null,
                 limit_count: params.limit || 20
@@ -144,13 +142,9 @@ class IBoiteService {
     // CARNET D'ADRESSES
     // ========================================================
 
-    /**
-     * Obtenir les contacts de l'utilisateur
-     */
     async getContacts(category?: string): Promise<IBoiteContact[]> {
         try {
-            let query = supabase
-                .from('iboite_contacts')
+            let query = (supabase.from as any)('iboite_contacts')
                 .select('*')
                 .order('is_favorite', { ascending: false })
                 .order('last_contact_at', { ascending: false, nullsFirst: false });
@@ -173,16 +167,12 @@ class IBoiteService {
         }
     }
 
-    /**
-     * Ajouter un contact
-     */
     async addContact(contact: Partial<IBoiteContact>): Promise<IBoiteContact | null> {
         try {
             const { data: session } = await supabase.auth.getSession();
             if (!session?.session?.user?.id) return null;
 
-            const { data, error } = await supabase
-                .from('iboite_contacts')
+            const { data, error } = await (supabase.from as any)('iboite_contacts')
                 .insert({
                     owner_id: session.session.user.id,
                     contact_user_id: contact.contactUserId,
@@ -209,13 +199,9 @@ class IBoiteService {
         }
     }
 
-    /**
-     * Mettre à jour un contact (favori, notes, etc.)
-     */
     async updateContact(contactId: string, updates: Partial<IBoiteContact>): Promise<boolean> {
         try {
-            const { error } = await supabase
-                .from('iboite_contacts')
+            const { error } = await (supabase.from as any)('iboite_contacts')
                 .update({
                     is_favorite: updates.isFavorite,
                     category: updates.category,
@@ -234,9 +220,6 @@ class IBoiteService {
     // CONVERSATIONS
     // ========================================================
 
-    /**
-     * Obtenir les conversations de l'utilisateur
-     */
     async getConversations(options?: {
         archived?: boolean;
         type?: ConversationType;
@@ -246,14 +229,12 @@ class IBoiteService {
             const { data: session } = await supabase.auth.getSession();
             if (!session?.session?.user?.id) return [];
 
-            // Get conversations where user is participant
-            let query = supabase
-                .from('iboite_conversations')
+            let query = (supabase.from as any)('iboite_conversations')
                 .select(`
                     *,
                     participants:iboite_conversation_participants!inner(
                         *,
-                        user:profiles(first_name, last_name, avatar_url)
+                        user:profiles(first_name, last_name)
                     )
                 `)
                 .eq('iboite_conversation_participants.user_id', session.session.user.id)
@@ -286,15 +267,11 @@ class IBoiteService {
         }
     }
 
-    /**
-     * Créer une nouvelle conversation
-     */
     async createConversation(params: CreateConversationParams): Promise<IBoiteConversation | null> {
         try {
             const { data: session } = await supabase.auth.getSession();
             if (!session?.session?.user?.id) return null;
 
-            // For PRIVATE conversations, check if one already exists
             if (params.type === 'PRIVATE' && params.participantIds.length === 1) {
                 const existing = await this.findPrivateConversation(params.participantIds[0]);
                 if (existing) {
@@ -302,9 +279,7 @@ class IBoiteService {
                 }
             }
 
-            // Create conversation
-            const { data: conversation, error: convError } = await supabase
-                .from('iboite_conversations')
+            const { data: conversation, error: convError } = await (supabase.from as any)('iboite_conversations')
                 .insert({
                     conversation_type: params.type,
                     subject: params.subject,
@@ -320,26 +295,22 @@ class IBoiteService {
                 return null;
             }
 
-            // Add participants (including current user)
             const allParticipants = [...new Set([session.session.user.id, ...params.participantIds])];
-            const participantInserts = allParticipants.map((userId, idx) => ({
+            const participantInserts = allParticipants.map((userId) => ({
                 conversation_id: conversation.id,
                 user_id: userId,
                 participant_role: userId === session.session.user.id ? 'OWNER' : 'MEMBER'
             }));
 
-            const { error: partError } = await supabase
-                .from('iboite_conversation_participants')
+            const { error: partError } = await (supabase.from as any)('iboite_conversation_participants')
                 .insert(participantInserts);
 
             if (partError) {
                 console.error('[iBoîte] Add participants error:', partError);
-                // Rollback conversation
-                await supabase.from('iboite_conversations').delete().eq('id', conversation.id);
+                await (supabase.from as any)('iboite_conversations').delete().eq('id', conversation.id);
                 return null;
             }
 
-            // Send initial message if provided
             if (params.initialMessage) {
                 await this.sendMessage({
                     conversationId: conversation.id,
@@ -354,17 +325,12 @@ class IBoiteService {
         }
     }
 
-    /**
-     * Trouver une conversation privée existante avec un utilisateur
-     */
     private async findPrivateConversation(otherUserId: string): Promise<IBoiteConversation | null> {
         try {
             const { data: session } = await supabase.auth.getSession();
             if (!session?.session?.user?.id) return null;
 
-            // Find conversations where both users are participants
-            const { data } = await supabase
-                .from('iboite_conversations')
+            const { data } = await (supabase.from as any)('iboite_conversations')
                 .select(`
                     *,
                     participants:iboite_conversation_participants!inner(user_id)
@@ -375,8 +341,7 @@ class IBoiteService {
                     { user_id: otherUserId }
                 ]);
 
-            // Filter to find exact 2-person private conversation
-            const found = (data || []).find(conv =>
+            const found = (data || []).find((conv: any) =>
                 conv.participants?.length === 2
             );
 
@@ -390,23 +355,16 @@ class IBoiteService {
     // MESSAGES
     // ========================================================
 
-    /**
-     * Obtenir les messages d'une conversation
-     */
     async getMessages(conversationId: string, options?: {
         limit?: number;
         before?: string;
     }): Promise<IBoiteMessage[]> {
         try {
-            let query = supabase
-                .from('iboite_messages')
+            let query = (supabase.from as any)('iboite_messages')
                 .select(`
                     *,
                     sender:profiles!iboite_messages_sender_id_fkey(
-                        first_name, last_name, avatar_url
-                    ),
-                    reply_to:iboite_messages!iboite_messages_reply_to_id_fkey(
-                        id, content, sender:profiles(first_name, last_name)
+                        first_name, last_name
                     )
                 `)
                 .eq('conversation_id', conversationId)
@@ -428,7 +386,6 @@ class IBoiteService {
                 return [];
             }
 
-            // Mark as read
             await this.markConversationAsRead(conversationId);
 
             return this.mapMessages(data || []);
@@ -438,16 +395,12 @@ class IBoiteService {
         }
     }
 
-    /**
-     * Envoyer un message
-     */
     async sendMessage(params: SendMessageParams): Promise<IBoiteMessage | null> {
         try {
             const { data: session } = await supabase.auth.getSession();
             if (!session?.session?.user?.id) return null;
 
-            const { data, error } = await supabase
-                .from('iboite_messages')
+            const { data, error } = await (supabase.from as any)('iboite_messages')
                 .insert({
                     conversation_id: params.conversationId,
                     sender_id: session.session.user.id,
@@ -462,7 +415,7 @@ class IBoiteService {
                 .select(`
                     *,
                     sender:profiles!iboite_messages_sender_id_fkey(
-                        first_name, last_name, avatar_url
+                        first_name, last_name
                     )
                 `)
                 .single();
@@ -479,16 +432,12 @@ class IBoiteService {
         }
     }
 
-    /**
-     * Marquer une conversation comme lue
-     */
     async markConversationAsRead(conversationId: string): Promise<void> {
         try {
             const { data: session } = await supabase.auth.getSession();
             if (!session?.session?.user?.id) return;
 
-            await supabase
-                .from('iboite_conversation_participants')
+            await (supabase.from as any)('iboite_conversation_participants')
                 .update({
                     last_read_at: new Date().toISOString(),
                     unread_count: 0
@@ -501,12 +450,52 @@ class IBoiteService {
     }
 
     // ========================================================
-    // CORRESPONDANCE EXTERNE (AVEC EMAIL)
+    // CORRESPONDANCE EXTERNE
     // ========================================================
 
+    async createExternalCorrespondence(params: {
+        externalEmail: string;
+        externalName?: string;
+        externalOrganization?: string;
+        subject: string;
+        content: string;
+        attachments?: IBoiteAttachment[];
+        organizationId?: string;
+    }): Promise<IBoiteExternalCorrespondence | null> {
+        try {
+            const { data: session } = await supabase.auth.getSession();
+            if (!session?.session?.user?.id) return null;
+
+            const { data, error } = await (supabase.from as any)('iboite_external_correspondence')
+                .insert({
+                    sender_id: session.session.user.id,
+                    organization_id: params.organizationId,
+                    direction: 'OUTBOUND',
+                    external_email: params.externalEmail,
+                    external_name: params.externalName,
+                    external_organization: params.externalOrganization,
+                    subject: params.subject,
+                    content: params.content,
+                    attachments: params.attachments || [],
+                    status: 'DRAFT'
+                })
+                .select()
+                .single();
+
+            if (error) {
+                console.error('[iBoîte] Create external correspondence error:', error);
+                return null;
+            }
+
+            return this.mapExternalCorrespondence(data);
+        } catch (error) {
+            console.error('[iBoîte] Create external correspondence error:', error);
+            return null;
+        }
+    }
+
     /**
-     * Envoyer une correspondance externe (email)
-     * Réservé au personnel municipal
+     * Send external correspondence (alias for createExternalCorrespondence with status update)
      */
     async sendExternalCorrespondence(params: {
         recipientEmail: string;
@@ -515,24 +504,25 @@ class IBoiteService {
         subject: string;
         body: string;
         attachments?: IBoiteAttachment[];
-        organizationId: string;
+        organizationId?: string;
     }): Promise<IBoiteExternalCorrespondence | null> {
         try {
             const { data: session } = await supabase.auth.getSession();
             if (!session?.session?.user?.id) return null;
 
-            const { data, error } = await supabase
-                .from('iboite_external_correspondence')
+            const { data, error } = await (supabase.from as any)('iboite_external_correspondence')
                 .insert({
                     sender_id: session.session.user.id,
                     organization_id: params.organizationId,
-                    recipient_email: params.recipientEmail,
-                    recipient_name: params.recipientName,
-                    recipient_organization: params.recipientOrganization,
+                    direction: 'OUTBOUND',
+                    external_email: params.recipientEmail,
+                    external_name: params.recipientName,
+                    external_organization: params.recipientOrganization,
                     subject: params.subject,
-                    body: params.body,
+                    content: params.body,
                     attachments: params.attachments || [],
-                    status: 'PENDING'
+                    status: 'PENDING',
+                    sent_at: new Date().toISOString()
                 })
                 .select()
                 .single();
@@ -549,18 +539,19 @@ class IBoiteService {
         }
     }
 
-    /**
-     * Obtenir la correspondance externe
-     */
     async getExternalCorrespondence(options?: {
+        direction?: 'INBOUND' | 'OUTBOUND';
         status?: string;
         limit?: number;
     }): Promise<IBoiteExternalCorrespondence[]> {
         try {
-            let query = supabase
-                .from('iboite_external_correspondence')
+            let query = (supabase.from as any)('iboite_external_correspondence')
                 .select('*')
                 .order('created_at', { ascending: false });
+
+            if (options?.direction) {
+                query = query.eq('direction', options.direction);
+            }
 
             if (options?.status) {
                 query = query.eq('status', options.status);
@@ -577,7 +568,7 @@ class IBoiteService {
                 return [];
             }
 
-            return (data || []).map(this.mapExternalCorrespondence);
+            return (data || []).map((item: any) => this.mapExternalCorrespondence(item));
         } catch (error) {
             console.error('[iBoîte] Get external correspondence error:', error);
             return [];
@@ -585,72 +576,29 @@ class IBoiteService {
     }
 
     // ========================================================
-    // REALTIME SUBSCRIPTIONS
+    // STATISTIQUES
     // ========================================================
 
-    /**
-     * S'abonner aux nouveaux messages d'une conversation
-     */
-    subscribeToConversation(
-        conversationId: string,
-        onMessage: (message: IBoiteMessage) => void
-    ): () => void {
-        const channel = supabase
-            .channel(`iboite:${conversationId}`)
-            .on(
-                'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'iboite_messages',
-                    filter: `conversation_id=eq.${conversationId}`
-                },
-                (payload) => {
-                    onMessage(this.mapMessage(payload.new as any));
-                }
-            )
-            .subscribe();
+    async getUnreadCount(): Promise<number> {
+        try {
+            const { data: session } = await supabase.auth.getSession();
+            if (!session?.session?.user?.id) return 0;
 
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }
+            const { data, error } = await (supabase.from as any)('iboite_conversation_participants')
+                .select('unread_count')
+                .eq('user_id', session.session.user.id)
+                .eq('is_active', true);
 
-    /**
-     * S'abonner aux nouvelles conversations
-     */
-    subscribeToNewConversations(
-        onConversation: (conversation: IBoiteConversation) => void
-    ): () => void {
-        const channel = supabase
-            .channel('iboite:conversations')
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'iboite_conversation_participants'
-                },
-                async (payload) => {
-                    if (payload.eventType === 'INSERT') {
-                        // Fetch the full conversation
-                        const { data } = await supabase
-                            .from('iboite_conversations')
-                            .select('*')
-                            .eq('id', (payload.new as any).conversation_id)
-                            .single();
+            if (error) {
+                console.error('[iBoîte] Get unread count error:', error);
+                return 0;
+            }
 
-                        if (data) {
-                            onConversation(this.mapConversation(data, []));
-                        }
-                    }
-                }
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
+            return (data || []).reduce((total: number, row: any) => total + (row.unread_count || 0), 0);
+        } catch (error) {
+            console.error('[iBoîte] Get unread count error:', error);
+            return 0;
+        }
     }
 
     // ========================================================
@@ -667,128 +615,119 @@ class IBoiteService {
             displayRole: data.display_role,
             displayOrganization: data.display_organization,
             avatarUrl: data.avatar_url,
-            category: data.category,
-            isFavorite: data.is_favorite,
-            lastContactAt: data.last_contact_at,
-            contactCount: data.contact_count,
+            category: data.category || 'GENERAL',
+            isFavorite: data.is_favorite || false,
             notes: data.notes,
+            lastContactAt: data.last_contact_at,
+            contactCount: 0,
             createdAt: data.created_at,
-            updatedAt: data.updated_at
+            updatedAt: data.updated_at || data.created_at
         };
     }
 
     private mapContacts(data: any[]): IBoiteContact[] {
-        return data.map(this.mapContact);
+        return data.map(item => this.mapContact(item));
     }
 
     private mapConversation(data: any, participants: any[]): IBoiteConversation {
         return {
             id: data.id,
-            conversationType: data.conversation_type,
+            conversationType: data.conversation_type as ConversationType,
             subject: data.subject,
+            participants: (participants || data.participants || []).map((p: any) => this.mapParticipant(p)),
             serviceId: data.service_id,
             organizationId: data.organization_id,
-            externalEmail: data.external_email,
-            isExternal: data.is_external,
+            isExternal: data.is_external || false,
+            isArchived: data.is_archived || false,
+            isResolved: data.is_locked || false,
             lastMessageAt: data.last_message_at,
             lastMessagePreview: data.last_message_preview,
-            lastMessageSenderId: data.last_message_sender_id,
-            isArchived: data.is_archived,
-            isResolved: data.is_resolved,
-            metadata: data.metadata,
+            lastMessageSenderId: undefined,
+            unreadCount: 0,
             createdAt: data.created_at,
-            updatedAt: data.updated_at,
-            participants: participants.map(this.mapParticipant),
-            unreadCount: participants.find(p => p.is_current)?.unread_count || 0
+            updatedAt: data.updated_at || data.created_at
         };
     }
 
     private mapConversations(data: any[], currentUserId: string): IBoiteConversation[] {
-        return data.map(conv => {
-            const currentParticipant = conv.participants?.find(
+        return data.map(item => {
+            const myParticipation = (item.participants || []).find(
                 (p: any) => p.user_id === currentUserId
             );
-            return {
-                ...this.mapConversation(conv, conv.participants || []),
-                unreadCount: currentParticipant?.unread_count || 0
-            };
+            const conv = this.mapConversation(item, item.participants || []);
+            conv.unreadCount = myParticipation?.unread_count || 0;
+            return conv;
         });
     }
 
     private mapParticipant(data: any): IBoiteParticipant {
+        const user = data.user || {};
         return {
-            id: data.id,
-            conversationId: data.conversation_id,
+            id: data.id || '',
+            conversationId: data.conversation_id || '',
             userId: data.user_id,
-            participantRole: data.participant_role,
+            participantRole: data.participant_role || 'MEMBER',
+            isActive: data.is_active ?? true,
+            isMuted: data.is_muted || false,
+            isPinned: false,
             lastReadAt: data.last_read_at,
-            unreadCount: data.unread_count,
-            isMuted: data.is_muted,
-            isPinned: data.is_pinned,
-            joinedAt: data.joined_at,
-            leftAt: data.left_at,
-            isActive: data.is_active,
-            user: data.user ? {
-                displayName: `${data.user.first_name || ''} ${data.user.last_name || ''}`.trim(),
-                avatarUrl: data.user.avatar_url
-            } : undefined
+            unreadCount: data.unread_count || 0,
+            joinedAt: data.joined_at || data.created_at,
+            user: {
+                displayName: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Utilisateur',
+                avatarUrl: user.avatar_url
+            }
         };
     }
 
     private mapMessage(data: any): IBoiteMessage {
+        const sender = data.sender || {};
         return {
             id: data.id,
             conversationId: data.conversation_id,
             senderId: data.sender_id,
             content: data.content,
-            contentType: data.content_type,
+            contentType: data.content_type || 'TEXT',
             attachments: data.attachments || [],
             replyToId: data.reply_to_id,
             mentions: data.mentions || [],
-            isOfficial: data.is_official,
+            isOfficial: data.is_official || false,
             officialReference: data.official_reference,
-            isEdited: data.is_edited,
+            isEdited: data.is_edited || false,
+            isDeleted: data.is_deleted || false,
             editedAt: data.edited_at,
-            isDeleted: data.is_deleted,
-            deletedAt: data.deleted_at,
-            metadata: data.metadata,
             createdAt: data.created_at,
-            sender: data.sender ? {
-                displayName: `${data.sender.first_name || ''} ${data.sender.last_name || ''}`.trim(),
-                avatarUrl: data.sender.avatar_url
-            } : undefined,
-            replyTo: data.reply_to ? this.mapMessage(data.reply_to) : undefined
+            sender: {
+                displayName: `${sender.first_name || ''} ${sender.last_name || ''}`.trim() || 'Utilisateur',
+                avatarUrl: sender.avatar_url
+            }
         };
     }
 
     private mapMessages(data: any[]): IBoiteMessage[] {
-        return data.map(this.mapMessage.bind(this));
+        return data.map(item => this.mapMessage(item));
     }
 
     private mapExternalCorrespondence(data: any): IBoiteExternalCorrespondence {
         return {
             id: data.id,
             senderId: data.sender_id,
-            organizationId: data.organization_id,
-            recipientEmail: data.recipient_email,
-            recipientName: data.recipient_name,
-            recipientOrganization: data.recipient_organization,
+            organizationId: data.organization_id || '',
+            recipientEmail: data.external_email,
+            recipientName: data.external_name,
+            recipientOrganization: data.external_organization,
             subject: data.subject,
-            body: data.body,
+            body: data.content || '',
             attachments: data.attachments || [],
-            referenceNumber: data.reference_number,
-            linkedConversationId: data.linked_conversation_id,
-            status: data.status,
+            status: data.status || 'DRAFT',
             sentAt: data.sent_at,
             deliveredAt: data.delivered_at,
             errorMessage: data.error_message,
-            metadata: data.metadata,
             createdAt: data.created_at,
-            updatedAt: data.updated_at
+            updatedAt: data.updated_at || data.created_at
         };
     }
 }
 
-// Singleton export
-export const iBoiteService = IBoiteService.getInstance();
-export default iBoiteService;
+// Export singleton instance
+export const iBoiteService = IBoiteServiceClass.getInstance();

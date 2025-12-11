@@ -121,10 +121,10 @@ const GabonMairiesMap = () => {
           // Import mock data and convert to Organization format
           const { mairiesGabon } = await import('@/data/mock-mairies-gabon');
 
-          const mockOrganizations: Organization[] = mairiesGabon.map(m => ({
+          const mockOrganizations = mairiesGabon.map(m => ({
             id: `mock-${m.id}`,
             name: m.name,
-            type: 'MAIRIE' as any,
+            type: 'CONSULAT' as const,
             province: m.province,
             departement: m.departement,
             latitude: m.coordinates[1],
@@ -132,11 +132,19 @@ const GabonMairiesMap = () => {
             population: m.population,
             maire_name: m.maire,
             contact_phone: m.contact,
-            is_active: true,
             city: m.departement,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-          }));
+            jurisdiction: [] as string[],
+            address: null,
+            contact_email: null,
+            country: 'Gabon',
+            country_code: 'GA',
+            enabled_services: null,
+            logo_url: null,
+            settings: null,
+            website: null,
+          })) as Organization[];
 
           // Merge: prioritize DB data, add mock data for missing entries
           const dbIds = new Set(data.map(m => m.name.toLowerCase()));
@@ -154,21 +162,30 @@ const GabonMairiesMap = () => {
         // Fallback to pure mock data
         try {
           const { mairiesGabon } = await import('@/data/mock-mairies-gabon');
-          const mockOrganizations: Organization[] = mairiesGabon.map(m => ({
+          const mockOrganizations = mairiesGabon.map(m => ({
             id: `mock-${m.id}`,
             name: m.name,
-            type: 'MAIRIE' as any,
+            type: 'CONSULAT' as const,
             province: m.province,
             departement: m.departement,
             latitude: m.coordinates[1],
             longitude: m.coordinates[0],
             population: m.population,
             maire_name: m.maire,
-            is_active: true,
             city: m.departement,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-          }));
+            jurisdiction: [] as string[],
+            address: null,
+            contact_email: null,
+            contact_phone: m.contact,
+            country: 'Gabon',
+            country_code: 'GA',
+            enabled_services: null,
+            logo_url: null,
+            settings: null,
+            website: null,
+          })) as Organization[];
           setMairies(mockOrganizations);
           console.log(`[Map] Using mock data: ${mockOrganizations.length} mairies`);
         } catch {

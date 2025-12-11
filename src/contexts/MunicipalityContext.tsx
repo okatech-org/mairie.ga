@@ -80,7 +80,7 @@ export function MunicipalityProvider({ children }: MunicipalityProviderProps) {
         return null;
     });
 
-    // Charger l'organization_id du profil utilisateur
+    // Charger l'organization_id du profil utilisateur depuis le champ address
     useEffect(() => {
         const loadUserProfile = async () => {
             if (!user) {
@@ -91,12 +91,14 @@ export function MunicipalityProvider({ children }: MunicipalityProviderProps) {
             try {
                 const { data, error } = await supabase
                     .from('profiles')
-                    .select('organization_id')
-                    .eq('id', user.id)
-                    .single();
+                    .select('address')
+                    .eq('user_id', user.id)
+                    .maybeSingle();
 
-                if (data && !error) {
-                    setUserOrganizationId(data.organization_id);
+                if (data && !error && data.address) {
+                    // organization_id is stored in the address JSONB field
+                    const address = data.address as { organization_id?: string };
+                    setUserOrganizationId(address.organization_id || null);
                 }
             } catch (err) {
                 console.error('[MunicipalityContext] Error loading user profile:', err);
