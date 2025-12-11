@@ -66,8 +66,10 @@ export interface Organization {
     website?: string | null;
     logo_url?: string | null;
     isActive?: boolean;
-    created_at: string;
-    updated_at: string;
+    latitude?: number | null;
+    longitude?: number | null;
+    created_at?: string;
+    updated_at?: string;
 }
 
 export const COUNTRY_FLAGS: Record<string, string> = {
@@ -80,7 +82,7 @@ export const COUNTRY_FLAGS: Record<string, string> = {
 };
 
 export const PROVINCES_GABON = [
-    'Estuaire', 'Haut-Ogooué', 'Moyen-Ogooué', 'Ngounié', 
+    'Estuaire', 'Haut-Ogooué', 'Moyen-Ogooué', 'Ngounié',
     'Nyanga', 'Ogooué-Ivindo', 'Ogooué-Lolo', 'Ogooué-Maritime', 'Woleu-Ntem'
 ];
 

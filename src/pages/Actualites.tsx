@@ -29,6 +29,8 @@ import {
   Megaphone
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useMunicipality } from "@/contexts/MunicipalityContext";
+import { MunicipalityIndicator } from "@/components/municipality/MunicipalityIndicator";
 import reunionImage from "@/assets/reunion-citoyenne.jpg";
 import serviceImage from "@/assets/service-municipal.jpg";
 import villeImage from "@/assets/ville-gabon.jpg";
@@ -239,6 +241,7 @@ export default function VieCitoyenne() {
   const [activeTab, setActiveTab] = useState("actualites");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Tous");
+  const { currentMunicipality, detectionSource, isLoading: isMunicipalityLoading } = useMunicipality();
 
   const filteredArticles = useMemo(() => {
     return articles.filter(article => {
@@ -295,7 +298,7 @@ export default function VieCitoyenne() {
             </p>
 
             {/* Stats Mini */}
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-4 mb-6">
               {stats.map((stat, i) => (
                 <div key={i} className="flex items-center gap-2 px-4 py-2 rounded-full bg-card/80 backdrop-blur-sm border">
                   <stat.icon className="h-4 w-4 text-primary" />
@@ -304,6 +307,9 @@ export default function VieCitoyenne() {
                 </div>
               ))}
             </div>
+
+            {/* Municipality Indicator */}
+            <MunicipalityIndicator variant="full" className="max-w-md" />
           </div>
         </div>
       </section>
