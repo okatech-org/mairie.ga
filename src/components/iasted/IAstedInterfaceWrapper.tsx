@@ -54,30 +54,53 @@ export default function IAstedInterfaceWrapper() {
       if (authUser) {
         console.log('🔐 [IAstedWrapper] Utilisateur connecté:', authUser.email);
 
-        // Récupérer le rôle depuis user_roles
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
+        // D'abord essayer user_environments pour le rôle précis (MAIRE, AGENT_MUNICIPAL, etc.)
+        const { data: envData } = await supabase
+          .from('user_environments')
+          .select('role, environment')
           .eq('user_id', authUser.id)
+          .eq('is_active', true)
           .maybeSingle();
 
-        if (roleData?.role) {
-          console.log('🔐 [IAstedWrapper] Rôle détecté:', roleData.role);
-          setUserRole(roleData.role);
+        if (envData?.role) {
+          console.log('🔐 [IAstedWrapper] Rôle précis (user_environments):', envData.role);
+          setUserRole(envData.role);
         } else {
-          setUserRole('citizen');
+          // Fallback sur user_roles
+          const { data: roleData } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', authUser.id)
+            .maybeSingle();
+
+          if (roleData?.role) {
+            console.log('🔐 [IAstedWrapper] Rôle (user_roles):', roleData.role);
+            setUserRole(roleData.role);
+          } else {
+            setUserRole('citizen');
+          }
         }
 
         // Récupérer le prénom depuis profiles
         const { data: profileData } = await supabase
           .from('profiles')
-          .select('first_name')
+          .select('first_name, last_name')
           .eq('user_id', authUser.id)
           .maybeSingle();
 
-        if (profileData?.first_name) {
-          console.log('🔐 [IAstedWrapper] Prénom détecté:', profileData.first_name);
-          setUserFirstName(profileData.first_name);
+        if (profileData) {
+          // Gérer le cas où first_name est "M." (abréviation de Monsieur)
+          let displayName = profileData.first_name || '';
+          
+          // Si le prénom est une abréviation de titre, ne pas l'utiliser comme prénom
+          if (displayName === 'M.' || displayName === 'Mme' || displayName === 'Mlle') {
+            // Ne pas définir de prénom, laisser iAsted utiliser le titre approprié
+            console.log('🔐 [IAstedWrapper] Prénom est un titre, ignoré:', displayName);
+            setUserFirstName(undefined);
+          } else {
+            console.log('🔐 [IAstedWrapper] Prénom détecté:', displayName);
+            setUserFirstName(displayName);
+          }
         }
         return;
       }
@@ -102,9 +125,12 @@ export default function IAstedInterfaceWrapper() {
 
   // Mapper les rôles du système municipal vers les rôles iAsted
   const mapUserRole = (role?: string): string => {
-    if (!role) return 'unknown'; // Pas de rôle = page d'accueil, on ne sait pas à qui on s'adresse
+    if (!role) return 'unknown';
 
-    switch (role.toUpperCase()) {
+    const upperRole = role.toUpperCase();
+
+    // Rôles précis de user_environments ou user_roles
+    switch (upperRole) {
       // Personnel municipal - Élus
       case 'MAIRE':
         return 'maire';
@@ -126,10 +152,15 @@ export default function IAstedInterfaceWrapper() {
       case 'AGENT_ACCUEIL':
         return 'agent';
 
-      // Super Administration
+      // Super Administration (rôle système)
       case 'SUPER_ADMIN':
-      case 'ADMIN':
         return 'super_admin';
+      
+      // Le rôle 'admin' de user_roles peut être un maire ou un admin selon le contexte
+      // Priorité donnée à user_environments donc si on arrive ici avec 'admin', 
+      // c'est un admin système, pas un maire
+      case 'ADMIN':
+        return 'admin';
 
       // Usagers - Citoyens
       case 'CITIZEN':
@@ -152,7 +183,7 @@ export default function IAstedInterfaceWrapper() {
         return 'association';
 
       default:
-        return 'unknown'; // Retour inconnu pour salutation neutre
+        return 'unknown';
     }
   };
 
