@@ -76,6 +76,7 @@ export default function SuperAdminKnowledgeBase() {
     const [editingArticle, setEditingArticle] = useState<KBArticle | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [generatingEmbeddings, setGeneratingEmbeddings] = useState(false);
+    const [embeddingStats, setEmbeddingStats] = useState({ withEmbedding: 0, withoutEmbedding: 0 });
 
     const [formData, setFormData] = useState<ArticleForm>({
         title: '',
@@ -88,6 +89,7 @@ export default function SuperAdminKnowledgeBase() {
 
     useEffect(() => {
         loadArticles();
+        loadEmbeddingStats();
     }, []);
 
     const loadArticles = async () => {
@@ -95,6 +97,31 @@ export default function SuperAdminKnowledgeBase() {
         const data = await knowledgeBaseService.getAll();
         setArticles(data);
         setLoading(false);
+    };
+
+    const loadEmbeddingStats = async () => {
+        try {
+            // Count articles with embeddings
+            const { count: withCount, error: withError } = await supabase
+                .from('knowledge_base')
+                .select('*', { count: 'exact', head: true })
+                .not('embedding', 'is', null);
+
+            // Count articles without embeddings
+            const { count: withoutCount, error: withoutError } = await supabase
+                .from('knowledge_base')
+                .select('*', { count: 'exact', head: true })
+                .is('embedding', null);
+
+            if (!withError && !withoutError) {
+                setEmbeddingStats({
+                    withEmbedding: withCount || 0,
+                    withoutEmbedding: withoutCount || 0
+                });
+            }
+        } catch (err) {
+            console.error('Error loading embedding stats:', err);
+        }
     };
 
     const resetForm = () => {
@@ -213,6 +240,8 @@ export default function SuperAdminKnowledgeBase() {
                 if (data.failed > 0 && data.details?.failed) {
                     console.log('Failed articles:', data.details.failed);
                 }
+                // Refresh embedding stats
+                loadEmbeddingStats();
             } else {
                 toast.error(data?.error || "Erreur inconnue");
             }
@@ -266,7 +295,7 @@ export default function SuperAdminKnowledgeBase() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                 <Card className="neu-card border-none">
                     <CardContent className="pt-6">
                         <div className="flex items-center gap-4">
@@ -315,6 +344,32 @@ export default function SuperAdminKnowledgeBase() {
                             <div>
                                 <p className="text-2xl font-bold">{stats.totalViews}</p>
                                 <p className="text-sm text-muted-foreground">Vues totales</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="neu-card border-none">
+                    <CardContent className="pt-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 rounded-xl bg-emerald-500/10">
+                                <Sparkles className="h-6 w-6 text-emerald-500" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-bold">{embeddingStats.withEmbedding}</p>
+                                <p className="text-sm text-muted-foreground">Avec embedding</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="neu-card border-none">
+                    <CardContent className="pt-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 rounded-xl bg-orange-500/10">
+                                <Database className="h-6 w-6 text-orange-500" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-bold">{embeddingStats.withoutEmbedding}</p>
+                                <p className="text-sm text-muted-foreground">Sans embedding</p>
                             </div>
                         </div>
                     </CardContent>
