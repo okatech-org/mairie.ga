@@ -164,9 +164,9 @@ class KnowledgeBaseService {
   }
 
   /**
-   * Get categories
+   * Get categories with article counts
    */
-  async getCategories(): Promise<string[]> {
+  async getCategories(): Promise<{ name: string; count: number }[]> {
     try {
       const { data, error } = await kbTable()
         .select('category')
@@ -174,10 +174,73 @@ class KnowledgeBaseService {
       
       if (error) throw error;
       
-      const categories = [...new Set((data || []).map((row: any) => row.category))];
-      return categories.filter(Boolean) as string[];
+      const categoryCount: Record<string, number> = {};
+      (data || []).forEach((row: any) => {
+        if (row.category) {
+          categoryCount[row.category] = (categoryCount[row.category] || 0) + 1;
+        }
+      });
+      
+      return Object.entries(categoryCount)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
     } catch (err) {
       console.error('[KnowledgeBaseService] Error fetching categories:', err);
+      return [];
+    }
+  }
+
+  /**
+   * Get popular articles (most viewed)
+   */
+  async getPopularArticles(limit: number = 5): Promise<KBArticle[]> {
+    try {
+      const { data, error } = await kbTable()
+        .select('*')
+        .eq('status', 'PUBLISHED')
+        .eq('is_active', true)
+        .order('view_count', { ascending: false })
+        .limit(limit);
+      
+      if (error) throw error;
+      return (data || []).map((row: any) => this.mapFromDatabase(row));
+    } catch (err) {
+      console.error('[KnowledgeBaseService] Error fetching popular articles:', err);
+      return [];
+    }
+  }
+
+  /**
+   * Get popular search terms (based on article tags)
+   */
+  async getPopularSearchTerms(): Promise<string[]> {
+    try {
+      const { data, error } = await kbTable()
+        .select('keywords, tags')
+        .eq('status', 'PUBLISHED')
+        .eq('is_active', true)
+        .order('view_count', { ascending: false })
+        .limit(20);
+      
+      if (error) throw error;
+      
+      const termCount: Record<string, number> = {};
+      (data || []).forEach((row: any) => {
+        const keywords = row.keywords || [];
+        const tags = row.tags || [];
+        [...keywords, ...tags].forEach((term: string) => {
+          if (term && term.length > 2) {
+            termCount[term] = (termCount[term] || 0) + 1;
+          }
+        });
+      });
+      
+      return Object.entries(termCount)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([term]) => term);
+    } catch (err) {
+      console.error('[KnowledgeBaseService] Error fetching popular terms:', err);
       return [];
     }
   }
