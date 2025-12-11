@@ -40,6 +40,7 @@ import SuperAdminKnowledgeBase from "./pages/dashboard/super-admin/SuperAdminKno
 import SuperAdminAnalytics from "./pages/dashboard/super-admin/SuperAdminAnalytics";
 import NotificationPreferencesAdmin from "./pages/dashboard/super-admin/NotificationPreferencesAdmin";
 import DocumentSettingsAdmin from "./pages/dashboard/super-admin/DocumentSettingsAdmin";
+import SuperAdminAuditLogs from "./pages/dashboard/super-admin/SuperAdminAuditLogs";
 import MaireDashboard from "./pages/dashboard/MaireDashboard";
 import MaireAnalyticsPage from "./pages/dashboard/maire/MaireAnalyticsPage";
 import MaireBudgetPage from "./pages/dashboard/maire/MaireBudgetPage";
@@ -170,6 +171,7 @@ const App = () => (
                     <Route path="/dashboard/super-admin/analytics" element={<DashboardLayout><SuperAdminAnalytics /></DashboardLayout>} />
                     <Route path="/dashboard/super-admin/notifications" element={<DashboardLayout><NotificationPreferencesAdmin /></DashboardLayout>} />
                     <Route path="/dashboard/super-admin/document-settings" element={<DashboardLayout><DocumentSettingsAdmin /></DashboardLayout>} />
+                    <Route path="/dashboard/super-admin/audit-logs" element={<DashboardLayout><SuperAdminAuditLogs /></DashboardLayout>} />
 
                     {/* Municipal Personnel Routes */}
                     <Route path="/dashboard/maire" element={<DashboardLayout><MaireDashboard /></DashboardLayout>} />
