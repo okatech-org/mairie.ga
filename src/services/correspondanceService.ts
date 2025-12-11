@@ -47,9 +47,12 @@ export interface SendCorrespondanceParams {
     folderId?: string;
     documentId?: string;
     recipientEmail: string;
+    recipientName?: string;
+    recipientOrg?: string;
     subject?: string;
     body?: string;
     attachmentPath?: string;
+    isUrgent?: boolean;
 }
 
 // Authorized roles for CORRESPONDANCE features (inter-administration mail)
@@ -325,10 +328,13 @@ class CorrespondanceService {
 
         // Call Edge Function to send email with demo mode fallback
         const { data, error, isDemo } = await invokeWithDemoFallback<SendResponse>('send-official-correspondence', {
-            to: recipientEmail,
+            recipient_email: recipientEmail,
+            recipient_org: params.recipientOrg || 'Destinataire',
+            recipient_name: params.recipientName || '',
             subject: subject || 'Correspondance Officielle',
-            body: body || 'Veuillez trouver ci-joint notre correspondance officielle.',
-            attachmentPath: attachmentPath
+            content: body || 'Veuillez trouver ci-joint notre correspondance officielle.',
+            document_ids: params.documentId ? [params.documentId] : [],
+            is_urgent: params.isUrgent || false
         });
 
         if (error) {

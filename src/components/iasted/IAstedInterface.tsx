@@ -1340,9 +1340,12 @@ export default function IAstedInterface({
 
                 const result = await correspondanceService.sendCorrespondance({
                     recipientEmail: args.recipient_email || pendingDocument?.recipientEmail,
+                    recipientName: args.recipient_name || args.recipient || '',
+                    recipientOrg: args.recipient_org || pendingDocument?.recipientOrg || 'Destinataire',
                     subject: args.subject || pendingDocument?.subject || 'Correspondance officielle',
-                    body: args.body || 'Veuillez trouver ci-joint le courrier officiel.',
+                    body: args.body || args.content || 'Veuillez trouver ci-joint le courrier officiel.',
                     documentId: documentId,
+                    isUrgent: args.is_urgent || false,
                 });
 
                 toast.success(`✉️ Courrier envoyé à ${args.recipient_email || pendingDocument?.recipientEmail}`);
