@@ -76,6 +76,7 @@ export default function SuperAdminKnowledgeBase() {
     const [editingArticle, setEditingArticle] = useState<KBArticle | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [generatingEmbeddings, setGeneratingEmbeddings] = useState(false);
+    const [generatingArticleId, setGeneratingArticleId] = useState<string | null>(null);
     const [embeddingStats, setEmbeddingStats] = useState({ withEmbedding: 0, withoutEmbedding: 0 });
 
     const [formData, setFormData] = useState<ArticleForm>({
@@ -250,6 +251,34 @@ export default function SuperAdminKnowledgeBase() {
             toast.error("Erreur lors de l'appel à la fonction");
         } finally {
             setGeneratingEmbeddings(false);
+        }
+    };
+
+    const handleGenerateArticleEmbedding = async (articleId: string) => {
+        setGeneratingArticleId(articleId);
+        try {
+            const { data, error } = await supabase.functions.invoke('generate-kb-embeddings', {
+                body: { articleId }
+            });
+
+            if (error) {
+                console.error('Error generating embedding:', error);
+                toast.error("Erreur lors de la génération de l'embedding");
+                return;
+            }
+
+            if (data?.success) {
+                toast.success("Embedding généré avec succès");
+                loadArticles();
+                loadEmbeddingStats();
+            } else {
+                toast.error(data?.error || "Erreur inconnue");
+            }
+        } catch (err) {
+            console.error('Error calling generate-kb-embeddings:', err);
+            toast.error("Erreur lors de l'appel à la fonction");
+        } finally {
+            setGeneratingArticleId(null);
         }
     };
 
@@ -463,6 +492,19 @@ export default function SuperAdminKnowledgeBase() {
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-2 ml-4">
+                                                    <Button 
+                                                        size="sm" 
+                                                        variant="ghost"
+                                                        onClick={() => handleGenerateArticleEmbedding(article.id)}
+                                                        disabled={generatingArticleId === article.id}
+                                                        title={article.hasEmbedding ? "Régénérer l'embedding" : "Générer l'embedding"}
+                                                    >
+                                                        {generatingArticleId === article.id ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                            <Sparkles className="h-4 w-4" />
+                                                        )}
+                                                    </Button>
                                                     <Button 
                                                         size="sm" 
                                                         variant="outline"
