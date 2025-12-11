@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.new-device-alert]
 verify_jwt = false
+
+[functions.semantic-search-kb]
+verify_jwt = false

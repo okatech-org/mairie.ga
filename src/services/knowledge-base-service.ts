@@ -77,7 +77,7 @@ class KnowledgeBaseService {
   }
 
   /**
-   * Search articles
+   * Search articles (text search)
    */
   async search(query: string): Promise<KBArticle[]> {
     try {
@@ -93,6 +93,48 @@ class KnowledgeBaseService {
     } catch (err) {
       console.error('[KnowledgeBaseService] Error searching articles:', err);
       return [];
+    }
+  }
+
+  /**
+   * Semantic search using AI embeddings
+   */
+  async semanticSearch(query: string, options?: { limit?: number; category?: string }): Promise<{
+    results: KBArticle[];
+    searchType: 'semantic' | 'text' | 'error';
+  }> {
+    try {
+      const response = await supabase.functions.invoke('semantic-search-kb', {
+        body: {
+          query,
+          limit: options?.limit || 10,
+          category: options?.category,
+          includeKeywords: true
+        }
+      });
+
+      if (response.error) {
+        console.error('[KnowledgeBaseService] Semantic search error:', response.error);
+        // Fallback to text search
+        const textResults = await this.search(query);
+        return { results: textResults, searchType: 'text' };
+      }
+
+      const data = response.data;
+      const articles = (data.results || []).map((row: any) => ({
+        ...this.mapFromDatabase(row),
+        similarity: row.similarity,
+        keywordMatches: row.keywordMatches
+      }));
+
+      return {
+        results: articles,
+        searchType: data.searchType || 'semantic'
+      };
+    } catch (err) {
+      console.error('[KnowledgeBaseService] Semantic search exception:', err);
+      const textResults = await this.search(query);
+      return { results: textResults, searchType: 'text' };
     }
   }
 
