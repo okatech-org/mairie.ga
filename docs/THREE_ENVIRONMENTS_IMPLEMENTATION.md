@@ -77,16 +77,17 @@
 
 ## 📋 Prochaines Étapes
 
-1. **Appliquer la migration** à la base de données Supabase:
+1. **Appliquer les migrations** à la base de données Supabase (incluant la migration des données utilisateurs) :
    ```bash
    npx supabase db push
    ```
+   *Cela créera les tables ET migrera automatiquement vos utilisateurs existants vers la nouvelle structure.*
 
-2. **Initialiser les services** dans l'annuaire pour chaque mairie
+2. **Vérification** :
+   Une fois la commande terminée, les utilisateurs auront automatiquement leur environnement défini dans la table `user_environments`.
 
-3. **Migrer les utilisateurs existants** vers le nouveau système `user_environments`
-
-4. **Intégrer les composants** dans les pages existantes de messagerie
+3. **Intégration UI** :
+   L'interface iBoîte est déjà connectée via `IBoitePage.tsx`. Vous pouvez la tester en naviguant vers `/iboite`.
 
 ---
 
