@@ -494,13 +494,58 @@ const GabonMairiesMap = () => {
     markersRef.current.forEach(({ marker }) => marker.remove());
     markersRef.current.clear();
 
-    // Check if mairie is a provincial capital
-    const isCapital = (mairie: Organization) => {
+    // Classify municipality type
+    const getMunicipalityType = (mairie: Organization): 'capital' | 'city' | 'town' | 'village' => {
       const capitalNames = provinces.map(p => p.capital.toLowerCase());
-      return capitalNames.some(cap =>
+      const isCapital = capitalNames.some(cap =>
         mairie.name.toLowerCase().includes(cap) ||
         mairie.city?.toLowerCase() === cap
       );
+
+      if (isCapital) return 'capital';
+      if ((mairie.population || 0) >= 20000) return 'city';
+      if ((mairie.population || 0) >= 5000) return 'town';
+      return 'village';
+    };
+
+    // SVG icons for each type (no emoji, pure SVG for stability)
+    const getMarkerSVG = (type: string, color: string): string => {
+      switch (type) {
+        case 'capital':
+          // Star icon for provincial capitals
+          return `<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="16" cy="16" r="14" fill="${color}" stroke="white" stroke-width="3"/>
+            <path d="M16 8L18.5 13.5L24 14L20 18L21 24L16 21L11 24L12 18L8 14L13.5 13.5L16 8Z" fill="white"/>
+          </svg>`;
+        case 'city':
+          // Building icon for major cities
+          return `<svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="13" cy="13" r="11" fill="${color}" stroke="white" stroke-width="2.5"/>
+            <rect x="8" y="10" width="4" height="8" fill="white" rx="0.5"/>
+            <rect x="14" y="7" width="4" height="11" fill="white" rx="0.5"/>
+          </svg>`;
+        case 'town':
+          // House icon for towns
+          return `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="10" cy="10" r="8.5" fill="${color}" stroke="white" stroke-width="2"/>
+            <path d="M10 5L5 9V14H8V11H12V14H15V9L10 5Z" fill="white"/>
+          </svg>`;
+        default:
+          // Simple dot for villages
+          return `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="7" cy="7" r="5.5" fill="${color}" stroke="white" stroke-width="2"/>
+          </svg>`;
+      }
+    };
+
+    // Get label for type
+    const getTypeLabel = (type: string): string => {
+      switch (type) {
+        case 'capital': return 'Chef-lieu de Province';
+        case 'city': return 'Ville';
+        case 'town': return 'Commune';
+        default: return 'Village';
+      }
     };
 
     // Add markers for each mairie
@@ -510,74 +555,63 @@ const GabonMairiesMap = () => {
 
       const province = provinces.find(p => p.name === mairie.province);
       const color = province?.color || '#009e49';
-      const isProvincialCapital = isCapital(mairie);
+      const municipalityType = getMunicipalityType(mairie);
 
-      // Create marker element with enhanced styles
+      // Create marker element with SVG icon
       const el = document.createElement('div');
-      el.className = `mairie-marker ${isProvincialCapital ? 'capital' : ''}`;
+      el.className = `mairie-marker mairie-${municipalityType}`;
+      el.innerHTML = getMarkerSVG(municipalityType, color);
 
-      if (isProvincialCapital) {
-        // Provincial capital - larger marker with star icon
-        Object.assign(el.style, {
-          width: '28px',
-          height: '28px',
-          backgroundColor: color,
-          borderRadius: '50%',
-          border: '3px solid white',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '12px',
-          zIndex: '10'
-        });
-        el.innerHTML = '⭐';
-      } else {
-        // Regular commune - smaller marker
-        Object.assign(el.style, {
-          width: '14px',
-          height: '14px',
-          backgroundColor: color,
-          borderRadius: '50%',
-          border: '2px solid white',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
-          cursor: 'pointer',
-          zIndex: '5'
-        });
-      }
+      // Stable styling without transform animations
+      Object.assign(el.style, {
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        // Z-index based on type for proper layering
+        zIndex: municipalityType === 'capital' ? '100' :
+          municipalityType === 'city' ? '50' :
+            municipalityType === 'town' ? '25' : '10'
+      });
 
-      // Add hover effect with CSS animation
+      // Hover effect using filter instead of transform (no jumping)
       el.addEventListener('mouseenter', () => {
-        el.style.transform = 'scale(1.2)';
-        el.style.transition = 'transform 0.15s ease-out';
-        el.style.zIndex = '20';
+        el.style.filter = 'brightness(1.15) drop-shadow(0 4px 8px rgba(0,0,0,0.3))';
       });
       el.addEventListener('mouseleave', () => {
-        el.style.transform = 'scale(1)';
-        el.style.zIndex = isProvincialCapital ? '10' : '5';
+        el.style.filter = 'none';
       });
 
       // Create popup content with enhanced design
       const popupContent = document.createElement('div');
+      const typeLabel = getTypeLabel(municipalityType);
+      const typeBadgeColors: Record<string, string> = {
+        capital: 'background: linear-gradient(135deg, #f59e0b, #d97706)',
+        city: 'background: linear-gradient(135deg, #3b82f6, #2563eb)',
+        town: 'background: linear-gradient(135deg, #10b981, #059669)',
+        village: 'background: linear-gradient(135deg, #6b7280, #4b5563)'
+      };
+
       popupContent.innerHTML = `
-        <div style="padding: 14px; min-width: 240px; font-family: system-ui, -apple-system, sans-serif;">
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
-            <div style="width: 10px; height: 10px; border-radius: 50%; background: ${color};"></div>
-            <span style="font-weight: 700; font-size: 15px; color: #1a1a1a;">${mairie.name}</span>
-            ${isProvincialCapital ? '<span style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; font-size: 9px; padding: 2px 6px; border-radius: 4px; font-weight: 600;">CHEF-LIEU</span>' : ''}
+        <div style="padding: 14px; min-width: 250px; font-family: system-ui, -apple-system, sans-serif;">
+          <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px;">
+            <div style="width: 12px; height: 12px; border-radius: 50%; background: ${color}; flex-shrink: 0; margin-top: 4px;"></div>
+            <div style="flex: 1;">
+              <div style="font-weight: 700; font-size: 15px; color: #1a1a1a; line-height: 1.3;">${mairie.name}</div>
+              <span style="${typeBadgeColors[municipalityType]}; color: white; font-size: 10px; padding: 2px 8px; border-radius: 4px; font-weight: 600; display: inline-block; margin-top: 4px;">${typeLabel.toUpperCase()}</span>
+            </div>
           </div>
-          <div style="color: #666; font-size: 12px; margin-bottom: 8px; padding-left: 18px;">
-            📍 ${mairie.province || ''} ${mairie.departement ? '• ' + mairie.departement : ''}
+          <div style="border-left: 2px solid ${color}; padding-left: 12px; margin-left: 5px;">
+            <div style="color: #555; font-size: 12px; margin-bottom: 6px;">
+              📍 ${mairie.province || ''} ${mairie.departement ? '• ' + mairie.departement : ''}
+            </div>
+            ${mairie.population ? `<div style="color: #555; font-size: 12px; margin-bottom: 4px;">👥 ${mairie.population.toLocaleString()} habitants</div>` : ''}
+            ${mairie.maire_name ? `<div style="color: #555; font-size: 12px; margin-bottom: 4px;">🏛️ ${mairie.maire_name}</div>` : ''}
+            ${mairie.contact_phone ? `<div style="color: #555; font-size: 12px;">📞 ${mairie.contact_phone}</div>` : ''}
           </div>
-          ${mairie.population ? `<div style="color: #555; font-size: 12px; margin-bottom: 4px; padding-left: 18px;">👥 ${mairie.population.toLocaleString()} habitants</div>` : ''}
-          ${mairie.maire_name ? `<div style="color: #555; font-size: 12px; padding-left: 18px;">🏛️ Maire: ${mairie.maire_name}</div>` : ''}
-          ${mairie.contact_phone ? `<div style="color: #555; font-size: 12px; margin-top: 4px; padding-left: 18px;">📞 ${mairie.contact_phone}</div>` : ''}
           <button 
             class="mairie-popup-btn"
-            style="width: 100%; margin-top: 14px; padding: 12px 16px; background: linear-gradient(135deg, ${color}, ${color}dd); color: white; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;"
-            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px ${color}66'"
-            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'"
+            style="width: 100%; margin-top: 14px; padding: 12px 16px; background: linear-gradient(135deg, ${color}, ${color}cc); color: white; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 2px 8px ${color}40;"
           >
             <span>Accéder aux services</span>
             <span style="font-size: 16px;">→</span>
