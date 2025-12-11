@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
+import { auditService } from "@/services/audit-service";
 
 // Types basés sur la table requests de Supabase
 export type Request = Tables<"requests">;
@@ -51,10 +52,27 @@ export const requestService = {
             .single();
 
         if (error) throw error;
+
+        // Log audit
+        await auditService.logCreate('request', data.id, {
+            type: request.type,
+            subject: request.subject,
+            citizen_id: request.citizen_id
+        });
+
         return data as Request;
     },
 
     async updateStatus(id: string, status: RequestStatus): Promise<Request> {
+        // Get current status before update
+        const { data: currentData } = await supabase
+            .from('requests')
+            .select('status')
+            .eq('id', id)
+            .single();
+
+        const oldStatus = currentData?.status;
+
         const { data, error } = await supabase
             .from('requests')
             .update({ status })
@@ -63,10 +81,21 @@ export const requestService = {
             .single();
 
         if (error) throw error;
+
+        // Log status change audit
+        await auditService.logStatusChange('request', id, oldStatus || 'UNKNOWN', status);
+
         return data as Request;
     },
 
     async update(id: string, updates: Partial<Request>): Promise<Request> {
+        // Get current data before update
+        const { data: currentData } = await supabase
+            .from('requests')
+            .select('*')
+            .eq('id', id)
+            .single();
+
         const { data, error } = await supabase
             .from('requests')
             .update(updates as any)
@@ -75,6 +104,13 @@ export const requestService = {
             .single();
 
         if (error) throw error;
+
+        // Log update audit
+        await auditService.logUpdate('request', id, 
+            currentData || {}, 
+            updates as Record<string, unknown>
+        );
+
         return data as Request;
     },
 

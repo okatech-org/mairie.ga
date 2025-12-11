@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
 import { organizationService } from "./organizationService";
 import { invokeWithDemoFallback } from "@/utils/demoMode";
+import { auditService } from "@/services/audit-service";
 
 // Types basés sur la table profiles de Supabase avec extensions
 export type Profile = Tables<"profiles"> & {
@@ -132,6 +133,13 @@ export const profileService = {
         // Extraire le rôle et l'organisation si présents
         const { role, organization, ...profileUpdates } = updates as any;
 
+        // Get current data before update for audit
+        const { data: currentData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', id)
+            .single();
+
         // Si entityId/employer est passé, on le met dans employer
         if ((updates as any).entityId) {
             profileUpdates.employer = (updates as any).entityId;
@@ -158,10 +166,23 @@ export const profileService = {
                 .select();
         }
 
+        // Log audit
+        await auditService.logUpdate('profile', id, 
+            currentData || {}, 
+            profileUpdates as Record<string, unknown>
+        );
+
         return data as Profile;
     },
 
     async updateByUserId(userId: string, updates: Partial<Profile>): Promise<Profile> {
+        // Get current data before update for audit
+        const { data: currentData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', userId)
+            .single();
+
         const { data, error } = await supabase
             .from('profiles')
             .update(updates as any)
@@ -173,6 +194,13 @@ export const profileService = {
             console.error('Failed to update profile:', error);
             throw new Error(`Erreur lors de la mise à jour du profil: ${error.message}`);
         }
+
+        // Log audit
+        await auditService.logUpdate('profile', data.id, 
+            currentData || {}, 
+            updates as Record<string, unknown>
+        );
+
         return data as Profile;
     },
 
