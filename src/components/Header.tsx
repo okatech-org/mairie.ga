@@ -78,12 +78,9 @@ export const Header = () => {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Link to="/sensibilisation" className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-1">
+          <Link to="/actualites" className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-1">
             <Heart className="h-4 w-4" />
-            Sensibilisation
-          </Link>
-          <Link to="/actualites" className="text-sm font-medium hover:text-primary transition-colors">
-            {t('header.news')}
+            Vie Citoyenne
           </Link>
 
           <AnimatePresence mode="wait">
@@ -256,19 +253,12 @@ export const Header = () => {
               Services
             </Link>
             <Link
-              to="/sensibilisation"
+              to="/actualites"
               className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-2"
               onClick={() => setMobileMenuOpen(false)}
             >
               <Heart className="h-4 w-4" />
-              Sensibilisation
-            </Link>
-            <Link
-              to="/actualites"
-              className="text-sm font-medium hover:text-primary transition-colors"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              {t('header.news')}
+              Vie Citoyenne
             </Link>
             <Link
               to="/demo-portal"
