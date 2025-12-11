@@ -559,12 +559,12 @@ const GabonMairiesMap = () => {
         {/* Service Filter */}
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
-          <Select value={serviceFilter || ''} onValueChange={(val) => setServiceFilter(val || null)}>
+          <Select value={serviceFilter || 'all'} onValueChange={(val) => setServiceFilter(val === 'all' ? null : val)}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Filtrer par service" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Tous les services</SelectItem>
+              <SelectItem value="all">Tous les services</SelectItem>
               {serviceCategories.map((category) => (
                 <SelectItem key={category} value={category}>
                   {category}
