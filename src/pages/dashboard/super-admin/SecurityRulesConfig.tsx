@@ -38,12 +38,16 @@ import {
   Calendar,
   Search,
   Download,
-  XCircle
+  XCircle,
+  Mail,
+  TrendingUp
 } from "lucide-react";
 import { toast } from "sonner";
 import { format, subDays, startOfDay, endOfDay, isWithinInterval } from "date-fns";
 import { fr } from "date-fns/locale";
 import { auditService } from "@/services/audit-service";
+import { AlertTrendsChart } from "@/components/dashboard/admin/AlertTrendsChart";
+import { WeeklyReportConfig } from "@/components/dashboard/admin/WeeklyReportConfig";
 
 interface SecurityRule {
   id: string;
@@ -412,7 +416,7 @@ export default function SecurityRulesConfig() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="grid w-full max-w-lg grid-cols-3">
             <TabsTrigger value="rules" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               Règles ({rules.length})
@@ -425,6 +429,10 @@ export default function SecurityRulesConfig() {
                   {alertStats.unresolved}
                 </Badge>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              Rapports
             </TabsTrigger>
           </TabsList>
 
@@ -546,7 +554,9 @@ export default function SecurityRulesConfig() {
               </Card>
             </div>
 
-            {/* Filters */}
+            {/* Trend Charts */}
+            <AlertTrendsChart alerts={filteredAlerts} dateFilter={dateFilter} />
+
             <Card className="neu-raised">
               <CardContent className="p-4">
                 <div className="flex flex-wrap items-center gap-4">
@@ -679,6 +689,11 @@ export default function SecurityRulesConfig() {
                 </ScrollArea>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Reports Tab */}
+          <TabsContent value="reports" className="space-y-4">
+            <WeeklyReportConfig />
           </TabsContent>
         </Tabs>
 
