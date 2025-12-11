@@ -67,8 +67,8 @@ const GabonMairiesMap = () => {
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   };
@@ -76,10 +76,10 @@ const GabonMairiesMap = () => {
   // Mairies with distance from user
   const mairiesWithDistance = useMemo((): MairieWithDistance[] => {
     if (!userLocation) return mairies;
-    
+
     return mairies.map(m => ({
       ...m,
-      distance: m.latitude && m.longitude 
+      distance: m.latitude && m.longitude
         ? calculateDistance(userLocation[0], userLocation[1], m.longitude, m.latitude)
         : undefined
     })).sort((a, b) => {
@@ -131,7 +131,7 @@ const GabonMairiesMap = () => {
           .select('id, name, description, category, price, organization_id')
           .eq('is_active', true)
           .order('category');
-          
+
         if (error) throw error;
         setAllServices(data || []);
       } catch (err) {
@@ -148,7 +148,7 @@ const GabonMairiesMap = () => {
         setSelectedMairieServices([]);
         return;
       }
-      
+
       setLoadingServices(true);
       try {
         const { data, error } = await supabase
@@ -157,7 +157,7 @@ const GabonMairiesMap = () => {
           .eq('organization_id', selectedMairie.id)
           .eq('is_active', true)
           .order('name');
-          
+
         if (error) throw error;
         setSelectedMairieServices(data || []);
       } catch (err) {
@@ -167,7 +167,7 @@ const GabonMairiesMap = () => {
         setLoadingServices(false);
       }
     };
-    
+
     fetchServices();
   }, [selectedMairie?.id]);
 
@@ -188,7 +188,7 @@ const GabonMairiesMap = () => {
       const el = marker.getElement();
       const matchesProvince = activeProvinceFilter === null || province === activeProvinceFilter;
       const matchesService = mairiesWithService === null || mairiesWithService.includes(mairieId);
-      
+
       if (matchesProvince && matchesService) {
         el.style.display = 'block';
         el.style.opacity = '1';
@@ -202,7 +202,7 @@ const GabonMairiesMap = () => {
   // Handle selecting a mairie from search
   const handleSelectMairie = (mairie: Organization) => {
     if (!mairie.longitude || !mairie.latitude) return;
-    
+
     setSelectedMairie({
       id: mairie.id,
       name: mairie.name,
@@ -265,21 +265,21 @@ const GabonMairiesMap = () => {
       alert('La géolocalisation n\'est pas supportée par votre navigateur');
       return;
     }
-    
+
     setLocatingUser(true);
-    
+
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { longitude, latitude } = position.coords;
         setUserLocation([longitude, latitude]);
-        
+
         // Add or update user marker
         if (map.current) {
           // Remove existing user marker
           if (userMarkerRef.current) {
             userMarkerRef.current.remove();
           }
-          
+
           // Create user marker element
           const el = document.createElement('div');
           el.className = 'user-location-marker';
@@ -290,7 +290,7 @@ const GabonMairiesMap = () => {
           el.style.border = '3px solid white';
           el.style.boxShadow = '0 0 10px rgba(59, 130, 246, 0.5)';
           el.style.animation = 'pulse 2s infinite';
-          
+
           // Add pulse animation style
           const style = document.createElement('style');
           style.textContent = `
@@ -301,12 +301,12 @@ const GabonMairiesMap = () => {
             }
           `;
           document.head.appendChild(style);
-          
+
           userMarkerRef.current = new mapboxgl.Marker(el)
             .setLngLat([longitude, latitude])
             .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML('<div style="padding: 8px;"><strong>Ma position</strong></div>'))
             .addTo(map.current);
-          
+
           // Fly to user location
           map.current.flyTo({
             center: [longitude, latitude],
@@ -314,7 +314,7 @@ const GabonMairiesMap = () => {
             duration: 1500
           });
         }
-        
+
         setLocatingUser(false);
       },
       (error) => {
@@ -385,65 +385,107 @@ const GabonMairiesMap = () => {
           mairies.forEach((mairie) => {
             // Skip mairies without coordinates
             if (!mairie.latitude || !mairie.longitude) return;
-            
+
             const province = provinces.find(p => p.name === mairie.province);
             const color = province?.color || '#009e49';
 
             // Create marker element
             const el = document.createElement('div');
             el.className = 'mairie-marker';
-            el.style.width = '16px';
-            el.style.height = '16px';
+            el.style.width = '18px';
+            el.style.height = '18px';
             el.style.backgroundColor = color;
             el.style.borderRadius = '50%';
-            el.style.border = '2px solid white';
+            el.style.border = '3px solid white';
             el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
             el.style.cursor = 'pointer';
-            el.style.transition = 'transform 0.2s ease';
+            // Remove transform transition to prevent jumping
+            el.style.position = 'relative';
+            el.style.zIndex = '1';
 
+            // Hover effects without transform to prevent jumping
             el.addEventListener('mouseenter', () => {
-              el.style.transform = 'scale(1.3)';
+              el.style.boxShadow = '0 4px 16px rgba(0,0,0,0.4)';
+              el.style.border = '3px solid ' + color;
+              el.style.backgroundColor = 'white';
+              el.style.zIndex = '10';
               setHoveredProvince(mairie.province || null);
             });
 
             el.addEventListener('mouseleave', () => {
-              el.style.transform = 'scale(1)';
+              el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+              el.style.border = '3px solid white';
+              el.style.backgroundColor = color;
+              el.style.zIndex = '1';
               setHoveredProvince(null);
             });
 
-            // Create popup
+            // Create popup with action button
+            const popupContent = `
+              <div style="padding: 10px; min-width: 200px;">
+                <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px; color: #1a1a1a;">${mairie.name}</div>
+                <div style="color: #666; font-size: 12px; margin-bottom: 4px;">${mairie.province || ''} ${mairie.departement ? '• ' + mairie.departement : ''}</div>
+                ${mairie.population ? `<div style="color: #888; font-size: 11px;">👥 ${mairie.population.toLocaleString()} habitants</div>` : ''}
+                ${mairie.maire_name ? `<div style="color: #666; font-size: 11px; margin-top: 4px;">👤 ${mairie.maire_name}</div>` : ''}
+                <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #eee;">
+                  <button 
+                    id="btn-view-${mairie.id}" 
+                    style="width: 100%; padding: 8px 12px; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; border: none; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;"
+                  >
+                    <span>Voir les services</span>
+                    <span style="font-size: 14px;">→</span>
+                  </button>
+                </div>
+              </div>
+            `;
+
             const popup = new mapboxgl.Popup({
               offset: 25,
-              closeButton: false,
-              className: 'mairie-popup'
-            }).setHTML(`
-              <div style="padding: 8px; min-width: 180px;">
-                <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${mairie.name}</div>
-                <div style="color: #666; font-size: 12px;">${mairie.province || ''}</div>
-                ${mairie.population ? `<div style="color: #888; font-size: 11px; margin-top: 4px;">${mairie.population.toLocaleString()} habitants</div>` : ''}
-                ${mairie.maire_name ? `<div style="color: #666; font-size: 11px; margin-top: 4px;">👤 ${mairie.maire_name}</div>` : ''}
-              </div>
-            `);
+              closeButton: true,
+              closeOnClick: false,
+              className: 'mairie-popup',
+              maxWidth: '280px'
+            }).setHTML(popupContent);
 
-            const marker = new mapboxgl.Marker(el)
+            // Handle popup open to attach button click
+            popup.on('open', () => {
+              setTimeout(() => {
+                const btn = document.getElementById(`btn-view-${mairie.id}`);
+                if (btn) {
+                  btn.onclick = (e) => {
+                    e.stopPropagation();
+                    setSelectedMairie({
+                      id: mairie.id,
+                      name: mairie.name,
+                      province: mairie.province || '',
+                      departement: mairie.departement || '',
+                      population: mairie.population || undefined,
+                      isCapitalProvince: false,
+                      coordinates: [mairie.longitude!, mairie.latitude!]
+                    });
+                    popup.remove();
+                  };
+                  // Add hover effect
+                  btn.onmouseenter = () => {
+                    btn.style.background = 'linear-gradient(135deg, #1d4ed8, #1e40af)';
+                  };
+                  btn.onmouseleave = () => {
+                    btn.style.background = 'linear-gradient(135deg, #2563eb, #1d4ed8)';
+                  };
+                }
+              }, 10);
+            });
+
+            const marker = new mapboxgl.Marker({
+              element: el,
+              anchor: 'center'
+            })
               .setLngLat([mairie.longitude, mairie.latitude])
               .setPopup(popup)
               .addTo(map.current!);
 
             // Store marker reference with province info
             markersRef.current.set(mairie.id, { marker, province: mairie.province || '' });
-
-            el.addEventListener('click', () => {
-              setSelectedMairie({
-                id: mairie.id,
-                name: mairie.name,
-                province: mairie.province || '',
-                departement: mairie.departement || '',
-                population: mairie.population || undefined,
-                isCapitalProvince: false,
-                coordinates: [mairie.longitude!, mairie.latitude!]
-              });
-            });
           });
 
           setLoading(false);
@@ -537,8 +579,8 @@ const GabonMairiesMap = () => {
                     </div>
                     {mairieWithDist?.distance !== undefined && (
                       <Badge variant="outline" className="text-xs flex-shrink-0">
-                        {mairieWithDist.distance < 1 
-                          ? `${Math.round(mairieWithDist.distance * 1000)} m` 
+                        {mairieWithDist.distance < 1
+                          ? `${Math.round(mairieWithDist.distance * 1000)} m`
                           : `${mairieWithDist.distance.toFixed(1)} km`}
                       </Badge>
                     )}
@@ -823,7 +865,7 @@ const GabonMairiesMap = () => {
                 </div>
               )}
             </div>
-            
+
             {/* Services Section with RDV Button */}
             <div className="pt-4 border-t">
               <div className="flex items-center justify-between mb-3">
@@ -832,7 +874,7 @@ const GabonMairiesMap = () => {
                   <h4 className="font-medium text-sm">Services disponibles</h4>
                 </div>
               </div>
-              
+
               {loadingServices ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -845,7 +887,7 @@ const GabonMairiesMap = () => {
                       key={service.id}
                       className="p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors group flex items-center justify-between"
                     >
-                      <div 
+                      <div
                         className="flex-1 cursor-pointer"
                         onClick={() => navigate(`/entity/${selectedMairie.id}?service=${service.id}`)}
                       >
@@ -884,7 +926,7 @@ const GabonMairiesMap = () => {
                   Aucun service disponible pour cette mairie
                 </p>
               )}
-              
+
               {selectedMairieServices.length > 6 && (
                 <Button
                   variant="link"
@@ -912,7 +954,7 @@ const GabonMairiesMap = () => {
               Vous souhaitez prendre rendez-vous pour le service suivant :
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedServiceForRdv && selectedMairie && (
             <div className="space-y-4">
               <Card className="bg-muted/50">
@@ -926,18 +968,18 @@ const GabonMairiesMap = () => {
                   )}
                 </CardContent>
               </Card>
-              
+
               <p className="text-sm text-muted-foreground">
                 Pour finaliser votre rendez-vous, vous allez être redirigé vers la page de la mairie où vous pourrez choisir une date et un créneau horaire.
               </p>
             </div>
           )}
-          
+
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setShowAppointmentDialog(false)}>
               Annuler
             </Button>
-            <Button 
+            <Button
               onClick={() => {
                 if (selectedMairie && selectedServiceForRdv) {
                   navigate(`/rendez-vous?organization=${selectedMairie.id}&service=${selectedServiceForRdv.id}`);
