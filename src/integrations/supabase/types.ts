@@ -907,6 +907,7 @@ export type Database = {
         Row: {
           created_at: string
           email: string
+          failure_reason: string | null
           id: string
           ip_address: string | null
           success: boolean
@@ -914,6 +915,7 @@ export type Database = {
         Insert: {
           created_at?: string
           email: string
+          failure_reason?: string | null
           id?: string
           ip_address?: string | null
           success?: boolean
@@ -921,6 +923,7 @@ export type Database = {
         Update: {
           created_at?: string
           email?: string
+          failure_reason?: string | null
           id?: string
           ip_address?: string | null
           success?: boolean
