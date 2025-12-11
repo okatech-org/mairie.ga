@@ -33,7 +33,8 @@ import {
     XCircle,
     History,
     CheckCircle,
-    AlertCircle
+    AlertCircle,
+    RotateCcw
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -774,15 +775,17 @@ export default function SuperAdminKnowledgeBase() {
                                             {format(new Date(entry.started_at), "d MMM yyyy 'à' HH:mm", { locale: fr })}
                                         </span>
                                     </div>
-                                    <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-3">
                                         <Badge variant="outline" className={
                                             entry.status === 'completed' 
                                                 ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
                                                 : entry.status === 'cancelled'
                                                     ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
-                                                    : "bg-destructive/10 text-destructive border-destructive/20"
+                                                    : entry.status === 'in_progress'
+                                                        ? "bg-blue-500/10 text-blue-600 border-blue-500/20"
+                                                        : "bg-destructive/10 text-destructive border-destructive/20"
                                         }>
-                                            {entry.status === 'completed' ? 'Terminé' : entry.status === 'cancelled' ? 'Annulé' : 'Erreur'}
+                                            {entry.status === 'completed' ? 'Terminé' : entry.status === 'cancelled' ? 'Annulé' : entry.status === 'in_progress' ? 'En cours' : 'Erreur'}
                                         </Badge>
                                         <span className="text-muted-foreground">
                                             {entry.processed}/{entry.total} traités
@@ -791,6 +794,26 @@ export default function SuperAdminKnowledgeBase() {
                                             <span className="text-destructive">
                                                 {entry.failed} échecs
                                             </span>
+                                        )}
+                                        {(entry.status === 'error' || entry.status === 'cancelled') && (
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => handleGenerateEmbeddings(false)}
+                                                            disabled={generatingEmbeddings}
+                                                            className="h-7 px-2 text-primary hover:text-primary hover:bg-primary/10"
+                                                        >
+                                                            <RotateCcw className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>Relancer la génération des embeddings manquants</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
                                         )}
                                     </div>
                                 </div>
