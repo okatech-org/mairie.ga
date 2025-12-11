@@ -6,6 +6,7 @@ import { useDemo } from "@/contexts/DemoContext";
 import { SidebarAppearance } from "@/components/SidebarAppearance";
 import { MunicipalRole } from "@/types/municipal-roles";
 import { LogoutConfirmDialog } from "@/components/auth/LogoutConfirmDialog";
+import { SecurityNotificationBell } from "@/components/notifications/SecurityNotificationBell";
 
 type NavItem = { label: string; icon: React.ElementType; path: string };
 type NavGroup = { title: string; items: NavItem[] };
@@ -88,9 +89,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     title: "SYSTÈME",
                     items: [
                         { label: "Journal d'Audit", icon: History, path: "/dashboard/super-admin/audit-logs" },
+                        { label: "Règles Sécurité", icon: Shield, path: "/dashboard/super-admin/security-rules" },
                         { label: "Paramètres Documents", icon: FileText, path: "/dashboard/super-admin/document-settings" },
                         { label: "Paramètres", icon: Settings, path: "/dashboard/super-admin/settings" },
-                        { label: "Sécurité & Logs", icon: Shield, path: "/dashboard/super-admin/settings?tab=security" },
                     ]
                 }
             ];
@@ -302,15 +303,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                 {/* Sidebar Détachée */}
                 <aside className="neu-card w-64 flex-shrink-0 p-6 flex flex-col min-h-[calc(100vh-3rem)] sticky top-6 h-[calc(100vh-3rem)]">
-                    {/* Logo */}
-                    <div className="flex items-center gap-3 mb-8">
-                        <div className="neu-raised w-12 h-12 rounded-full flex items-center justify-center text-primary">
-                            <span className="font-bold text-xl">{header.title.charAt(0)}</span>
+                    {/* Logo + Notification Bell for Super Admin */}
+                    <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center gap-3">
+                            <div className="neu-raised w-12 h-12 rounded-full flex items-center justify-center text-primary">
+                                <span className="font-bold text-xl">{header.title.charAt(0)}</span>
+                            </div>
+                            <div>
+                                <div className="font-bold text-sm">{header.title}</div>
+                                <div className="text-xs text-muted-foreground">{header.subtitle}</div>
+                            </div>
                         </div>
-                        <div>
-                            <div className="font-bold text-sm">{header.title}</div>
-                            <div className="text-xs text-muted-foreground">{header.subtitle}</div>
-                        </div>
+                        {isSuperAdmin && <SecurityNotificationBell />}
                     </div>
 
                     {/* Navigation */}

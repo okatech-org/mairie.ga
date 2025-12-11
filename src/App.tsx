@@ -41,6 +41,7 @@ import SuperAdminAnalytics from "./pages/dashboard/super-admin/SuperAdminAnalyti
 import NotificationPreferencesAdmin from "./pages/dashboard/super-admin/NotificationPreferencesAdmin";
 import DocumentSettingsAdmin from "./pages/dashboard/super-admin/DocumentSettingsAdmin";
 import SuperAdminAuditLogs from "./pages/dashboard/super-admin/SuperAdminAuditLogs";
+import SecurityRulesConfig from "./pages/dashboard/super-admin/SecurityRulesConfig";
 import MaireDashboard from "./pages/dashboard/MaireDashboard";
 import MaireAnalyticsPage from "./pages/dashboard/maire/MaireAnalyticsPage";
 import MaireBudgetPage from "./pages/dashboard/maire/MaireBudgetPage";
@@ -83,6 +84,7 @@ import ContactsPage from "./pages/ContactsPage";
 import AppointmentBookingPage from "./pages/AppointmentBookingPage";
 import KnowledgeSearchPage from "./pages/KnowledgeSearchPage";
 import { InactivityHandler } from "@/components/auth/InactivityHandler";
+import { SecurityNotificationProvider } from "@/components/notifications/SecurityNotificationProvider";
 
 const queryClient = new QueryClient();
 
@@ -94,10 +96,11 @@ const App = () => (
           <DemoProvider>
             <CallProvider>
               <PresentationProvider>
-                <Toaster />
-                <Sonner />
-                <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                  <InactivityHandler />
+                <SecurityNotificationProvider>
+                  <Toaster />
+                  <Sonner />
+                  <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                    <InactivityHandler />
                   <Routes>
                     {/* PUBLIC PORTAL (Citizens) */}
                     <Route element={<PublicLayout />}>
@@ -172,6 +175,7 @@ const App = () => (
                     <Route path="/dashboard/super-admin/notifications" element={<DashboardLayout><NotificationPreferencesAdmin /></DashboardLayout>} />
                     <Route path="/dashboard/super-admin/document-settings" element={<DashboardLayout><DocumentSettingsAdmin /></DashboardLayout>} />
                     <Route path="/dashboard/super-admin/audit-logs" element={<DashboardLayout><SuperAdminAuditLogs /></DashboardLayout>} />
+                    <Route path="/dashboard/super-admin/security-rules" element={<SecurityRulesConfig />} />
 
                     {/* Municipal Personnel Routes */}
                     <Route path="/dashboard/maire" element={<DashboardLayout><MaireDashboard /></DashboardLayout>} />
@@ -209,13 +213,14 @@ const App = () => (
                   </Routes>
                   <IAstedInterfaceWrapper />
                 </BrowserRouter>
-              </PresentationProvider>
-            </CallProvider>
-          </DemoProvider>
-        </TooltipProvider>
-      </LanguageProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+              </SecurityNotificationProvider>
+            </PresentationProvider>
+          </CallProvider>
+        </DemoProvider>
+      </TooltipProvider>
+    </LanguageProvider>
+  </ThemeProvider>
+</QueryClientProvider>
 );
 
 export default App;
