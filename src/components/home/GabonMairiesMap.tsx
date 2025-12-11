@@ -629,7 +629,7 @@ const GabonMairiesMap = () => {
       }
 
       const popup = new mapboxgl.Popup({
-        offset: isProvincialCapital ? [0, -14] : [0, -7],
+        offset: municipalityType === 'capital' ? [0, -16] : municipalityType === 'city' ? [0, -13] : [0, -10],
         closeButton: true,
         closeOnClick: true,
         className: 'mairie-popup-container',
