@@ -1468,6 +1468,27 @@ export type Database = {
         }
         Returns: boolean
       }
+      match_knowledge_base: {
+        Args: {
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+        }
+        Returns: {
+          category: string
+          content: string
+          helpful_count: number
+          id: string
+          keywords: string[]
+          priority: number
+          similarity: number
+          source: string
+          subcategory: string
+          tags: string[]
+          title: string
+          view_count: number
+        }[]
+      }
     }
     Enums: {
       app_role: "super_admin" | "admin" | "agent" | "citizen"
