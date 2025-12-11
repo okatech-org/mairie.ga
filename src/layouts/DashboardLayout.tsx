@@ -1,5 +1,5 @@
-import React from "react";
-import { LayoutDashboard, Settings, LogOut, FileText, Building2, Users, ShieldCheck, Globe, Mail, Bot, Database, LineChart, ScrollText, Shield, UserCheck, Briefcase, BookOpen, Calendar, ClipboardList, Home, FolderOpen, Wallet, Gavel, FileSignature, CalendarDays, Building, BarChart3, Bell, History } from "lucide-react";
+import React, { useState } from "react";
+import { LayoutDashboard, Settings, LogOut, FileText, Building2, Users, ShieldCheck, Globe, Mail, Bot, Database, LineChart, ScrollText, Shield, UserCheck, Briefcase, BookOpen, Calendar, ClipboardList, Home, FolderOpen, Wallet, Gavel, FileSignature, CalendarDays, Building, BarChart3, Bell, History, Menu, X } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { GlobalSettings } from "@/components/GlobalSettings";
 import { useDemo } from "@/contexts/DemoContext";
@@ -7,12 +7,14 @@ import { SidebarAppearance } from "@/components/SidebarAppearance";
 import { MunicipalRole } from "@/types/municipal-roles";
 import { LogoutConfirmDialog } from "@/components/auth/LogoutConfirmDialog";
 import { SecurityNotificationBell } from "@/components/notifications/SecurityNotificationBell";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 type NavItem = { label: string; icon: React.ElementType; path: string };
 type NavGroup = { title: string; items: NavItem[] };
 type NavConfig = NavItem[] | NavGroup[];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -297,60 +299,41 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     const header = getSidebarHeader();
 
-    return (
-        <div className="min-h-screen bg-background p-4 md:p-6 font-sans theme-neumorphic">
-            <div className="flex gap-6 max-w-[1600px] mx-auto">
-
-                {/* Sidebar Détachée */}
-                <aside className="neu-card w-64 flex-shrink-0 p-6 flex flex-col min-h-[calc(100vh-3rem)] sticky top-6 h-[calc(100vh-3rem)]">
-                    {/* Logo + Notification Bell for Super Admin */}
-                    <div className="flex items-center justify-between mb-8">
-                        <div className="flex items-center gap-3">
-                            <div className="neu-raised w-12 h-12 rounded-full flex items-center justify-center text-primary">
-                                <span className="font-bold text-xl">{header.title.charAt(0)}</span>
-                            </div>
-                            <div>
-                                <div className="font-bold text-sm">{header.title}</div>
-                                <div className="text-xs text-muted-foreground">{header.subtitle}</div>
-                            </div>
-                        </div>
-                        {isSuperAdmin && <SecurityNotificationBell />}
+    // Sidebar Content - Shared between desktop and mobile
+    const SidebarContent = () => (
+        <>
+            {/* Logo + Notification Bell for Super Admin */}
+            <div className="flex items-center justify-between mb-6 md:mb-8">
+                <div className="flex items-center gap-3">
+                    <div className="neu-raised w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-primary">
+                        <span className="font-bold text-lg md:text-xl">{header.title.charAt(0)}</span>
                     </div>
+                    <div>
+                        <div className="font-bold text-xs md:text-sm">{header.title}</div>
+                        <div className="text-[10px] md:text-xs text-muted-foreground">{header.subtitle}</div>
+                    </div>
+                </div>
+                {isSuperAdmin && <SecurityNotificationBell />}
+            </div>
 
-                    {/* Navigation */}
-                    <nav className="flex-1 overflow-y-auto pr-2 no-scrollbar">
-                        {isGroupedNav ? (
-                            // Grouped Navigation
-                            (navItems as NavGroup[]).map((group, idx) => (
-                                <div key={idx} className="mb-8 last:mb-0">
-                                    <h3 className="px-3 mb-3 text-[10px] font-bold text-muted-foreground/70 uppercase tracking-widest">
-                                        {group.title}
-                                    </h3>
-                                    <div className="space-y-3">
-                                        {group.items.map((item) => (
-                                            <button
-                                                key={item.path}
-                                                onClick={() => navigate(item.path)}
-                                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive(item.path)
-                                                    ? 'neu-nav-item active text-primary font-bold'
-                                                    : 'neu-nav-item text-foreground/80 hover:text-primary'
-                                                    }`}
-                                            >
-                                                <item.icon className="w-4 h-4 flex-shrink-0" />
-                                                <span className="truncate">{item.label}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))
-                        ) : (
-                            // Flat Navigation
-                            <div className="space-y-3">
-                                {(navItems as NavItem[]).map((item) => (
+            {/* Navigation */}
+            <nav className="flex-1 overflow-y-auto pr-2 no-scrollbar">
+                {isGroupedNav ? (
+                    // Grouped Navigation
+                    (navItems as NavGroup[]).map((group, idx) => (
+                        <div key={idx} className="mb-6 md:mb-8 last:mb-0">
+                            <h3 className="px-3 mb-2 md:mb-3 text-[9px] md:text-[10px] font-bold text-muted-foreground/70 uppercase tracking-widest">
+                                {group.title}
+                            </h3>
+                            <div className="space-y-2 md:space-y-3">
+                                {group.items.map((item) => (
                                     <button
                                         key={item.path}
-                                        onClick={() => navigate(item.path)}
-                                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive(item.path)
+                                        onClick={() => {
+                                            navigate(item.path);
+                                            setMobileMenuOpen(false);
+                                        }}
+                                        className={`w-full flex items-center gap-2 md:gap-3 px-3 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-medium transition-all ${isActive(item.path)
                                             ? 'neu-nav-item active text-primary font-bold'
                                             : 'neu-nav-item text-foreground/80 hover:text-primary'
                                             }`}
@@ -360,49 +343,113 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                     </button>
                                 ))}
                             </div>
-                        )}
-
-                        {/* Paramètres pour tous sauf Super Admin */}
-                        {!isSuperAdmin && !isGroupedNav && (
-                            <>
-                                <div className="my-6 border-t border-gray-200/30"></div>
-                                <button
-                                    onClick={() => {
-                                        if (isCitizen) navigate('/dashboard/citizen/settings');
-                                        else navigate('/settings');
-                                    }}
-                                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${(isCitizen && isActive('/dashboard/citizen/settings'))
-                                        ? 'neu-nav-item active text-primary font-bold'
-                                        : 'neu-nav-item text-foreground/80 hover:text-primary'
-                                        }`}
-                                >
-                                    <Settings className="w-4 h-4 flex-shrink-0" />
-                                    <span>Paramètres</span>
-                                </button>
-                            </>
-                        )}
-                    </nav>
-
-                    {/* Footer Sidebar */}
-                    <div className="pt-4 border-t border-border/40 mt-auto space-y-3">
-                        <SidebarAppearance />
-                        <LogoutConfirmDialog>
+                        </div>
+                    ))
+                ) : (
+                    // Flat Navigation
+                    <div className="space-y-2 md:space-y-3">
+                        {(navItems as NavItem[]).map((item) => (
                             <button
-                                className="neu-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-destructive hover:text-destructive transition-all"
+                                key={item.path}
+                                onClick={() => {
+                                    navigate(item.path);
+                                    setMobileMenuOpen(false);
+                                }}
+                                className={`w-full flex items-center gap-2 md:gap-3 px-3 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-medium transition-all ${isActive(item.path)
+                                    ? 'neu-nav-item active text-primary font-bold'
+                                    : 'neu-nav-item text-foreground/80 hover:text-primary'
+                                    }`}
                             >
-                                <LogOut className="w-4 h-4 flex-shrink-0" />
-                                <span>Déconnexion</span>
+                                <item.icon className="w-4 h-4 flex-shrink-0" />
+                                <span className="truncate">{item.label}</span>
                             </button>
-                        </LogoutConfirmDialog>
+                        ))}
                     </div>
-                </aside>
+                )}
 
-                {/* Contenu Principal */}
-                <main className="flex-1 min-w-0">
-                    <div className="neu-card p-8 min-h-[calc(100vh-3rem)] animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        {children}
+                {/* Paramètres pour tous sauf Super Admin */}
+                {!isSuperAdmin && !isGroupedNav && (
+                    <>
+                        <div className="my-4 md:my-6 border-t border-gray-200/30"></div>
+                        <button
+                            onClick={() => {
+                                if (isCitizen) navigate('/dashboard/citizen/settings');
+                                else navigate('/settings');
+                                setMobileMenuOpen(false);
+                            }}
+                            className={`w-full flex items-center gap-2 md:gap-3 px-3 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-medium transition-all ${(isCitizen && isActive('/dashboard/citizen/settings'))
+                                ? 'neu-nav-item active text-primary font-bold'
+                                : 'neu-nav-item text-foreground/80 hover:text-primary'
+                                }`}
+                        >
+                            <Settings className="w-4 h-4 flex-shrink-0" />
+                            <span>Paramètres</span>
+                        </button>
+                    </>
+                )}
+            </nav>
+
+            {/* Footer Sidebar */}
+            <div className="pt-3 md:pt-4 border-t border-border/40 mt-auto space-y-2 md:space-y-3">
+                <SidebarAppearance />
+                <LogoutConfirmDialog>
+                    <button
+                        className="neu-nav-item w-full flex items-center gap-2 md:gap-3 px-3 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-medium text-destructive hover:text-destructive transition-all"
+                    >
+                        <LogOut className="w-4 h-4 flex-shrink-0" />
+                        <span>Déconnexion</span>
+                    </button>
+                </LogoutConfirmDialog>
+            </div>
+        </>
+    );
+
+    return (
+        <div className="min-h-screen bg-background font-sans theme-neumorphic">
+            {/* Mobile Header with Hamburger */}
+            <header className="lg:hidden sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border p-3">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="neu-raised w-8 h-8 rounded-full flex items-center justify-center text-primary">
+                            <span className="font-bold text-sm">{header.title.charAt(0)}</span>
+                        </div>
+                        <div>
+                            <div className="font-bold text-xs">{header.title}</div>
+                            <div className="text-[10px] text-muted-foreground">{header.subtitle}</div>
+                        </div>
                     </div>
-                </main>
+                    <div className="flex items-center gap-2">
+                        {isSuperAdmin && <SecurityNotificationBell />}
+                        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                            <SheetTrigger asChild>
+                                <button className="neu-nav-item p-2 rounded-lg">
+                                    <Menu className="w-5 h-5" />
+                                </button>
+                            </SheetTrigger>
+                            <SheetContent side="left" className="w-72 p-4 bg-background theme-neumorphic">
+                                <div className="flex flex-col h-full">
+                                    <SidebarContent />
+                                </div>
+                            </SheetContent>
+                        </Sheet>
+                    </div>
+                </div>
+            </header>
+
+            <div className="p-3 md:p-4 lg:p-6">
+                <div className="flex gap-4 lg:gap-6 max-w-[1600px] mx-auto">
+                    {/* Sidebar Desktop - Hidden on mobile */}
+                    <aside className="hidden lg:flex neu-card w-64 flex-shrink-0 p-6 flex-col min-h-[calc(100vh-3rem)] sticky top-6 h-[calc(100vh-3rem)]">
+                        <SidebarContent />
+                    </aside>
+
+                    {/* Contenu Principal */}
+                    <main className="flex-1 min-w-0">
+                        <div className="neu-card p-4 md:p-6 lg:p-8 min-h-[calc(100vh-6rem)] lg:min-h-[calc(100vh-3rem)] animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            {children}
+                        </div>
+                    </main>
+                </div>
             </div>
         </div>
     );
