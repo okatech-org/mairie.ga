@@ -1,14 +1,14 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Search, 
+import {
+  Search,
   Filter,
-  Clock, 
+  Clock,
   FileText,
   ChevronRight,
   Landmark,
@@ -21,21 +21,25 @@ import {
   Truck,
   Star,
   Sparkles,
-  ArrowRight,
-  Users,
-  CheckCircle2
+  TrendingUp,
+  ChevronDown,
+  X
 } from "lucide-react";
-import { 
-  MUNICIPAL_SERVICE_CATALOG, 
+import {
+  MUNICIPAL_SERVICE_CATALOG,
   ServiceCategory,
-  MunicipalServiceInfo 
+  MunicipalServiceInfo
 } from "@/types/municipal-services";
 import { useTranslation } from "react-i18next";
-import { BeneficiaryFilter, BeneficiaryType } from "@/components/services/BeneficiaryFilter";
 import { useFavoriteServices } from "@/hooks/useFavoriteServices";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { FavoriteServiceCard } from "@/components/services/FavoriteServiceCard";
 import heroImage from "@/assets/service-municipal.jpg";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ServiceDetailModal } from "@/components/services/ServiceDetailModal";
+import { RequestCreationForm } from "@/components/requests/RequestCreationForm";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 const CATEGORY_INFO: Record<ServiceCategory, { label: string; icon: typeof Landmark; color: string }> = {
   [ServiceCategory.ETAT_CIVIL]: { label: "État Civil", icon: FileText, color: "bg-blue-500" },
@@ -48,17 +52,35 @@ const CATEGORY_INFO: Record<ServiceCategory, { label: string; icon: typeof Landm
   [ServiceCategory.VOIRIE]: { label: "Voirie", icon: Truck, color: "bg-slate-500" }
 };
 
+// Les 12 services les plus demandés (IDs)
+const POPULAR_SERVICE_IDS = [
+  'acte_naissance_copie',
+  'acte_mariage_copie',
+  'acte_deces_copie',
+  'certificat_residence',
+  'certificat_vie',
+  'certificat_nationalite',
+  'legalisation_document',
+  'casier_judiciaire',
+  'permis_construire',
+  'patente_commerciale',
+  'certificat_urbanisme',
+  'mariage_civil'
+];
+
 interface ServiceCardProps {
   service: MunicipalServiceInfo;
   onClick: () => void;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
 }
 
-const ServiceCard = ({ service, onClick, isFavorite, onToggleFavorite }: ServiceCardProps & { isFavorite: boolean; onToggleFavorite: () => void }) => {
+const ServiceCard = ({ service, onClick, isFavorite, onToggleFavorite }: ServiceCardProps) => {
   const Icon = service.icon;
   const categoryInfo = CATEGORY_INFO[service.category];
-  
+
   return (
-    <Card 
+    <Card
       className="group hover:shadow-lg transition-all duration-300 hover:border-primary/50 hover:-translate-y-1 cursor-pointer relative"
       onClick={onClick}
     >
@@ -105,48 +127,51 @@ const ServiceCard = ({ service, onClick, isFavorite, onToggleFavorite }: Service
             )}
           </div>
         </div>
-        
-        <div className="flex flex-wrap gap-1 mb-2 sm:mb-3">
-          {service.forCitoyen && (
-            <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 py-0">Citoyens</Badge>
-          )}
-          {service.forEtranger && (
-            <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 py-0">Étrangers</Badge>
-          )}
-          {service.forPersonneMorale && (
-            <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 py-0">Entreprises</Badge>
-          )}
-        </div>
-
-        <div className="flex items-center text-xs sm:text-sm text-muted-foreground">
-          <FileText className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1" />
-          <span>{service.requiredDocuments.length} doc{service.requiredDocuments.length > 1 ? 's' : ''} requis</span>
-        </div>
       </CardContent>
     </Card>
   );
 };
 
-import { ServiceDetailModal } from "@/components/services/ServiceDetailModal";
-import { RequestCreationForm } from "@/components/requests/RequestCreationForm";
-import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+// Compact card for search results
+const CompactServiceCard = ({ service, onClick }: { service: MunicipalServiceInfo; onClick: () => void }) => {
+  const categoryInfo = CATEGORY_INFO[service.category];
+  const Icon = service.icon;
+
+  return (
+    <button
+      onClick={onClick}
+      className="w-full text-left p-3 rounded-lg border hover:border-primary/50 hover:bg-muted/50 transition-all flex items-center gap-3"
+    >
+      <div className={`p-2 rounded-lg ${categoryInfo.color}/10 flex-shrink-0`}>
+        <Icon className={`h-4 w-4 ${service.color}`} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-sm truncate">{service.name}</p>
+        <p className="text-xs text-muted-foreground">{categoryInfo.label} • {service.price === 0 ? 'Gratuit' : `${service.price.toLocaleString()} FCFA`}</p>
+      </div>
+      <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+    </button>
+  );
+};
 
 const ServicesCatalog = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | "all">("all");
-  const [selectedBeneficiary, setSelectedBeneficiary] = useState<BeneficiaryType>("all");
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [selectedService, setSelectedService] = useState<MunicipalServiceInfo | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [requestFormOpen, setRequestFormOpen] = useState(false);
   const [serviceForRequest, setServiceForRequest] = useState<MunicipalServiceInfo | null>(null);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const { favorites, toggleFavorite, isFavorite } = useFavoriteServices();
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const handleServiceClick = (service: MunicipalServiceInfo) => {
     setSelectedService(service);
     setDetailModalOpen(true);
+    setSearchQuery("");
+    setIsSearchFocused(false);
   };
 
   const handleCreateRequest = (service: MunicipalServiceInfo) => {
@@ -157,32 +182,53 @@ const ServicesCatalog = () => {
   const handleRequestSuccess = (requestId: string) => {
     toast.success("Demande créée avec succès!");
   };
-  
-  const services = useMemo(() => Object.values(MUNICIPAL_SERVICE_CATALOG), []);
-  
-  const filteredServices = useMemo(() => {
-    return services.filter((service) => {
-      const matchesSearch = 
-        service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        service.description.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesCategory = selectedCategory === "all" || service.category === selectedCategory;
-      
-      const matchesBeneficiary = selectedBeneficiary === "all" ||
-        (selectedBeneficiary === "citizen" && service.forCitoyen) ||
-        (selectedBeneficiary === "foreigner" && service.forEtranger) ||
-        (selectedBeneficiary === "business" && service.forPersonneMorale);
-      
-      return matchesSearch && matchesCategory && matchesBeneficiary;
-    });
-  }, [services, searchQuery, selectedCategory, selectedBeneficiary]);
 
-  const beneficiaryCounts = useMemo(() => ({
-    all: services.length,
-    citizen: services.filter(s => s.forCitoyen).length,
-    foreigner: services.filter(s => s.forEtranger).length,
-    business: services.filter(s => s.forPersonneMorale).length,
-  }), [services]);
+  const services = useMemo(() => Object.values(MUNICIPAL_SERVICE_CATALOG), []);
+
+  // 12 services les plus populaires
+  const popularServices = useMemo(() => {
+    return POPULAR_SERVICE_IDS
+      .map(id => MUNICIPAL_SERVICE_CATALOG[id])
+      .filter(Boolean);
+  }, []);
+
+  // Other services (not in popular)
+  const otherServices = useMemo(() => {
+    return services.filter(s => !POPULAR_SERVICE_IDS.includes(s.id));
+  }, [services]);
+
+  // Search results
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const query = searchQuery.toLowerCase();
+    return services
+      .filter(s =>
+        s.name.toLowerCase().includes(query) ||
+        s.description.toLowerCase().includes(query) ||
+        CATEGORY_INFO[s.category].label.toLowerCase().includes(query)
+      )
+      .slice(0, 8);
+  }, [searchQuery, services]);
+
+  // Group other services by category
+  const servicesByCategory = useMemo(() => {
+    const grouped: Record<string, MunicipalServiceInfo[]> = {};
+    otherServices.forEach(service => {
+      if (!grouped[service.category]) {
+        grouped[service.category] = [];
+      }
+      grouped[service.category].push(service);
+    });
+    return grouped;
+  }, [otherServices]);
+
+  const toggleCategory = (category: string) => {
+    setExpandedCategories(prev =>
+      prev.includes(category)
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
+  };
 
   const favoriteServices = useMemo(() => {
     return favorites
@@ -190,115 +236,91 @@ const ServicesCatalog = () => {
       .filter(Boolean);
   }, [favorites]);
 
-  const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: services.length };
-    services.forEach(service => {
-      counts[service.category] = (counts[service.category] || 0) + 1;
-    });
-    return counts;
-  }, [services]);
-
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Section - Inspired by Home page */}
-      <section className="relative min-h-[60vh] md:min-h-[70vh] flex items-center overflow-hidden">
-        {/* Background with gradient overlay */}
+      {/* Hero Section */}
+      <section className="relative min-h-[50vh] md:min-h-[55vh] flex items-center overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <img 
-            src={heroImage} 
-            alt="Services municipaux" 
+          <img
+            src={heroImage}
+            alt="Services municipaux"
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-background via-background/95 to-background/60" />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
         </div>
 
-        {/* Decorative elements */}
-        <div className="absolute inset-0 z-[1] overflow-hidden pointer-events-none">
-          <div className="absolute top-20 right-10 w-64 h-64 md:w-96 md:h-96 rounded-full bg-primary/5 blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 left-10 w-48 h-48 md:w-72 md:h-72 rounded-full bg-secondary/5 blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-        </div>
-
         <div className="container mx-auto px-4 relative z-10">
-          {/* Breadcrumb */}
-          <div className="flex items-center gap-2 text-sm mb-4 md:mb-6 text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm mb-4 text-muted-foreground">
             <Link to="/" className="hover:text-primary transition-colors">Accueil</Link>
             <ChevronRight className="h-4 w-4" />
             <span className="text-foreground font-medium">Services Municipaux</span>
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-            {/* Left Content */}
-            <div className="text-center lg:text-left">
-              <Badge className="mb-4 md:mb-6 bg-primary/20 text-primary border-primary/30 px-4 py-1.5">
-                <Sparkles className="h-3 w-3 mr-2" />
-                Démarches simplifiées
-              </Badge>
-              
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 md:mb-6 leading-tight">
-                <span className="block">Catalogue des</span>
-                <span className="block text-primary">Services</span>
-                <span className="block text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-muted-foreground font-medium mt-2">
-                  Municipaux
-                </span>
-              </h1>
-              
-              <p className="text-base md:text-lg text-muted-foreground mb-6 md:mb-8 leading-relaxed max-w-xl mx-auto lg:mx-0">
-                Découvrez l'ensemble des services proposés par les mairies du Gabon. 
-                Consultez les tarifs, délais et documents requis pour chaque démarche.
-              </p>
+          <div className="max-w-2xl">
+            <Badge className="mb-4 bg-primary/20 text-primary border-primary/30 px-4 py-1.5">
+              <Sparkles className="h-3 w-3 mr-2" />
+              {services.length}+ services disponibles
+            </Badge>
 
-              {/* Search Bar */}
-              <div className="max-w-xl mx-auto lg:mx-0">
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <Input
-                    placeholder="Rechercher un service..."
-                    className="pl-12 h-12 md:h-14 bg-card/80 backdrop-blur-sm border-border/50 text-base"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-              </div>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 leading-tight">
+              <span className="block">Catalogue des</span>
+              <span className="text-primary">Services Municipaux</span>
+            </h1>
 
-              {/* Mobile Stats */}
-              <div className="grid grid-cols-3 gap-2 mt-6 lg:hidden">
-                {[
-                  { value: services.length + "+", label: "Services" },
-                  { value: "8", label: "Catégories" },
-                  { value: "100%", label: "En ligne" },
-                ].map((stat, index) => (
-                  <div 
-                    key={index} 
-                    className="p-3 rounded-xl bg-card/80 backdrop-blur-sm border border-border/50 text-center"
-                  >
-                    <div className="text-lg font-bold text-primary">{stat.value}</div>
-                    <div className="text-xs text-muted-foreground">{stat.label}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <p className="text-base md:text-lg text-muted-foreground mb-6 leading-relaxed">
+              Trouvez rapidement le service dont vous avez besoin. Les 12 services les plus demandés sont affichés en premier.
+            </p>
 
-            {/* Right Content - Stats Cards (Desktop) */}
-            <div className="hidden lg:grid grid-cols-2 gap-4">
-              {[
-                { icon: FileText, value: services.length + "+", label: "Services disponibles", delay: "0.1s" },
-                { icon: Landmark, value: "8", label: "Catégories", delay: "0.2s" },
-                { icon: Users, value: "100K+", label: "Citoyens servis", delay: "0.3s" },
-                { icon: CheckCircle2, value: "24/7", label: "Accessible", delay: "0.4s" },
-              ].map((stat, index) => (
-                <Card 
-                  key={index} 
-                  className="text-center p-6 hover:shadow-xl transition-all duration-300 bg-card/80 backdrop-blur-sm border-border/50 hover:-translate-y-1 animate-fade-in"
-                  style={{ animationDelay: stat.delay }}
+            {/* Smart Search */}
+            <div className="relative max-w-xl">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                ref={searchInputRef}
+                placeholder="Rechercher un service (ex: acte de naissance, permis...)"
+                className="pl-12 pr-10 h-12 md:h-14 bg-card/90 backdrop-blur-sm border-border/50 text-base"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
+              />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"
+                  onClick={() => setSearchQuery("")}
                 >
-                  <div className="p-3 rounded-xl bg-primary/10 w-fit mx-auto mb-4">
-                    <stat.icon className="h-8 w-8 text-primary" />
-                  </div>
-                  <div className="text-4xl font-bold mb-1">{stat.value}</div>
-                  <div className="text-sm text-muted-foreground">{stat.label}</div>
-                </Card>
-              ))}
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+
+              {/* Search Results Dropdown */}
+              <AnimatePresence>
+                {isSearchFocused && searchResults.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="absolute top-full left-0 right-0 mt-2 bg-card border rounded-xl shadow-xl z-50 overflow-hidden"
+                  >
+                    <div className="p-2 space-y-1">
+                      {searchResults.map(service => (
+                        <CompactServiceCard
+                          key={service.id}
+                          service={service}
+                          onClick={() => handleServiceClick(service)}
+                        />
+                      ))}
+                    </div>
+                    <div className="border-t px-4 py-2 bg-muted/50">
+                      <p className="text-xs text-muted-foreground">
+                        {searchResults.length} résultat{searchResults.length > 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </div>
@@ -307,13 +329,13 @@ const ServicesCatalog = () => {
       <div className="container mx-auto px-4 py-8 md:py-12">
         {/* Favorites Section */}
         {favoriteServices.length > 0 && (
-          <div className="mb-6 md:mb-8">
-            <div className="flex items-center gap-2 mb-3 md:mb-4">
-              <Star className="h-4 w-4 md:h-5 md:w-5 text-amber-500 fill-amber-500" />
-              <h2 className="text-base md:text-lg font-semibold">Mes services favoris</h2>
-              <Badge variant="secondary" className="text-xs">{favoriteServices.length}</Badge>
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <Star className="h-5 w-5 text-amber-500 fill-amber-500" />
+              <h2 className="text-lg font-semibold">Mes services favoris</h2>
+              <Badge variant="secondary">{favoriteServices.length}</Badge>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
               <AnimatePresence>
                 {favoriteServices.map((service) => (
                   <FavoriteServiceCard
@@ -325,104 +347,109 @@ const ServicesCatalog = () => {
                 ))}
               </AnimatePresence>
             </div>
-            <Separator className="mt-6 md:mt-8" />
+            <Separator className="mt-8" />
           </div>
         )}
 
-        {/* Beneficiary Filter */}
-        <div className="mb-4 md:mb-6">
-          <p className="text-xs md:text-sm font-medium text-muted-foreground mb-2 md:mb-3">Filtrer par bénéficiaire</p>
-          <BeneficiaryFilter
-            selected={selectedBeneficiary}
-            onChange={setSelectedBeneficiary}
-            counts={beneficiaryCounts}
-          />
-        </div>
-
-        {/* Category Filters - Horizontal scroll on mobile */}
-        <div className="mb-6 md:mb-8 -mx-4 px-4 overflow-x-auto">
-          <div className="flex gap-2 pb-2 min-w-max">
-            <Button
-              variant={selectedCategory === "all" ? "default" : "outline"}
-              onClick={() => setSelectedCategory("all")}
-              className="gap-1.5 sm:gap-2 text-xs sm:text-sm h-8 sm:h-10 px-3 sm:px-4"
-              size="sm"
-            >
-              <Filter className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Tous les services</span>
-              <span className="sm:hidden">Tous</span>
-              <Badge variant="secondary" className="ml-1 text-[10px] sm:text-xs">{categoryCounts.all}</Badge>
-            </Button>
-            
-            {Object.entries(CATEGORY_INFO).map(([category, info]) => {
-              const Icon = info.icon;
-              const count = categoryCounts[category] || 0;
-              if (count === 0) return null;
-              
-              return (
-                <Button
-                  key={category}
-                  variant={selectedCategory === category ? "default" : "outline"}
-                  onClick={() => setSelectedCategory(category as ServiceCategory)}
-                  className="gap-1.5 sm:gap-2 text-xs sm:text-sm h-8 sm:h-10 px-3 sm:px-4 whitespace-nowrap"
-                  size="sm"
-                >
-                  <Icon className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="hidden md:inline">{info.label}</span>
-                  <span className="md:hidden">{info.label.split(' ')[0]}</span>
-                  <Badge variant="secondary" className="ml-1 text-[10px] sm:text-xs">{count}</Badge>
-                </Button>
-              );
-            })}
+        {/* Popular Services - 12 cards */}
+        <section className="mb-12">
+          <div className="flex items-center gap-2 mb-6">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            <h2 className="text-xl font-bold">Services les plus demandés</h2>
+            <Badge variant="secondary">{popularServices.length}</Badge>
           </div>
-        </div>
 
-        {/* Results Count */}
-        <div className="flex items-center justify-between mb-4 md:mb-6">
-          <p className="text-sm text-muted-foreground">
-            {filteredServices.length} service{filteredServices.length > 1 ? 's' : ''} trouvé{filteredServices.length > 1 ? 's' : ''}
-            {searchQuery && <span className="hidden sm:inline"> pour "{searchQuery}"</span>}
-          </p>
-        </div>
-
-        {/* Services Grid */}
-        {filteredServices.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-6">
-            {filteredServices.map((service) => (
-              <ServiceCard 
-                key={service.id} 
-                service={service} 
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-6">
+            {popularServices.map((service) => (
+              <ServiceCard
+                key={service.id}
+                service={service}
                 onClick={() => handleServiceClick(service)}
                 isFavorite={isFavorite(service.id)}
                 onToggleFavorite={() => toggleFavorite(service.id)}
               />
             ))}
           </div>
-        ) : (
-          <div className="text-center py-12 md:py-16">
-            <div className="inline-flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-full bg-muted mb-4">
-              <Search className="h-6 w-6 md:h-8 md:w-8 text-muted-foreground" />
+        </section>
+
+        {/* Other Services by Category */}
+        <section>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <Filter className="h-5 w-5 text-primary" />
+              <h2 className="text-xl font-bold">Tous les autres services</h2>
+              <Badge variant="secondary">{otherServices.length}</Badge>
             </div>
-            <h3 className="text-base md:text-lg font-semibold mb-2">Aucun service trouvé</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Essayez de modifier vos critères de recherche
-            </p>
-            <Button variant="outline" size="sm" onClick={() => {
-              setSearchQuery("");
-              setSelectedCategory("all");
-              setSelectedBeneficiary("all");
-            }}>
-              Réinitialiser les filtres
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setExpandedCategories(
+                expandedCategories.length === Object.keys(servicesByCategory).length
+                  ? []
+                  : Object.keys(servicesByCategory)
+              )}
+            >
+              {expandedCategories.length === Object.keys(servicesByCategory).length ? 'Tout réduire' : 'Tout développer'}
             </Button>
           </div>
-        )}
+
+          <div className="space-y-3">
+            {Object.entries(servicesByCategory).map(([category, categoryServices]) => {
+              const info = CATEGORY_INFO[category as ServiceCategory];
+              if (!info) return null;
+              const Icon = info.icon;
+              const isExpanded = expandedCategories.includes(category);
+
+              return (
+                <Collapsible
+                  key={category}
+                  open={isExpanded}
+                  onOpenChange={() => toggleCategory(category)}
+                >
+                  <CollapsibleTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-between h-14 px-4"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg ${info.color}/10`}>
+                          <Icon className="h-5 w-5" />
+                        </div>
+                        <span className="font-medium">{info.label}</span>
+                        <Badge variant="secondary">{categoryServices.length}</Badge>
+                      </div>
+                      <ChevronDown className={`h-5 w-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 p-4 bg-muted/30 rounded-b-lg border border-t-0"
+                    >
+                      {categoryServices.map(service => (
+                        <ServiceCard
+                          key={service.id}
+                          service={service}
+                          onClick={() => handleServiceClick(service)}
+                          isFavorite={isFavorite(service.id)}
+                          onToggleFavorite={() => toggleFavorite(service.id)}
+                        />
+                      ))}
+                    </motion.div>
+                  </CollapsibleContent>
+                </Collapsible>
+              );
+            })}
+          </div>
+        </section>
 
         {/* Info Section */}
         <div className="mt-12 md:mt-16 bg-muted/50 rounded-xl p-6 md:p-8">
           <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6">Comment effectuer une démarche ?</h2>
           <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
             {[
-              { step: "1", title: "Choisissez votre service", desc: "Parcourez le catalogue et identifiez le service dont vous avez besoin" },
+              { step: "1", title: "Choisissez votre service", desc: "Parcourez les services populaires ou recherchez celui dont vous avez besoin" },
               { step: "2", title: "Préparez vos documents", desc: "Rassemblez tous les documents requis pour votre démarche" },
               { step: "3", title: "Rendez-vous en mairie", desc: "Prenez rendez-vous ou présentez-vous à votre mairie de rattachement" },
             ].map((item) => (
