@@ -109,14 +109,71 @@ const GabonMairiesMap = () => {
       .filter((id, index, self) => id && self.indexOf(id) === index);
   }, [serviceFilter, allServices]);
 
-  // Fetch mairies from database
+  // Fetch mairies from database with fallback to mock data
   useEffect(() => {
     const fetchMairies = async () => {
       try {
         const data = await organizationService.getAll();
-        setMairies(data);
+        // If database has fewer than 20 mairies with coordinates, supplement with mock data
+        const mairiesWithCoords = data.filter(m => m.latitude && m.longitude);
+
+        if (mairiesWithCoords.length < 20) {
+          // Import mock data and convert to Organization format
+          const { mairiesGabon } = await import('@/data/mock-mairies-gabon');
+
+          const mockOrganizations: Organization[] = mairiesGabon.map(m => ({
+            id: `mock-${m.id}`,
+            name: m.name,
+            type: 'MAIRIE' as any,
+            province: m.province,
+            departement: m.departement,
+            latitude: m.coordinates[1],
+            longitude: m.coordinates[0],
+            population: m.population,
+            maire_name: m.maire,
+            contact_phone: m.contact,
+            is_active: true,
+            city: m.departement,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }));
+
+          // Merge: prioritize DB data, add mock data for missing entries
+          const dbIds = new Set(data.map(m => m.name.toLowerCase()));
+          const additionalMairies = mockOrganizations.filter(
+            m => !dbIds.has(m.name.toLowerCase())
+          );
+
+          setMairies([...data, ...additionalMairies]);
+          console.log(`[Map] Loaded ${data.length} from DB + ${additionalMairies.length} from mock = ${data.length + additionalMairies.length} total`);
+        } else {
+          setMairies(data);
+        }
       } catch (err) {
         console.error('Failed to fetch mairies:', err);
+        // Fallback to pure mock data
+        try {
+          const { mairiesGabon } = await import('@/data/mock-mairies-gabon');
+          const mockOrganizations: Organization[] = mairiesGabon.map(m => ({
+            id: `mock-${m.id}`,
+            name: m.name,
+            type: 'MAIRIE' as any,
+            province: m.province,
+            departement: m.departement,
+            latitude: m.coordinates[1],
+            longitude: m.coordinates[0],
+            population: m.population,
+            maire_name: m.maire,
+            is_active: true,
+            city: m.departement,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }));
+          setMairies(mockOrganizations);
+          console.log(`[Map] Using mock data: ${mockOrganizations.length} mairies`);
+        } catch {
+          console.error('Failed to load mock mairies');
+        }
       }
     };
     fetchMairies();
@@ -437,6 +494,15 @@ const GabonMairiesMap = () => {
     markersRef.current.forEach(({ marker }) => marker.remove());
     markersRef.current.clear();
 
+    // Check if mairie is a provincial capital
+    const isCapital = (mairie: Organization) => {
+      const capitalNames = provinces.map(p => p.capital.toLowerCase());
+      return capitalNames.some(cap =>
+        mairie.name.toLowerCase().includes(cap) ||
+        mairie.city?.toLowerCase() === cap
+      );
+    };
+
     // Add markers for each mairie
     mairies.forEach((mairie) => {
       if (!mairie.latitude || !mairie.longitude) return;
@@ -444,35 +510,77 @@ const GabonMairiesMap = () => {
 
       const province = provinces.find(p => p.name === mairie.province);
       const color = province?.color || '#009e49';
+      const isProvincialCapital = isCapital(mairie);
 
-      // Create marker element with stable styles
+      // Create marker element with enhanced styles
       const el = document.createElement('div');
-      el.className = 'mairie-marker';
-      Object.assign(el.style, {
-        width: '16px',
-        height: '16px',
-        backgroundColor: color,
-        borderRadius: '50%',
-        border: '2px solid white',
-        boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
-        cursor: 'pointer'
+      el.className = `mairie-marker ${isProvincialCapital ? 'capital' : ''}`;
+
+      if (isProvincialCapital) {
+        // Provincial capital - larger marker with star icon
+        Object.assign(el.style, {
+          width: '28px',
+          height: '28px',
+          backgroundColor: color,
+          borderRadius: '50%',
+          border: '3px solid white',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '12px',
+          zIndex: '10'
+        });
+        el.innerHTML = '⭐';
+      } else {
+        // Regular commune - smaller marker
+        Object.assign(el.style, {
+          width: '14px',
+          height: '14px',
+          backgroundColor: color,
+          borderRadius: '50%',
+          border: '2px solid white',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+          cursor: 'pointer',
+          zIndex: '5'
+        });
+      }
+
+      // Add hover effect with CSS animation
+      el.addEventListener('mouseenter', () => {
+        el.style.transform = 'scale(1.2)';
+        el.style.transition = 'transform 0.15s ease-out';
+        el.style.zIndex = '20';
+      });
+      el.addEventListener('mouseleave', () => {
+        el.style.transform = 'scale(1)';
+        el.style.zIndex = isProvincialCapital ? '10' : '5';
       });
 
-      // Create popup content
+      // Create popup content with enhanced design
       const popupContent = document.createElement('div');
       popupContent.innerHTML = `
-        <div style="padding: 12px; min-width: 220px; font-family: system-ui, -apple-system, sans-serif;">
-          <div style="font-weight: 600; font-size: 15px; margin-bottom: 6px; color: #1a1a1a;">${mairie.name}</div>
-          <div style="color: #666; font-size: 12px; margin-bottom: 6px;">${mairie.province || ''} ${mairie.departement ? '• ' + mairie.departement : ''}</div>
-          ${mairie.population ? `<div style="color: #666; font-size: 11px; margin-bottom: 4px;">👥 ${mairie.population.toLocaleString()} habitants</div>` : ''}
-          ${mairie.maire_name ? `<div style="color: #555; font-size: 11px;">👤 Maire: ${mairie.maire_name}</div>` : ''}
+        <div style="padding: 14px; min-width: 240px; font-family: system-ui, -apple-system, sans-serif;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: ${color};"></div>
+            <span style="font-weight: 700; font-size: 15px; color: #1a1a1a;">${mairie.name}</span>
+            ${isProvincialCapital ? '<span style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; font-size: 9px; padding: 2px 6px; border-radius: 4px; font-weight: 600;">CHEF-LIEU</span>' : ''}
+          </div>
+          <div style="color: #666; font-size: 12px; margin-bottom: 8px; padding-left: 18px;">
+            📍 ${mairie.province || ''} ${mairie.departement ? '• ' + mairie.departement : ''}
+          </div>
+          ${mairie.population ? `<div style="color: #555; font-size: 12px; margin-bottom: 4px; padding-left: 18px;">👥 ${mairie.population.toLocaleString()} habitants</div>` : ''}
+          ${mairie.maire_name ? `<div style="color: #555; font-size: 12px; padding-left: 18px;">🏛️ Maire: ${mairie.maire_name}</div>` : ''}
+          ${mairie.contact_phone ? `<div style="color: #555; font-size: 12px; margin-top: 4px; padding-left: 18px;">📞 ${mairie.contact_phone}</div>` : ''}
           <button 
             class="mairie-popup-btn"
-            style="width: 100%; margin-top: 12px; padding: 10px 14px; background: ${color}; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.2s;"
-            onmouseover="this.style.opacity='0.9'"
-            onmouseout="this.style.opacity='1'"
+            style="width: 100%; margin-top: 14px; padding: 12px 16px; background: linear-gradient(135deg, ${color}, ${color}dd); color: white; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;"
+            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px ${color}66'"
+            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'"
           >
-            Voir les services →
+            <span>Accéder aux services</span>
+            <span style="font-size: 16px;">→</span>
           </button>
         </div>
       `;
@@ -487,11 +595,11 @@ const GabonMairiesMap = () => {
       }
 
       const popup = new mapboxgl.Popup({
-        offset: [0, -8],
+        offset: isProvincialCapital ? [0, -14] : [0, -7],
         closeButton: true,
         closeOnClick: true,
         className: 'mairie-popup-container',
-        maxWidth: '280px',
+        maxWidth: '300px',
         focusAfterOpen: false
       }).setDOMContent(popupContent);
 
@@ -508,6 +616,8 @@ const GabonMairiesMap = () => {
       // Store marker reference
       markersRef.current.set(mairie.id, { marker, province: mairie.province || '' });
     });
+
+    console.log(`[Map] Rendered ${markersRef.current.size} markers`);
   }, [mairies, loading]); // Only re-run when mairies change or map finishes loading
 
   const provinceCounts = provinces.map(p => ({
