@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Search, Loader2, Sparkles, FileText, Tag, Eye, ThumbsUp, Zap, Brain, TrendingUp, Filter, X, ChevronRight, Clock, CheckCircle } from 'lucide-react';
+import { Search, Loader2, Sparkles, FileText, Tag, Eye, ThumbsUp, Zap, Brain, TrendingUp, Filter, X, ChevronRight, Clock, CheckCircle, Share2, Link2, Mail, Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { knowledgeBaseService, KBArticle } from '@/services/knowledge-base-service';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -48,6 +49,9 @@ const SemanticSearchDemo = () => {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Sharing
+  const [linkCopied, setLinkCopied] = useState(false);
 
   // Load initial data
   useEffect(() => {
@@ -165,6 +169,46 @@ const SemanticSearchDemo = () => {
 
   const handleCategoryClick = (category: string) => {
     setSelectedCategory(selectedCategory === category ? null : category);
+  };
+
+  // Sharing functions
+  const getArticleUrl = (articleId: string) => {
+    return `${window.location.origin}/recherche-kb?article=${articleId}`;
+  };
+
+  const handleCopyLink = async () => {
+    if (!selectedArticle) return;
+    
+    try {
+      await navigator.clipboard.writeText(getArticleUrl(selectedArticle.id));
+      setLinkCopied(true);
+      toast({
+        title: "Lien copié !",
+        description: "Le lien de l'article a été copié dans le presse-papier.",
+      });
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de copier le lien.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleShareByEmail = () => {
+    if (!selectedArticle) return;
+    
+    const subject = encodeURIComponent(`Article: ${selectedArticle.title}`);
+    const articleUrl = getArticleUrl(selectedArticle.id);
+    const body = encodeURIComponent(
+      `Je vous partage cet article de la base de connaissances:\n\n` +
+      `${selectedArticle.title}\n\n` +
+      `${selectedArticle.content.substring(0, 300)}...\n\n` +
+      `Lire l'article complet: ${articleUrl}`
+    );
+    
+    window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
   };
 
   const handleMarkHelpful = async (articleId: string) => {
@@ -571,6 +615,41 @@ const SemanticSearchDemo = () => {
                     </div>
                     <DialogTitle className="text-xl">{selectedArticle.title}</DialogTitle>
                   </div>
+                  
+                  {/* Share Button */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="icon" className="shrink-0">
+                        <Share2 className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-48 p-2" align="end">
+                      <div className="space-y-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-start gap-2"
+                          onClick={handleCopyLink}
+                        >
+                          {linkCopied ? (
+                            <Check className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <Link2 className="h-4 w-4" />
+                          )}
+                          {linkCopied ? "Copié !" : "Copier le lien"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-start gap-2"
+                          onClick={handleShareByEmail}
+                        >
+                          <Mail className="h-4 w-4" />
+                          Envoyer par email
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <DialogDescription className="flex items-center gap-4 text-sm">
                   <span className="flex items-center gap-1">
