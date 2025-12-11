@@ -82,11 +82,47 @@ export function useUserEnvironment(): UseUserEnvironmentReturn {
         error: null
     });
 
-    // Chargement de l'environnement
+    // Chargement de l'environnement (priorité: table user_environments puis fallback legacy)
     const loadEnvironment = useCallback(async () => {
         try {
             setState(prev => ({ ...prev, isLoading: true, error: null }));
 
+            const { data: session } = await supabase.auth.getSession();
+            if (!session?.session?.user?.id) {
+                setState({
+                    environment: null,
+                    role: null,
+                    organizationId: null,
+                    organizationName: null,
+                    permissions: null,
+                    isLoading: false,
+                    error: null
+                });
+                return;
+            }
+
+            // Essayer d'abord la table user_environments (nouvelle approche)
+            const { data: userEnv, error: userEnvError } = await (supabase.from as any)('user_environments')
+                .select('*, organization:organizations(name)')
+                .eq('user_id', session.session.user.id)
+                .eq('is_active', true)
+                .maybeSingle();
+
+            if (userEnv && !userEnvError) {
+                const env = userEnv as any;
+                setState({
+                    environment: env.environment as UserEnvironment,
+                    role: env.role,
+                    organizationId: env.organization_id || null,
+                    organizationName: env.organization?.name || null,
+                    permissions: env.permissions || null,
+                    isLoading: false,
+                    error: null
+                });
+                return;
+            }
+
+            // Fallback vers le service legacy
             const envInfo = await userEnvironmentService.getCurrentUserEnvironment();
 
             if (envInfo) {
