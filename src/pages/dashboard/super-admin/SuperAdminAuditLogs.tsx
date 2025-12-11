@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Search, 
   RefreshCw, 
@@ -20,12 +21,14 @@ import {
   Download,
   Calendar,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  TrendingUp
 } from 'lucide-react';
 import { auditService, AuditLog, AuditAction } from '@/services/audit-service';
-import { format } from 'date-fns';
+import { format, subDays, startOfDay, eachDayOfInterval } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
 
 const ACTION_COLORS: Record<string, string> = {
   'CREATE': 'bg-green-500/10 text-green-600 border-green-500/20',
@@ -75,11 +78,15 @@ const RESOURCE_LABELS: Record<string, string> = {
   'company': 'Entreprise',
 };
 
+const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
+
 const SuperAdminAuditLogs: React.FC = () => {
   const { toast } = useToast();
   const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [allLogs, setAllLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+  const [trendPeriod, setTrendPeriod] = useState<'7' | '30'>('7');
   
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -91,6 +98,62 @@ const SuperAdminAuditLogs: React.FC = () => {
   // Pagination
   const [page, setPage] = useState(1);
   const pageSize = 50;
+
+  // Trend data computation
+  const trendData = useMemo(() => {
+    const days = parseInt(trendPeriod);
+    const now = new Date();
+    const startDay = subDays(now, days - 1);
+    
+    const interval = eachDayOfInterval({ start: startDay, end: now });
+    
+    return interval.map(day => {
+      const dayStart = startOfDay(day);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
+      
+      const dayLogs = allLogs.filter(log => {
+        const logDate = new Date(log.createdAt);
+        return logDate >= dayStart && logDate < dayEnd;
+      });
+      
+      return {
+        date: format(day, 'dd/MM', { locale: fr }),
+        fullDate: format(day, 'dd MMM', { locale: fr }),
+        total: dayLogs.length,
+        creates: dayLogs.filter(l => l.action === 'CREATE').length,
+        updates: dayLogs.filter(l => l.action === 'UPDATE').length,
+        deletes: dayLogs.filter(l => l.action === 'DELETE').length,
+        logins: dayLogs.filter(l => l.action === 'LOGIN').length,
+      };
+    });
+  }, [allLogs, trendPeriod]);
+
+  // Action distribution for pie chart
+  const actionDistribution = useMemo(() => {
+    const distribution: Record<string, number> = {};
+    allLogs.forEach(log => {
+      const label = ACTION_LABELS[log.action] || log.action;
+      distribution[label] = (distribution[label] || 0) + 1;
+    });
+    return Object.entries(distribution)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 7);
+  }, [allLogs]);
+
+  // Resource distribution
+  const resourceDistribution = useMemo(() => {
+    const distribution: Record<string, number> = {};
+    allLogs.forEach(log => {
+      const label = RESOURCE_LABELS[log.resourceType] || log.resourceType;
+      distribution[label] = (distribution[label] || 0) + 1;
+    });
+    return Object.entries(distribution)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 7);
+  }, [allLogs]);
 
   const loadLogs = async () => {
     setLoading(true);
@@ -116,9 +179,27 @@ const SuperAdminAuditLogs: React.FC = () => {
     }
   };
 
+  const loadAllLogsForTrend = async () => {
+    try {
+      const days = parseInt(trendPeriod);
+      const startDay = subDays(new Date(), days);
+      const data = await auditService.getLogs({ 
+        startDate: startDay.toISOString(),
+        limit: 1000 
+      });
+      setAllLogs(data);
+    } catch (error) {
+      console.error('Failed to load trend data:', error);
+    }
+  };
+
   useEffect(() => {
     loadLogs();
   }, [actionFilter, resourceFilter, startDate, endDate]);
+
+  useEffect(() => {
+    loadAllLogsForTrend();
+  }, [trendPeriod]);
 
   const filteredLogs = logs.filter(log => {
     if (!searchQuery) return true;
@@ -258,6 +339,131 @@ const SuperAdminAuditLogs: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Trend Charts */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              <CardTitle className="text-base">Tendances d'activité</CardTitle>
+            </div>
+            <Tabs value={trendPeriod} onValueChange={(v) => setTrendPeriod(v as '7' | '30')}>
+              <TabsList className="h-8">
+                <TabsTrigger value="7" className="text-xs px-3">7 jours</TabsTrigger>
+                <TabsTrigger value="30" className="text-xs px-3">30 jours</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Activity Timeline */}
+            <div className="lg:col-span-2">
+              <p className="text-sm text-muted-foreground mb-4">Activité quotidienne</p>
+              <div className="h-[250px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={trendData}>
+                    <defs>
+                      <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 11 }} 
+                      className="text-muted-foreground"
+                    />
+                    <YAxis tick={{ fontSize: 11 }} className="text-muted-foreground" />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))', 
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px'
+                      }}
+                      labelFormatter={(label) => `Date: ${label}`}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="total" 
+                      stroke="#3b82f6" 
+                      fillOpacity={1} 
+                      fill="url(#colorTotal)"
+                      name="Total"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Action Distribution Pie */}
+            <div>
+              <p className="text-sm text-muted-foreground mb-4">Répartition par action</p>
+              <div className="h-[250px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={actionDistribution}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={40}
+                      outerRadius={80}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {actionDistribution.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))', 
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px'
+                      }}
+                    />
+                    <Legend 
+                      layout="vertical" 
+                      align="right" 
+                      verticalAlign="middle"
+                      iconSize={8}
+                      wrapperStyle={{ fontSize: '11px' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Types Bar Chart */}
+          <div className="mt-6">
+            <p className="text-sm text-muted-foreground mb-4">Détail par type d'action</p>
+            <div className="h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={trendData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))', 
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Legend iconSize={10} wrapperStyle={{ fontSize: '11px' }} />
+                  <Bar dataKey="creates" name="Créations" fill="#10b981" stackId="a" />
+                  <Bar dataKey="updates" name="Modifications" fill="#3b82f6" stackId="a" />
+                  <Bar dataKey="deletes" name="Suppressions" fill="#ef4444" stackId="a" />
+                  <Bar dataKey="logins" name="Connexions" fill="#8b5cf6" stackId="a" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Filters */}
       <Card>
