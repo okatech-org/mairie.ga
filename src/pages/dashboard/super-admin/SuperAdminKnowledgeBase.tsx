@@ -23,8 +23,11 @@ import {
     Loader2,
     Tags,
     BarChart3,
-    ThumbsUp
+    ThumbsUp,
+    Sparkles,
+    Database
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import {
     knowledgeBaseService,
     KBArticle,
@@ -72,6 +75,7 @@ export default function SuperAdminKnowledgeBase() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingArticle, setEditingArticle] = useState<KBArticle | null>(null);
     const [submitting, setSubmitting] = useState(false);
+    const [generatingEmbeddings, setGeneratingEmbeddings] = useState(false);
 
     const [formData, setFormData] = useState<ArticleForm>({
         title: '',
@@ -184,7 +188,40 @@ export default function SuperAdminKnowledgeBase() {
         total: articles.length,
         published: articles.filter(a => a.status === 'PUBLISHED').length,
         drafts: articles.filter(a => a.status === 'DRAFT').length,
-        totalViews: articles.reduce((sum, a) => sum + (a.viewCount || 0), 0)
+        totalViews: articles.reduce((sum, a) => sum + (a.viewCount || 0), 0),
+        withEmbeddings: 0 // Will be calculated from DB
+    };
+
+    const handleGenerateEmbeddings = async (regenerateAll = false) => {
+        setGeneratingEmbeddings(true);
+        try {
+            const { data, error } = await supabase.functions.invoke('generate-kb-embeddings', {
+                body: { 
+                    regenerateAll,
+                    onlyMissing: !regenerateAll 
+                }
+            });
+
+            if (error) {
+                console.error('Error generating embeddings:', error);
+                toast.error("Erreur lors de la génération des embeddings");
+                return;
+            }
+
+            if (data?.success) {
+                toast.success(`Embeddings générés: ${data.processed} articles traités, ${data.failed} échecs`);
+                if (data.failed > 0 && data.details?.failed) {
+                    console.log('Failed articles:', data.details.failed);
+                }
+            } else {
+                toast.error(data?.error || "Erreur inconnue");
+            }
+        } catch (err) {
+            console.error('Error calling generate-kb-embeddings:', err);
+            toast.error("Erreur lors de l'appel à la fonction");
+        } finally {
+            setGeneratingEmbeddings(false);
+        }
     };
 
     if (loading) {
@@ -207,10 +244,25 @@ export default function SuperAdminKnowledgeBase() {
                         Gérez les articles et la documentation pour iAsted
                     </p>
                 </div>
-                <Button className="gap-2" onClick={() => handleOpenDialog()}>
-                    <Plus className="h-4 w-4" />
-                    Nouvel article
-                </Button>
+                <div className="flex gap-2">
+                    <Button 
+                        variant="outline" 
+                        className="gap-2" 
+                        onClick={() => handleGenerateEmbeddings(false)}
+                        disabled={generatingEmbeddings}
+                    >
+                        {generatingEmbeddings ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                            <Sparkles className="h-4 w-4" />
+                        )}
+                        Générer embeddings
+                    </Button>
+                    <Button className="gap-2" onClick={() => handleOpenDialog()}>
+                        <Plus className="h-4 w-4" />
+                        Nouvel article
+                    </Button>
+                </div>
             </div>
 
             {/* Stats */}
