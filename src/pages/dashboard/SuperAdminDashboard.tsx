@@ -1,5 +1,6 @@
 import { Building2, FileText, Users, Globe, Activity, Plus, ShieldCheck, Settings, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { LoginAttemptsMonitor } from "@/components/dashboard/admin/LoginAttemptsMonitor";
+import { AuditSummaryWidget } from "@/components/dashboard/admin/AuditSummaryWidget";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { Organization, OrganizationType } from "@/types/organization";
@@ -353,9 +354,12 @@ export default function SuperAdminDashboard() {
                         </div>
                     </div>
 
-                    {/* LOGIN ATTEMPTS MONITOR */}
+                    {/* LOGIN ATTEMPTS MONITOR & AUDIT */}
                     <div className="space-y-6">
                         <LoginAttemptsMonitor />
+                        
+                        {/* Audit Summary Widget */}
+                        <AuditSummaryWidget />
                         
                         <div className="neu-raised rounded-xl p-6">
                             <h3 className="font-bold mb-4 text-sm uppercase tracking-wider text-muted-foreground">Maintenance</h3>
