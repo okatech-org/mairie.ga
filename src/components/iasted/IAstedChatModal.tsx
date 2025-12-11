@@ -1113,7 +1113,8 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                         const now = new Date().toISOString();
                         const docType = (args.type || 'document').toUpperCase();
                         const docRecipient = args.recipient || 'les destinataires';
-                        const content = `Document généré, Excellence.\n\n📄 ${docType} pour ${docRecipient}\nObjet : ${args.subject || 'Document officiel'}`;
+                        const docSubject = args.subject || 'Document officiel';
+                        const content = `Document généré, Excellence.\n\n📄 ${docType} pour ${docRecipient}\nObjet : ${docSubject}`;
                         const docMessage: Message = {
                             id: crypto.randomUUID(),
                             role: 'assistant',
