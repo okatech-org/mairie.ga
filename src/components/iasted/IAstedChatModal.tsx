@@ -1111,7 +1111,9 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
 
                         // Créer un message assistant dédié avec le document attaché
                         const now = new Date().toISOString();
-                        const content = `Document généré, Excellence.\n\n📄 ${args.type.toUpperCase()} pour ${args.recipient}\nObjet : ${args.subject}`;
+                        const docType = (args.type || 'document').toUpperCase();
+                        const docRecipient = args.recipient || 'les destinataires';
+                        const content = `Document généré, Excellence.\n\n📄 ${docType} pour ${docRecipient}\nObjet : ${args.subject || 'Document officiel'}`;
                         const docMessage: Message = {
                             id: crypto.randomUUID(),
                             role: 'assistant',
@@ -1128,7 +1130,7 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                         // Toast de succès
                         toast({
                             title: "📄 Document généré",
-                            description: `${args.type.toUpperCase()} pour ${args.recipient}`,
+                            description: `${docType} pour ${docRecipient}`,
                             duration: 3000,
                         });
 
