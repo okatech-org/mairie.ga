@@ -456,3 +456,59 @@ img {
   word-break: break-word;
   hyphens: auto;
 }
+
+/* ====== MOBILE TYPOGRAPHY ====== */
+@media (max-width: 639px) {
+  h1 {
+    @apply text-xl;
+  }
+  h2 {
+    @apply text-lg;
+  }
+  h3 {
+    @apply text-base;
+  }
+  h4, h5, h6 {
+    @apply text-sm;
+  }
+  p, span, div {
+    @apply text-sm;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  h1 {
+    @apply text-2xl;
+  }
+  h2 {
+    @apply text-xl;
+  }
+  h3 {
+    @apply text-lg;
+  }
+}
+
+/* ====== MOBILE SPACING ====== */
+@media (max-width: 639px) {
+  .mobile-compact {
+    @apply gap-2 p-2;
+  }
+  
+  .mobile-compact-card {
+    @apply p-3;
+  }
+}
+
+/* ====== TOUCH TARGETS ====== */
+@media (max-width: 1023px) {
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Except for inline links */
+  p a, span a {
+    min-height: auto;
+    min-width: auto;
+  }
+}
