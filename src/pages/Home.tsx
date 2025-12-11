@@ -367,26 +367,6 @@ export default function Home() {
       {/* Unified Map & Mairies Section - Combines "9 Provinces, 52 Communes" with "Les Communes Connectées" */}
       <MairiesLogosSection />
 
-      {/* Stats Section */}
-      <section className="py-16 bg-primary text-primary-foreground">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            {[
-              { value: "52", label: "Communes connectées", icon: Landmark },
-              { value: "2.3M", label: "Citoyens gabonais", icon: Users },
-              { value: "24/7", label: "Services en ligne", icon: Clock },
-              { value: "100%", label: "Gratuit", icon: CheckCircle2 },
-            ].map((stat, index) => (
-              <div key={index} className="animate-fade-in" style={{ animationDelay: `${index * 0.1}s` }}>
-                <stat.icon className="h-8 w-8 mx-auto mb-3 opacity-80" />
-                <div className="text-4xl md:text-5xl font-bold mb-2">{stat.value}</div>
-                <div className="text-primary-foreground/80 text-sm">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* iAsted Section */}
       <section id="iasted-section" className="py-20 md:py-24 bg-gradient-to-br from-violet-500/5 via-background to-primary/5 overflow-hidden">
         <div className="container mx-auto px-4">
