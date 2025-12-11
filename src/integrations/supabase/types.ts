@@ -1330,18 +1330,24 @@ export type Database = {
       urbanisme_dossiers: {
         Row: {
           address: Json | null
+          adresse_travaux: string | null
           assigned_to: string | null
           created_at: string | null
           date_decision: string | null
           date_depot: string | null
+          demandeur_adresse: string | null
           demandeur_id: string
+          demandeur_nom: string | null
           description: string | null
           documents: Json | null
           id: string
+          instructeur_id: string | null
           metadata: Json | null
           motif_decision: string | null
           numero: string
+          observations: string | null
           organization_id: string | null
+          parcelle_reference: string | null
           status: Database["public"]["Enums"]["urbanisme_status"] | null
           surface_construction: number | null
           surface_terrain: number | null
@@ -1351,18 +1357,24 @@ export type Database = {
         }
         Insert: {
           address?: Json | null
+          adresse_travaux?: string | null
           assigned_to?: string | null
           created_at?: string | null
           date_decision?: string | null
           date_depot?: string | null
+          demandeur_adresse?: string | null
           demandeur_id: string
+          demandeur_nom?: string | null
           description?: string | null
           documents?: Json | null
           id?: string
+          instructeur_id?: string | null
           metadata?: Json | null
           motif_decision?: string | null
           numero: string
+          observations?: string | null
           organization_id?: string | null
+          parcelle_reference?: string | null
           status?: Database["public"]["Enums"]["urbanisme_status"] | null
           surface_construction?: number | null
           surface_terrain?: number | null
@@ -1372,18 +1384,24 @@ export type Database = {
         }
         Update: {
           address?: Json | null
+          adresse_travaux?: string | null
           assigned_to?: string | null
           created_at?: string | null
           date_decision?: string | null
           date_depot?: string | null
+          demandeur_adresse?: string | null
           demandeur_id?: string
+          demandeur_nom?: string | null
           description?: string | null
           documents?: Json | null
           id?: string
+          instructeur_id?: string | null
           metadata?: Json | null
           motif_decision?: string | null
           numero?: string
+          observations?: string | null
           organization_id?: string | null
+          parcelle_reference?: string | null
           status?: Database["public"]["Enums"]["urbanisme_status"] | null
           surface_construction?: number | null
           surface_terrain?: number | null
