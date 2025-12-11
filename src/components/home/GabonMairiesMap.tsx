@@ -342,10 +342,35 @@ const GabonMairiesMap = () => {
     }
   };
 
+  // Initialize map only once
+  const mapInitializedRef = useRef(false);
+  const mairiesDataRef = useRef<Organization[]>([]);
+
+  // Store mairies in ref to avoid re-renders affecting markers
   useEffect(() => {
+    mairiesDataRef.current = mairies;
+  }, [mairies]);
+
+  // Create a stable handler reference using useRef
+  const handleMairieSelect = useRef((mairie: Organization) => {
+    if (!mairie.longitude || !mairie.latitude) return;
+    setSelectedMairie({
+      id: mairie.id,
+      name: mairie.name,
+      province: mairie.province || '',
+      departement: mairie.departement || '',
+      population: mairie.population || undefined,
+      isCapitalProvince: false,
+      coordinates: [mairie.longitude, mairie.latitude]
+    });
+  });
+
+  // Initialize map ONCE
+  useEffect(() => {
+    if (mapInitializedRef.current || !mapContainer.current) return;
+
     const initMap = async () => {
       try {
-        // Fetch Mapbox token from edge function with demo mode fallback
         interface MapboxTokenResponse {
           token: string | null;
           error?: string;
@@ -371,6 +396,7 @@ const GabonMairiesMap = () => {
           zoom: 5.5,
           minZoom: 4,
           maxZoom: 12,
+          preserveDrawingBuffer: true, // Prevents visual glitches
         });
 
         map.current.addControl(
@@ -381,113 +407,7 @@ const GabonMairiesMap = () => {
         );
 
         map.current.on('load', () => {
-          // Add markers for each mairie from database with GPS coordinates
-          mairies.forEach((mairie) => {
-            // Skip mairies without coordinates
-            if (!mairie.latitude || !mairie.longitude) return;
-
-            const province = provinces.find(p => p.name === mairie.province);
-            const color = province?.color || '#009e49';
-
-            // Create marker element
-            const el = document.createElement('div');
-            el.className = 'mairie-marker';
-            el.style.width = '18px';
-            el.style.height = '18px';
-            el.style.backgroundColor = color;
-            el.style.borderRadius = '50%';
-            el.style.border = '3px solid white';
-            el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
-            el.style.cursor = 'pointer';
-            // Remove transform transition to prevent jumping
-            el.style.position = 'relative';
-            el.style.zIndex = '1';
-
-            // Hover effects without transform to prevent jumping
-            el.addEventListener('mouseenter', () => {
-              el.style.boxShadow = '0 4px 16px rgba(0,0,0,0.4)';
-              el.style.border = '3px solid ' + color;
-              el.style.backgroundColor = 'white';
-              el.style.zIndex = '10';
-              setHoveredProvince(mairie.province || null);
-            });
-
-            el.addEventListener('mouseleave', () => {
-              el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
-              el.style.border = '3px solid white';
-              el.style.backgroundColor = color;
-              el.style.zIndex = '1';
-              setHoveredProvince(null);
-            });
-
-            // Create popup with action button
-            const popupContent = `
-              <div style="padding: 10px; min-width: 200px;">
-                <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px; color: #1a1a1a;">${mairie.name}</div>
-                <div style="color: #666; font-size: 12px; margin-bottom: 4px;">${mairie.province || ''} ${mairie.departement ? '• ' + mairie.departement : ''}</div>
-                ${mairie.population ? `<div style="color: #888; font-size: 11px;">👥 ${mairie.population.toLocaleString()} habitants</div>` : ''}
-                ${mairie.maire_name ? `<div style="color: #666; font-size: 11px; margin-top: 4px;">👤 ${mairie.maire_name}</div>` : ''}
-                <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #eee;">
-                  <button 
-                    id="btn-view-${mairie.id}" 
-                    style="width: 100%; padding: 8px 12px; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; border: none; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;"
-                  >
-                    <span>Voir les services</span>
-                    <span style="font-size: 14px;">→</span>
-                  </button>
-                </div>
-              </div>
-            `;
-
-            const popup = new mapboxgl.Popup({
-              offset: 25,
-              closeButton: true,
-              closeOnClick: false,
-              className: 'mairie-popup',
-              maxWidth: '280px'
-            }).setHTML(popupContent);
-
-            // Handle popup open to attach button click
-            popup.on('open', () => {
-              setTimeout(() => {
-                const btn = document.getElementById(`btn-view-${mairie.id}`);
-                if (btn) {
-                  btn.onclick = (e) => {
-                    e.stopPropagation();
-                    setSelectedMairie({
-                      id: mairie.id,
-                      name: mairie.name,
-                      province: mairie.province || '',
-                      departement: mairie.departement || '',
-                      population: mairie.population || undefined,
-                      isCapitalProvince: false,
-                      coordinates: [mairie.longitude!, mairie.latitude!]
-                    });
-                    popup.remove();
-                  };
-                  // Add hover effect
-                  btn.onmouseenter = () => {
-                    btn.style.background = 'linear-gradient(135deg, #1d4ed8, #1e40af)';
-                  };
-                  btn.onmouseleave = () => {
-                    btn.style.background = 'linear-gradient(135deg, #2563eb, #1d4ed8)';
-                  };
-                }
-              }, 10);
-            });
-
-            const marker = new mapboxgl.Marker({
-              element: el,
-              anchor: 'center'
-            })
-              .setLngLat([mairie.longitude, mairie.latitude])
-              .setPopup(popup)
-              .addTo(map.current!);
-
-            // Store marker reference with province info
-            markersRef.current.set(mairie.id, { marker, province: mairie.province || '' });
-          });
-
+          mapInitializedRef.current = true;
           setLoading(false);
         });
 
@@ -498,14 +418,97 @@ const GabonMairiesMap = () => {
       }
     };
 
-    if (mairies.length > 0) {
-      initMap();
-    }
+    initMap();
 
     return () => {
-      map.current?.remove();
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+        mapInitializedRef.current = false;
+      }
     };
-  }, [mairies]);
+  }, []); // Empty dependency - only run once
+
+  // Add markers when map is ready AND mairies are loaded
+  useEffect(() => {
+    if (!map.current || !mapInitializedRef.current || mairies.length === 0) return;
+
+    // Clear existing markers first
+    markersRef.current.forEach(({ marker }) => marker.remove());
+    markersRef.current.clear();
+
+    // Add markers for each mairie
+    mairies.forEach((mairie) => {
+      if (!mairie.latitude || !mairie.longitude) return;
+      if (!map.current) return;
+
+      const province = provinces.find(p => p.name === mairie.province);
+      const color = province?.color || '#009e49';
+
+      // Create marker element with stable styles
+      const el = document.createElement('div');
+      el.className = 'mairie-marker';
+      Object.assign(el.style, {
+        width: '16px',
+        height: '16px',
+        backgroundColor: color,
+        borderRadius: '50%',
+        border: '2px solid white',
+        boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+        cursor: 'pointer'
+      });
+
+      // Create popup content
+      const popupContent = document.createElement('div');
+      popupContent.innerHTML = `
+        <div style="padding: 12px; min-width: 220px; font-family: system-ui, -apple-system, sans-serif;">
+          <div style="font-weight: 600; font-size: 15px; margin-bottom: 6px; color: #1a1a1a;">${mairie.name}</div>
+          <div style="color: #666; font-size: 12px; margin-bottom: 6px;">${mairie.province || ''} ${mairie.departement ? '• ' + mairie.departement : ''}</div>
+          ${mairie.population ? `<div style="color: #666; font-size: 11px; margin-bottom: 4px;">👥 ${mairie.population.toLocaleString()} habitants</div>` : ''}
+          ${mairie.maire_name ? `<div style="color: #555; font-size: 11px;">👤 Maire: ${mairie.maire_name}</div>` : ''}
+          <button 
+            class="mairie-popup-btn"
+            style="width: 100%; margin-top: 12px; padding: 10px 14px; background: ${color}; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.2s;"
+            onmouseover="this.style.opacity='0.9'"
+            onmouseout="this.style.opacity='1'"
+          >
+            Voir les services →
+          </button>
+        </div>
+      `;
+
+      // Attach click handler to button
+      const btn = popupContent.querySelector('button');
+      if (btn) {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          handleMairieSelect.current(mairie);
+        });
+      }
+
+      const popup = new mapboxgl.Popup({
+        offset: [0, -8],
+        closeButton: true,
+        closeOnClick: true,
+        className: 'mairie-popup-container',
+        maxWidth: '280px',
+        focusAfterOpen: false
+      }).setDOMContent(popupContent);
+
+      const marker = new mapboxgl.Marker({
+        element: el,
+        anchor: 'center',
+        pitchAlignment: 'map',
+        rotationAlignment: 'map'
+      })
+        .setLngLat([mairie.longitude, mairie.latitude])
+        .setPopup(popup)
+        .addTo(map.current);
+
+      // Store marker reference
+      markersRef.current.set(mairie.id, { marker, province: mairie.province || '' });
+    });
+  }, [mairies, loading]); // Only re-run when mairies change or map finishes loading
 
   const provinceCounts = provinces.map(p => ({
     ...p,
