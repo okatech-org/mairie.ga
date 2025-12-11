@@ -8,6 +8,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import MarkdownEditor from "@/components/editor/MarkdownEditor";
 import { toast } from "sonner";
 import {
@@ -208,7 +210,11 @@ export default function SuperAdminKnowledgeBase() {
     const filteredArticles = articles.filter(a => {
         const matchesSearch = a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             a.content.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesTab = activeTab === 'all' || a.status === activeTab || a.category === activeTab;
+        const matchesTab = activeTab === 'all' || 
+            a.status === activeTab || 
+            a.category === activeTab ||
+            (activeTab === 'no-embedding' && !a.hasEmbedding) ||
+            (activeTab === 'with-embedding' && a.hasEmbedding);
         return matchesSearch && matchesTab;
     });
 
@@ -417,15 +423,34 @@ export default function SuperAdminKnowledgeBase() {
                     />
                 </div>
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
-                    <TabsList>
+                    <TabsList className="flex-wrap">
                         <TabsTrigger value="all">Tous</TabsTrigger>
                         <TabsTrigger value="PUBLISHED">Publiés</TabsTrigger>
                         <TabsTrigger value="DRAFT">Brouillons</TabsTrigger>
-                        <TabsTrigger value="procedures">Procédures</TabsTrigger>
-                        <TabsTrigger value="faq">FAQ</TabsTrigger>
+                        <TabsTrigger value="no-embedding" className="text-orange-600">
+                            Sans embedding
+                        </TabsTrigger>
+                        <TabsTrigger value="with-embedding" className="text-emerald-600">
+                            Avec embedding
+                        </TabsTrigger>
                     </TabsList>
                 </Tabs>
             </div>
+
+            {/* Progress bar for bulk embedding generation */}
+            {generatingEmbeddings && (
+                <Card className="border-primary/20 bg-primary/5">
+                    <CardContent className="pt-4 pb-4">
+                        <div className="flex items-center gap-4">
+                            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                            <div className="flex-1">
+                                <p className="text-sm font-medium mb-2">Génération des embeddings en cours...</p>
+                                <Progress value={undefined} className="h-2" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Articles List */}
             <Card className="neu-card border-none">
@@ -492,19 +517,32 @@ export default function SuperAdminKnowledgeBase() {
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-2 ml-4">
-                                                    <Button 
-                                                        size="sm" 
-                                                        variant="ghost"
-                                                        onClick={() => handleGenerateArticleEmbedding(article.id)}
-                                                        disabled={generatingArticleId === article.id}
-                                                        title={article.hasEmbedding ? "Régénérer l'embedding" : "Générer l'embedding"}
-                                                    >
-                                                        {generatingArticleId === article.id ? (
-                                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                                        ) : (
-                                                            <Sparkles className="h-4 w-4" />
-                                                        )}
-                                                    </Button>
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button 
+                                                                    size="sm" 
+                                                                    variant="ghost"
+                                                                    onClick={() => handleGenerateArticleEmbedding(article.id)}
+                                                                    disabled={generatingArticleId === article.id}
+                                                                    className={article.hasEmbedding ? "text-emerald-600 hover:text-emerald-700" : "text-orange-600 hover:text-orange-700"}
+                                                                >
+                                                                    {generatingArticleId === article.id ? (
+                                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                                    ) : (
+                                                                        <Sparkles className="h-4 w-4" />
+                                                                    )}
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                {article.hasEmbedding ? (
+                                                                    <p>Article indexé - Cliquer pour régénérer l'embedding</p>
+                                                                ) : (
+                                                                    <p>Article non indexé - Cliquer pour générer l'embedding</p>
+                                                                )}
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
                                                     <Button 
                                                         size="sm" 
                                                         variant="outline"
