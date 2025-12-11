@@ -80,6 +80,7 @@ import ArretesPublicsPage from "./pages/ArretesPublicsPage";
 import DeliberationsPubliquesPage from "./pages/DeliberationsPubliquesPage";
 import ContactsPage from "./pages/ContactsPage";
 import AppointmentBookingPage from "./pages/AppointmentBookingPage";
+import KnowledgeSearchPage from "./pages/KnowledgeSearchPage";
 import { InactivityHandler } from "@/components/auth/InactivityHandler";
 
 const queryClient = new QueryClient();
@@ -107,6 +108,7 @@ const App = () => (
                       <Route path="/cgu" element={<CGU />} />
                       <Route path="/arretes" element={<ArretesPublicsPage />} />
                       <Route path="/deliberations" element={<DeliberationsPubliquesPage />} />
+                      <Route path="/recherche-kb" element={<KnowledgeSearchPage />} />
 
                       <Route path="/actualites" element={<Actualites />} />
                       <Route path="/login" element={<Login />} />
