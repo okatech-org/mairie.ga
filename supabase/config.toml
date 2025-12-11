@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.semantic-search-kb]
 verify_jwt = false
+
+[functions.generate-kb-embeddings]
+verify_jwt = true
