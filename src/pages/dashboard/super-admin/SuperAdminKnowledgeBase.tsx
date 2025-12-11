@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,8 @@ import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import MarkdownEditor from "@/components/editor/MarkdownEditor";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 import {
     BookOpen,
     Search,
@@ -27,7 +29,11 @@ import {
     BarChart3,
     ThumbsUp,
     Sparkles,
-    Database
+    Database,
+    XCircle,
+    History,
+    CheckCircle,
+    AlertCircle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -69,6 +75,23 @@ interface ArticleForm {
     status: KBStatus;
 }
 
+interface EmbeddingProgress {
+    current: number;
+    total: number;
+    articleTitle?: string;
+    status?: 'success' | 'failed';
+    error?: string;
+}
+
+interface EmbeddingHistoryEntry {
+    id: string;
+    timestamp: Date;
+    processed: number;
+    failed: number;
+    total: number;
+    status: 'completed' | 'cancelled' | 'error';
+}
+
 export default function SuperAdminKnowledgeBase() {
     const [articles, setArticles] = useState<KBArticle[]>([]);
     const [loading, setLoading] = useState(true);
@@ -80,6 +103,12 @@ export default function SuperAdminKnowledgeBase() {
     const [generatingEmbeddings, setGeneratingEmbeddings] = useState(false);
     const [generatingArticleId, setGeneratingArticleId] = useState<string | null>(null);
     const [embeddingStats, setEmbeddingStats] = useState({ withEmbedding: 0, withoutEmbedding: 0 });
+    
+    // New states for progress tracking and cancellation
+    const [embeddingProgress, setEmbeddingProgress] = useState<EmbeddingProgress | null>(null);
+    const [embeddingHistory, setEmbeddingHistory] = useState<EmbeddingHistoryEntry[]>([]);
+    const [showHistory, setShowHistory] = useState(false);
+    const abortControllerRef = useRef<AbortController | null>(null);
 
     const [formData, setFormData] = useState<ArticleForm>({
         title: '',
@@ -226,37 +255,140 @@ export default function SuperAdminKnowledgeBase() {
         withEmbeddings: 0 // Will be calculated from DB
     };
 
+    const handleCancelGeneration = () => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
+            
+            // Add cancelled entry to history
+            if (embeddingProgress) {
+                const historyEntry: EmbeddingHistoryEntry = {
+                    id: crypto.randomUUID(),
+                    timestamp: new Date(),
+                    processed: embeddingProgress.current,
+                    failed: 0,
+                    total: embeddingProgress.total,
+                    status: 'cancelled'
+                };
+                setEmbeddingHistory(prev => [historyEntry, ...prev].slice(0, 10));
+            }
+            
+            setGeneratingEmbeddings(false);
+            setEmbeddingProgress(null);
+            toast.info("Génération des embeddings annulée");
+        }
+    };
+
     const handleGenerateEmbeddings = async (regenerateAll = false) => {
         setGeneratingEmbeddings(true);
+        setEmbeddingProgress({ current: 0, total: 0 });
+        
+        // Create abort controller for cancellation
+        abortControllerRef.current = new AbortController();
+        const signal = abortControllerRef.current.signal;
+        
         try {
-            const { data, error } = await supabase.functions.invoke('generate-kb-embeddings', {
-                body: { 
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+            const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+            
+            const response = await fetch(`${supabaseUrl}/functions/v1/generate-kb-embeddings`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${supabaseKey}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
                     regenerateAll,
-                    onlyMissing: !regenerateAll 
-                }
+                    onlyMissing: !regenerateAll,
+                    stream: true
+                }),
+                signal
             });
 
-            if (error) {
-                console.error('Error generating embeddings:', error);
-                toast.error("Erreur lors de la génération des embeddings");
-                return;
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            if (data?.success) {
-                toast.success(`Embeddings générés: ${data.processed} articles traités, ${data.failed} échecs`);
-                if (data.failed > 0 && data.details?.failed) {
-                    console.log('Failed articles:', data.details.failed);
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+
+            if (!reader) {
+                throw new Error('No response body');
+            }
+
+            let finalResult: { processed: number; failed: number; total: number } | null = null;
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n').filter(line => line.startsWith('data: '));
+
+                for (const line of lines) {
+                    try {
+                        const data = JSON.parse(line.replace('data: ', ''));
+                        
+                        if (data.type === 'start') {
+                            setEmbeddingProgress({ current: 0, total: data.total });
+                        } else if (data.type === 'progress') {
+                            setEmbeddingProgress({
+                                current: data.current,
+                                total: data.total,
+                                articleTitle: data.articleTitle,
+                                status: data.status,
+                                error: data.error
+                            });
+                        } else if (data.type === 'complete') {
+                            finalResult = {
+                                processed: data.processed,
+                                failed: data.failed,
+                                total: data.total
+                            };
+                        }
+                    } catch (e) {
+                        console.error('Error parsing SSE data:', e);
+                    }
                 }
-                // Refresh embedding stats
+            }
+
+            if (finalResult) {
+                const historyEntry: EmbeddingHistoryEntry = {
+                    id: crypto.randomUUID(),
+                    timestamp: new Date(),
+                    processed: finalResult.processed,
+                    failed: finalResult.failed,
+                    total: finalResult.total,
+                    status: 'completed'
+                };
+                setEmbeddingHistory(prev => [historyEntry, ...prev].slice(0, 10));
+                
+                toast.success(`Embeddings générés: ${finalResult.processed} articles traités, ${finalResult.failed} échecs`);
                 loadEmbeddingStats();
-            } else {
-                toast.error(data?.error || "Erreur inconnue");
+                loadArticles();
             }
         } catch (err) {
+            if (err instanceof Error && err.name === 'AbortError') {
+                // Cancellation handled in handleCancelGeneration
+                return;
+            }
             console.error('Error calling generate-kb-embeddings:', err);
             toast.error("Erreur lors de l'appel à la fonction");
+            
+            // Add error entry to history
+            const historyEntry: EmbeddingHistoryEntry = {
+                id: crypto.randomUUID(),
+                timestamp: new Date(),
+                processed: embeddingProgress?.current || 0,
+                failed: 0,
+                total: embeddingProgress?.total || 0,
+                status: 'error'
+            };
+            setEmbeddingHistory(prev => [historyEntry, ...prev].slice(0, 10));
         } finally {
             setGeneratingEmbeddings(false);
+            setEmbeddingProgress(null);
+            abortControllerRef.current = null;
         }
     };
 
@@ -309,6 +441,14 @@ export default function SuperAdminKnowledgeBase() {
                     </p>
                 </div>
                 <div className="flex gap-2">
+                    <Button 
+                        variant="outline" 
+                        className="gap-2" 
+                        onClick={() => setShowHistory(!showHistory)}
+                    >
+                        <History className="h-4 w-4" />
+                        Historique
+                    </Button>
                     <Button 
                         variant="outline" 
                         className="gap-2" 
@@ -438,16 +578,111 @@ export default function SuperAdminKnowledgeBase() {
             </div>
 
             {/* Progress bar for bulk embedding generation */}
-            {generatingEmbeddings && (
+            {generatingEmbeddings && embeddingProgress && (
                 <Card className="border-primary/20 bg-primary/5">
                     <CardContent className="pt-4 pb-4">
                         <div className="flex items-center gap-4">
-                            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                            <Loader2 className="h-5 w-5 animate-spin text-primary flex-shrink-0" />
                             <div className="flex-1">
-                                <p className="text-sm font-medium mb-2">Génération des embeddings en cours...</p>
-                                <Progress value={undefined} className="h-2" />
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-sm font-medium">
+                                        Génération des embeddings en cours...
+                                        <span className="ml-2 text-primary font-bold">
+                                            {embeddingProgress.current} / {embeddingProgress.total}
+                                        </span>
+                                    </p>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        onClick={handleCancelGeneration}
+                                        className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1"
+                                    >
+                                        <XCircle className="h-4 w-4" />
+                                        Annuler
+                                    </Button>
+                                </div>
+                                <Progress 
+                                    value={embeddingProgress.total > 0 ? (embeddingProgress.current / embeddingProgress.total) * 100 : 0} 
+                                    className="h-2" 
+                                />
+                                {embeddingProgress.articleTitle && (
+                                    <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                                        {embeddingProgress.status === 'success' ? (
+                                            <CheckCircle className="h-3 w-3 text-emerald-500" />
+                                        ) : embeddingProgress.status === 'failed' ? (
+                                            <AlertCircle className="h-3 w-3 text-destructive" />
+                                        ) : null}
+                                        {embeddingProgress.articleTitle}
+                                        {embeddingProgress.error && (
+                                            <span className="text-destructive ml-1">- {embeddingProgress.error}</span>
+                                        )}
+                                    </p>
+                                )}
                             </div>
                         </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Embedding History */}
+            {showHistory && embeddingHistory.length > 0 && (
+                <Card className="border-muted">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium flex items-center gap-2">
+                            <History className="h-4 w-4" />
+                            Historique des générations
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-2">
+                            {embeddingHistory.map((entry) => (
+                                <div 
+                                    key={entry.id} 
+                                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50 text-sm"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        {entry.status === 'completed' ? (
+                                            <CheckCircle className="h-4 w-4 text-emerald-500" />
+                                        ) : entry.status === 'cancelled' ? (
+                                            <XCircle className="h-4 w-4 text-amber-500" />
+                                        ) : (
+                                            <AlertCircle className="h-4 w-4 text-destructive" />
+                                        )}
+                                        <span className="text-muted-foreground">
+                                            {format(entry.timestamp, "d MMM yyyy 'à' HH:mm", { locale: fr })}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <Badge variant="outline" className={
+                                            entry.status === 'completed' 
+                                                ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                                                : entry.status === 'cancelled'
+                                                    ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                                                    : "bg-destructive/10 text-destructive border-destructive/20"
+                                        }>
+                                            {entry.status === 'completed' ? 'Terminé' : entry.status === 'cancelled' ? 'Annulé' : 'Erreur'}
+                                        </Badge>
+                                        <span className="text-muted-foreground">
+                                            {entry.processed}/{entry.total} traités
+                                        </span>
+                                        {entry.failed > 0 && (
+                                            <span className="text-destructive">
+                                                {entry.failed} échecs
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {showHistory && embeddingHistory.length === 0 && (
+                <Card className="border-muted">
+                    <CardContent className="pt-6 pb-6 text-center text-muted-foreground">
+                        <History className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p>Aucun historique de génération</p>
                     </CardContent>
                 </Card>
             )}
