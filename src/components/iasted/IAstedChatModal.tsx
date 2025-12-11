@@ -7,6 +7,7 @@ import { generateOfficialPDFWithURL } from '@/utils/generateOfficialPDF';
 import { documentGenerationService } from '@/services/documentGenerationService';
 import { canUseCorrespondance } from '@/config/iasted-prompt-lite';
 import { invokeWithDemoFallback } from '@/utils/demoMode';
+import { useGeneratedDocumentsStore } from '@/stores/generatedDocumentsStore';
 import {
     Send,
     Loader2,
@@ -623,49 +624,62 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
     };
 
     // === Document Action Handlers ===
+    const { getDocument, getDocumentByUrl } = useGeneratedDocumentsStore();
 
     const handleSaveToDocuments = async (doc: any) => {
         console.log('📁 [handleSaveToDocuments] Document reçu:', doc);
 
-        if (!doc || !doc.url) {
+        if (!doc || (!doc.url && !doc.id)) {
             console.error('📁 [handleSaveToDocuments] Document invalide:', doc);
             toast({
                 title: "Erreur",
-                description: "Document invalide ou URL manquante",
+                description: "Document invalide",
                 variant: "destructive",
             });
             return;
         }
 
         try {
-            // Convert blob URL to actual file and upload to vault
-            console.log('📁 [handleSaveToDocuments] Récupération du blob depuis:', doc.url);
-            const response = await fetch(doc.url);
-
-            if (!response.ok) {
-                throw new Error(`Échec récupération blob: ${response.status}`);
+            let blob: Blob;
+            
+            // 1. Essayer de récupérer depuis le store (priorité)
+            const storedDoc = doc.id ? getDocument(doc.id) : getDocumentByUrl(doc.url);
+            
+            if (storedDoc) {
+                console.log('📁 [handleSaveToDocuments] Blob récupéré depuis le store');
+                blob = storedDoc.blob;
+            } else {
+                // 2. Fallback: essayer de fetch le blob URL (peut échouer si expiré)
+                console.log('📁 [handleSaveToDocuments] Tentative fetch depuis URL:', doc.url);
+                try {
+                    const response = await fetch(doc.url);
+                    if (!response.ok) {
+                        throw new Error(`Échec récupération blob: ${response.status}`);
+                    }
+                    blob = await response.blob();
+                    console.log('📁 [handleSaveToDocuments] Blob récupéré via fetch:', blob.size, 'bytes');
+                } catch (fetchError) {
+                    console.error('❌ [handleSaveToDocuments] Fetch échoué:', fetchError);
+                    toast({
+                        title: "Document expiré",
+                        description: "Ce document a expiré. Veuillez le régénérer.",
+                        variant: "destructive",
+                    });
+                    return;
+                }
             }
-
-            const blob = await response.blob();
-            console.log('📁 [handleSaveToDocuments] Blob récupéré:', blob.size, 'bytes');
 
             const file = new File([blob], doc.name, { type: doc.type || 'application/pdf' });
-            console.log('📁 [handleSaveToDocuments] File créé:', file.name, file.type);
+            console.log('📁 [handleSaveToDocuments] File créé:', file.name, file.type, file.size, 'bytes');
 
-            const { uploadToVault } = await import('@/services/documentVaultService');
-            console.log('📁 [handleSaveToDocuments] Service chargé, upload en cours...');
+            // Utiliser documentService pour sauvegarder dans la table 'documents' 
+            // (visible dans CitizenDocumentsPage)
+            const { documentService } = await import('@/services/document-service');
+            console.log('📁 [handleSaveToDocuments] Upload vers documents...');
 
-            const result = await uploadToVault(file, 'other', {
-                name: doc.name,
-                source: 'upload',
-                metadata: { generatedBy: 'iAsted', timestamp: new Date().toISOString() }
-            });
+            const result = await documentService.uploadDocument(file, 'OTHER');
 
             console.log('📁 [handleSaveToDocuments] Résultat upload:', result);
-
-            if (result.error) {
-                throw result.error;
-            }
 
             toast({
                 title: "📁 Document classé",
@@ -681,7 +695,7 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
         }
     };
 
-    const handleSendByMail = (doc: any) => {
+    const handleSendByMail = async (doc: any) => {
         console.log('📧 [handleSendByMail] Document reçu:', doc);
 
         if (!doc) {
@@ -689,18 +703,39 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
             return;
         }
 
+        // S'assurer que le blob est stocké pour la page cible
+        const storedDoc = doc.id ? getDocument(doc.id) : getDocumentByUrl(doc.url);
+        if (!storedDoc && doc.url) {
+            // Essayer de récupérer et stocker le blob
+            try {
+                const response = await fetch(doc.url);
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const { addDocument } = useGeneratedDocumentsStore.getState();
+                    addDocument({
+                        id: doc.id || crypto.randomUUID(),
+                        name: doc.name,
+                        blob: blob,
+                        url: doc.url,
+                        type: doc.type || 'application/pdf',
+                    });
+                }
+            } catch (e) {
+                console.warn('📧 [handleSendByMail] Impossible de stocker le blob:', e);
+            }
+        }
+
         // Navigate to messaging page with document attached
-        // Note: /messaging ou /iboite selon la configuration
         navigate('/messaging', {
             state: {
                 compose: true,
                 subject: `Document: ${doc.name}`,
-                attachments: [doc],
+                attachments: [{ ...doc, storedId: doc.id }],
             }
         });
 
         console.log('📧 [handleSendByMail] Navigation vers /messaging avec attachement');
-        onClose(); // Close the chat modal
+        onClose();
 
         toast({
             title: "📧 Redirection vers iBoîte",
@@ -716,16 +751,37 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
             return;
         }
 
+        // S'assurer que le blob est stocké pour la page cible
+        const storedDoc = doc.id ? getDocument(doc.id) : getDocumentByUrl(doc.url);
+        if (!storedDoc && doc.url) {
+            try {
+                const response = await fetch(doc.url);
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const { addDocument } = useGeneratedDocumentsStore.getState();
+                    addDocument({
+                        id: doc.id || crypto.randomUUID(),
+                        name: doc.name,
+                        blob: blob,
+                        url: doc.url,
+                        type: doc.type || 'application/pdf',
+                    });
+                }
+            } catch (e) {
+                console.warn('📨 [handleSendByCorrespondance] Impossible de stocker le blob:', e);
+            }
+        }
+
         // Navigate to correspondance page to start approval workflow
         navigate('/correspondance', {
             state: {
                 newCorrespondance: true,
-                document: doc,
+                document: { ...doc, storedId: doc.id },
             }
         });
 
         console.log('📨 [handleSendByCorrespondance] Navigation vers /correspondance');
-        onClose(); // Close the chat modal
+        onClose();
 
         toast({
             title: "📨 Redirection vers Correspondance",
@@ -1123,12 +1179,24 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                         }
 
                         // Créer l'objet document pour le chat
+                        const docId = crypto.randomUUID();
                         const docPreview = {
-                            id: crypto.randomUUID(),
+                            id: docId,
                             name: filename,
                             url: url,  // URL blob pour téléchargement
                             type: requestedFormat === 'docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'application/pdf',
                         };
+
+                        // Stocker le blob dans le store pour récupération ultérieure
+                        const { addDocument } = useGeneratedDocumentsStore.getState();
+                        addDocument({
+                            id: docId,
+                            name: filename,
+                            blob: blob,
+                            url: url,
+                            type: docPreview.type,
+                        });
+                        console.log('📄 [generateDocument] Blob stocké dans le store:', docId);
 
                         // Créer un message assistant dédié avec le document attaché
                         const now = new Date().toISOString();
@@ -1246,12 +1314,24 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                             template: args.template || 'courrier',
                         });
 
+                        const docId = result.documentId || crypto.randomUUID();
                         const docPreview = {
-                            id: result.documentId,
+                            id: docId,
                             name: result.fileName,
                             url: result.localUrl,
                             type: 'application/pdf',
                         };
+
+                        // Stocker le blob dans le store
+                        const { addDocument } = useGeneratedDocumentsStore.getState();
+                        addDocument({
+                            id: docId,
+                            name: result.fileName,
+                            blob: result.blob,
+                            url: result.localUrl,
+                            type: 'application/pdf',
+                        });
+                        console.log('📄 [create_correspondence] Blob stocké dans le store:', docId);
 
                         setMessages(prev => [...prev, {
                             id: crypto.randomUUID(),
