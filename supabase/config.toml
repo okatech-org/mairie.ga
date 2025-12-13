@@ -4,10 +4,10 @@ project_id = "ppduheroaoklcusdrlzt"
 verify_jwt = true
 
 [functions.get-mapbox-token]
-verify_jwt = false
+verify_jwt = true
 
 [functions.get-realtime-token]
-verify_jwt = false
+verify_jwt = true
 
 [functions.auth-pin-login]
 verify_jwt = false
@@ -19,13 +19,13 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.security-alert-login]
-verify_jwt = false
+verify_jwt = true
 
 [functions.new-device-alert]
-verify_jwt = false
+verify_jwt = true
 
 [functions.semantic-search-kb]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-kb-embeddings]
 verify_jwt = true

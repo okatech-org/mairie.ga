@@ -20,6 +20,14 @@ serve(async (req) => {
   }
 
   try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { query, limit = 10, category, includeKeywords = true }: SemanticSearchRequest = await req.json();
 
     if (!query || typeof query !== "string") {
@@ -31,7 +39,7 @@ serve(async (req) => {
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 
     if (!LOVABLE_API_KEY) {
       console.error("LOVABLE_API_KEY not configured");
@@ -41,7 +49,7 @@ serve(async (req) => {
       );
     }
 
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
       console.error("Supabase credentials not configured");
       return new Response(
         JSON.stringify({ error: "Database not configured" }),
@@ -49,7 +57,19 @@ serve(async (req) => {
       );
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const cappedLimit = Math.min(Math.max(Number(limit) || 10, 1), 20);
 
     // Generate embedding for the query using Lovable AI
     const embeddingResponse = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
@@ -70,7 +90,7 @@ serve(async (req) => {
       
       // Fallback to text search if embedding fails
       console.log("Falling back to text search");
-      return await performTextSearch(supabase, query, limit, category, corsHeaders);
+      return await performTextSearch(supabase, query, cappedLimit, category, corsHeaders);
     }
 
     const embeddingData = await embeddingResponse.json();
@@ -78,14 +98,14 @@ serve(async (req) => {
 
     if (!embedding) {
       console.log("No embedding returned, falling back to text search");
-      return await performTextSearch(supabase, query, limit, category, corsHeaders);
+      return await performTextSearch(supabase, query, cappedLimit, category, corsHeaders);
     }
 
     // Perform semantic search using pgvector
     let semanticQuery = supabase.rpc("match_knowledge_base", {
       query_embedding: embedding,
       match_threshold: 0.5,
-      match_count: limit,
+      match_count: cappedLimit,
     });
 
     const { data: semanticResults, error: semanticError } = await semanticQuery;
@@ -93,12 +113,12 @@ serve(async (req) => {
     if (semanticError) {
       console.error("Semantic search error:", semanticError);
       // Fallback to text search
-      return await performTextSearch(supabase, query, limit, category, corsHeaders);
+      return await performTextSearch(supabase, query, cappedLimit, category, corsHeaders);
     }
 
     // If no semantic results, fall back to text search
     if (!semanticResults || semanticResults.length === 0) {
-      return await performTextSearch(supabase, query, limit, category, corsHeaders);
+      return await performTextSearch(supabase, query, cappedLimit, category, corsHeaders);
     }
 
     // Filter by category if provided

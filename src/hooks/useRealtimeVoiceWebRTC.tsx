@@ -14,7 +14,7 @@ import {
 } from '@/utils/iasted-optimizer';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-// Flags d'optimisation des coûts
+// Flags d'optimisation des coûts (strict)
 const USE_LITE_PROMPT = true;      // Prompt allégé (~80% économie)
 const USE_LOCAL_ROUTER = true;     // Commandes locales (~40% économie)
 const USE_FAQ_CACHE = true;        // Cache FAQ (~20% économie supplémentaire)
@@ -125,26 +125,14 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
 
             setVoiceState('connecting');
 
-            // 1. Get Ephemeral Token from edge function (direct HTTP call to avoid mocked client)
+            // 1. Get Ephemeral Token from edge function (mode strict: auth obligatoire)
             console.log('🔑 Requesting ephemeral token...');
-            const FUNCTION_URL =
-                'https://csmegxwehniyfvbbjqbz.functions.supabase.co/functions/v1/get-realtime-token';
+            const { data, error } = await supabase.functions.invoke('get-realtime-token', { body: {} });
 
-            const tokenResponse = await fetch(FUNCTION_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({}),
-            });
-
-            if (!tokenResponse.ok) {
-                const errorText = await tokenResponse.text();
-                console.error('❌ Token HTTP error:', tokenResponse.status, errorText);
-                throw new Error('Erreur lors de la récupération du token: ' + tokenResponse.status);
+            if (error) {
+                console.error('❌ Token error:', error);
+                throw new Error('Erreur lors de la récupération du token');
             }
-
-            const data = await tokenResponse.json();
 
             if (!data?.client_secret?.value) {
                 console.error('❌ Invalid token response:', data);

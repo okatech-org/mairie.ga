@@ -59,38 +59,31 @@ function getDeviceInfo(): string {
   return 'Desktop';
 }
 
-// Get client IP and location
-async function getClientIPWithLocation(): Promise<{ ip: string; location: string | null }> {
-  try {
-    const response = await fetch('https://api.ipify.org?format=json');
-    const data = await response.json();
-    return { ip: data.ip, location: null };
-  } catch {
-    return { ip: 'Unknown', location: null };
-  }
-}
-
 interface NewDeviceAlertResponse {
   is_new_device: boolean;
   location: string | null;
   alert_sent: boolean;
 }
 
+async function hashSessionToken(raw: string): Promise<string> {
+  const bytes = new TextEncoder().encode(raw);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 // Check for new device and send alert
 async function checkNewDeviceAndAlert(
   userId: string,
-  userEmail: string,
   deviceInfo: string,
   browser: string,
   os: string,
   ipAddress: string
 ): Promise<{ isNew: boolean; location: string | null }> {
   try {
+    if (!userId) return { isNew: false, location: null };
     const { data, error, isDemo } = await invokeWithDemoFallback<NewDeviceAlertResponse>(
       'new-device-alert',
       {
-        user_id: userId,
-        user_email: userEmail,
         device_info: deviceInfo,
         browser,
         os,
@@ -124,14 +117,13 @@ export async function registerSession(userId: string, sessionToken: string, user
   try {
     const { browser, os } = getBrowserInfo();
     const deviceInfo = getDeviceInfo();
-    const { ip: ipAddress } = await getClientIPWithLocation();
+    const ipAddress = 'Unknown';
+    const sessionTokenHash = await hashSessionToken(sessionToken);
 
     // Check for new device and get location (also sends alert if new device)
     let location: string | null = null;
-    if (userEmail) {
-      const result = await checkNewDeviceAndAlert(userId, userEmail, deviceInfo, browser, os, ipAddress);
-      location = result.location;
-    }
+    const result = await checkNewDeviceAndAlert(userId, deviceInfo, browser, os, ipAddress);
+    location = result.location;
 
     // First, mark all other sessions as not current
     await supabase
@@ -144,7 +136,7 @@ export async function registerSession(userId: string, sessionToken: string, user
       .from('active_sessions')
       .upsert({
         user_id: userId,
-        session_token: sessionToken,
+        session_token: sessionTokenHash,
         device_info: deviceInfo,
         ip_address: ipAddress,
         browser,
@@ -165,7 +157,7 @@ export async function registerSession(userId: string, sessionToken: string, user
       .from('session_history')
       .insert({
         user_id: userId,
-        session_token: sessionToken,
+        session_token: sessionTokenHash,
         device_info: deviceInfo,
         ip_address: ipAddress,
         browser,
@@ -186,10 +178,11 @@ export async function registerSession(userId: string, sessionToken: string, user
 // Update last activity for current session
 export async function updateSessionActivity(sessionToken: string): Promise<void> {
   try {
+    const sessionTokenHash = await hashSessionToken(sessionToken);
     await supabase
       .from('active_sessions')
       .update({ last_activity: new Date().toISOString() })
-      .eq('session_token', sessionToken);
+      .eq('session_token', sessionTokenHash);
   } catch (err) {
     console.error('Error updating session activity:', err);
   }
@@ -275,12 +268,13 @@ export async function terminateSession(sessionId: string): Promise<boolean> {
 
 // Terminate all sessions except current
 export async function terminateOtherSessions(userId: string, currentSessionToken: string): Promise<boolean> {
+  const currentSessionTokenHash = await hashSessionToken(currentSessionToken);
   // Get all other sessions to update history
   const { data: otherSessions } = await supabase
     .from('active_sessions')
     .select('session_token')
     .eq('user_id', userId)
-    .neq('session_token', currentSessionToken);
+    .neq('session_token', currentSessionTokenHash);
 
   if (otherSessions && otherSessions.length > 0) {
     const tokens = otherSessions.map(s => s.session_token);
@@ -294,7 +288,7 @@ export async function terminateOtherSessions(userId: string, currentSessionToken
     .from('active_sessions')
     .delete()
     .eq('user_id', userId)
-    .neq('session_token', currentSessionToken);
+    .neq('session_token', currentSessionTokenHash);
 
   if (error) {
     console.error('Error terminating other sessions:', error);
@@ -307,17 +301,18 @@ export async function terminateOtherSessions(userId: string, currentSessionToken
 // Remove current session on logout
 export async function removeCurrentSession(sessionToken: string): Promise<void> {
   try {
+    const sessionTokenHash = await hashSessionToken(sessionToken);
     // Update history with logout time
     await (supabase as any)
       .from('session_history')
       .update({ logout_at: new Date().toISOString() })
-      .eq('session_token', sessionToken);
+      .eq('session_token', sessionTokenHash);
 
     // Remove active session
     await supabase
       .from('active_sessions')
       .delete()
-      .eq('session_token', sessionToken);
+      .eq('session_token', sessionTokenHash);
   } catch (err) {
     console.error('Error removing session:', err);
   }

@@ -19,7 +19,6 @@ import { DemoUserCard } from "@/components/DemoUserCard";
 import { MOCK_USERS, DEMO_CITIZEN_ACCOUNTS } from "@/data/mock-users";
 import { MAIRIES_GABON } from "@/data/mock-mairies-network";
 import { MairieCard } from "@/components/MairieCard";
-import { recordLoginAttempt, getClientIP } from "@/services/loginAttemptService";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -105,9 +104,6 @@ export default function Login() {
     setError("");
     setLoading(true);
 
-    // Get IP for logging
-    const clientIP = await getClientIP();
-
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -115,22 +111,15 @@ export default function Login() {
       });
 
       if (error) {
-        // Record failed attempt
-        await recordLoginAttempt(email, false, clientIP);
-        
         if (error.message === "Invalid login credentials") {
           setError("Email ou mot de passe incorrect");
         } else {
           setError(error.message);
         }
       } else {
-        // Record successful attempt
-        await recordLoginAttempt(email, true, clientIP);
         toast.success("Connexion réussie !");
       }
     } catch (err: any) {
-      // Record failed attempt on exception
-      await recordLoginAttempt(email, false, clientIP);
       setError(err.message || "Erreur de connexion");
     } finally {
       setLoading(false);
@@ -142,9 +131,6 @@ export default function Login() {
     setError("");
     setLoading(true);
 
-    // Get IP for logging
-    const clientIP = await getClientIP();
-
     try {
       // Call the edge function for secure PIN verification
       const { data, error: fnError } = await supabase.functions.invoke('auth-pin-login', {
@@ -152,34 +138,27 @@ export default function Login() {
       });
 
       if (fnError) {
-        await recordLoginAttempt(pinEmail, false, clientIP);
         setError("Erreur de connexion au serveur");
         setLoading(false);
         return;
       }
 
       if (data.error) {
-        await recordLoginAttempt(pinEmail, false, clientIP);
         setError(data.error);
         setLoading(false);
         return;
       }
 
       if (data.authLink) {
-        // Record successful attempt
-        await recordLoginAttempt(pinEmail, true, clientIP);
-        
         // Use the magic link to authenticate
         toast.success(`Bienvenue ${data.user.firstName} !`);
 
         // Redirect to the auth link which will sign in the user
         window.location.href = data.authLink;
       } else {
-        await recordLoginAttempt(pinEmail, false, clientIP);
         setError("Erreur lors de l'authentification");
       }
     } catch (err: any) {
-      await recordLoginAttempt(pinEmail, false, clientIP);
       setError(err.message || "Erreur de connexion");
     } finally {
       setLoading(false);

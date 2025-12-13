@@ -7,13 +7,28 @@ const corsHeaders = {
 };
 
 interface DeviceAlertRequest {
-  user_id: string;
-  user_email: string;
   device_info: string;
   browser: string;
   os: string;
   ip_address: string;
   location?: string;
+}
+
+
+function getClientIPFromHeaders(req: Request): string | null {
+  const cfConnectingIp = req.headers.get("cf-connecting-ip");
+  if (cfConnectingIp) return cfConnectingIp.trim();
+
+  const xForwardedFor = req.headers.get("x-forwarded-for");
+  if (xForwardedFor) {
+    const first = xForwardedFor.split(",")[0]?.trim();
+    if (first) return first;
+  }
+
+  const xRealIp = req.headers.get("x-real-ip");
+  if (xRealIp) return xRealIp.trim();
+
+  return null;
 }
 
 // Get geolocation from IP using free API
@@ -25,7 +40,7 @@ async function getLocationFromIP(ip: string): Promise<{ city: string; country: s
       return null;
     }
 
-    const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,message,country,regionName,city`);
+    const response = await fetch(`https://ip-api.com/json/${ip}?fields=status,message,country,regionName,city`);
     const data = await response.json();
     
     console.log("IP-API response:", data);
@@ -156,23 +171,41 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
     
     const { 
-      user_id, 
-      user_email, 
       device_info, 
       browser, 
       os, 
       ip_address 
     }: DeviceAlertRequest = await req.json();
     
-    console.log(`Checking for new device for user: ${user_id}, device: ${device_info}, browser: ${browser}`);
+    const clientIp = getClientIPFromHeaders(req) || ip_address || 'Unknown';
+    
+    console.log(`Checking for new device for user: ${user.id}, device: ${device_info}, browser: ${browser}`);
     
     // Get geolocation from IP
-    const geoData = await getLocationFromIP(ip_address);
+    const geoData = await getLocationFromIP(clientIp);
     const location = geoData 
       ? `${geoData.city}, ${geoData.region ? geoData.region + ', ' : ''}${geoData.country}`
       : null;
@@ -183,7 +216,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: existingSessions, error: queryError } = await supabase
       .from("active_sessions")
       .select("id, device_info, browser, os, ip_address")
-      .eq("user_id", user_id);
+      .eq("user_id", user.id);
     
     if (queryError) {
       console.error("Error querying sessions:", queryError);
@@ -202,13 +235,27 @@ const handler = async (req: Request): Promise<Response> => {
     // If it's a new device and user has existing sessions, send alert
     if (isNewDevice && existingSessions && existingSessions.length > 0) {
       console.log("New device detected with existing sessions, sending alert...");
-      
+      if (!user.email) {
+        return new Response(
+          JSON.stringify({
+            is_new_device: true,
+            alert_sent: false,
+            location: location,
+            message: "Email utilisateur non disponible"
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          }
+        );
+      }
+
       const emailSent = await sendNewDeviceEmail(
-        user_email,
+        user.email,
         device_info,
         browser,
         os,
-        ip_address,
+        clientIp,
         location || 'Non disponible'
       );
 
