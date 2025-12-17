@@ -1132,6 +1132,124 @@ export type Database = {
           },
         ]
       }
+      icorrespondance_documents: {
+        Row: {
+          created_at: string
+          file_path: string | null
+          file_size: string | null
+          file_type: string | null
+          file_url: string | null
+          folder_id: string
+          generator_type: string | null
+          id: string
+          is_generated: boolean | null
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          file_path?: string | null
+          file_size?: string | null
+          file_type?: string | null
+          file_url?: string | null
+          folder_id: string
+          generator_type?: string | null
+          id?: string
+          is_generated?: boolean | null
+          name: string
+        }
+        Update: {
+          created_at?: string
+          file_path?: string | null
+          file_size?: string | null
+          file_type?: string | null
+          file_url?: string | null
+          folder_id?: string
+          generator_type?: string | null
+          id?: string
+          is_generated?: boolean | null
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "icorrespondance_documents_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "icorrespondance_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      icorrespondance_folders: {
+        Row: {
+          comment: string | null
+          created_at: string
+          iboite_conversation_id: string | null
+          id: string
+          is_internal: boolean | null
+          is_read: boolean | null
+          is_urgent: boolean | null
+          name: string
+          organization_id: string | null
+          recipient_email: string | null
+          recipient_name: string | null
+          recipient_organization: string | null
+          recipient_user_id: string | null
+          reference_number: string | null
+          sent_at: string | null
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          iboite_conversation_id?: string | null
+          id?: string
+          is_internal?: boolean | null
+          is_read?: boolean | null
+          is_urgent?: boolean | null
+          name: string
+          organization_id?: string | null
+          recipient_email?: string | null
+          recipient_name?: string | null
+          recipient_organization?: string | null
+          recipient_user_id?: string | null
+          reference_number?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          iboite_conversation_id?: string | null
+          id?: string
+          is_internal?: boolean | null
+          is_read?: boolean | null
+          is_urgent?: boolean | null
+          name?: string
+          organization_id?: string | null
+          recipient_email?: string | null
+          recipient_name?: string | null
+          recipient_organization?: string | null
+          recipient_user_id?: string | null
+          reference_number?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "icorrespondance_folders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       knowledge_base: {
         Row: {
           author_id: string | null
