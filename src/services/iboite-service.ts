@@ -621,75 +621,9 @@ class IBoiteServiceClass {
             const { data: session } = await supabase.auth.getSession();
             if (!session?.session?.user?.id) return null;
 
-            // If draft, just save without sending
-            if (params.asDraft) {
-                const { data, error } = await (supabase.from as any)('iboite_external_correspondence')
-                    .insert({
-                        sender_id: session.session.user.id,
-                        organization_id: params.organizationId,
-                        direction: 'OUTBOUND',
-                        external_email: params.recipientEmail,
-                        external_name: params.recipientName,
-                        external_organization: params.recipientOrganization,
-                        subject: params.subject,
-                        content: params.body,
-                        attachments: params.attachments || [],
-                        status: 'DRAFT'
-                    })
-                    .select()
-                    .single();
+            // 1. Create correspondence record with PENDING status (or DRAFT)
+            const initialStatus = params.asDraft ? 'DRAFT' : 'PENDING';
 
-                if (error) {
-                    console.error('[iBoîte] Save draft error:', error);
-                    return null;
-                }
-                return this.mapExternalCorrespondence(data);
-            }
-
-            // Call edge function to send actual email
-            console.log('[iBoîte] Sending external email via edge function...');
-            const { data: edgeResult, error: edgeError } = await supabase.functions.invoke(
-                'send-official-correspondence',
-                {
-                    body: {
-                        recipient_org: params.recipientOrganization || 'Externe',
-                        recipient_name: params.recipientName || '',
-                        recipient_email: params.recipientEmail,
-                        subject: params.subject,
-                        content: params.body,
-                        document_ids: [],
-                        is_urgent: false
-                    }
-                }
-            );
-
-            if (edgeError) {
-                console.error('[iBoîte] Edge function error:', edgeError);
-                // Still save locally as failed
-                const { data, error } = await (supabase.from as any)('iboite_external_correspondence')
-                    .insert({
-                        sender_id: session.session.user.id,
-                        organization_id: params.organizationId,
-                        direction: 'OUTBOUND',
-                        external_email: params.recipientEmail,
-                        external_name: params.recipientName,
-                        external_organization: params.recipientOrganization,
-                        subject: params.subject,
-                        content: params.body,
-                        attachments: params.attachments || [],
-                        status: 'FAILED',
-                        error_message: edgeError.message
-                    })
-                    .select()
-                    .single();
-                
-                if (!error) return this.mapExternalCorrespondence(data);
-                return null;
-            }
-
-            console.log('[iBoîte] Edge function result:', edgeResult);
-
-            // Save sent email locally 
             const { data, error } = await (supabase.from as any)('iboite_external_correspondence')
                 .insert({
                     sender_id: session.session.user.id,
@@ -701,16 +635,28 @@ class IBoiteServiceClass {
                     subject: params.subject,
                     content: params.body,
                     attachments: params.attachments || [],
-                    status: edgeResult?.email_sent ? 'SENT' : 'FAILED',
-                    sent_at: edgeResult?.email_sent ? new Date().toISOString() : null,
-                    error_message: edgeResult?.email_sent ? null : 'Email non envoyé'
+                    status: initialStatus
                 })
                 .select()
                 .single();
 
             if (error) {
-                console.error('[iBoîte] Save sent correspondence error:', error);
+                console.error('[iBoîte] Create external correspondence error:', error);
                 return null;
+            }
+
+            // 2. If not draft, invoke Edge Function to send email
+            if (!params.asDraft && data) {
+                console.log('[iBoîte] Invoking send-iboite-email for:', data.id);
+                const { error: fnError } = await supabase.functions.invoke('send-iboite-email', {
+                    body: { correspondenceId: data.id }
+                });
+
+                if (fnError) {
+                    console.error('[iBoîte] Failed to invoke send-iboite-email:', fnError);
+                    // We don't throw here, as the record is created. 
+                    // The status will remain PENDING and can be retried later.
+                }
             }
 
             return this.mapExternalCorrespondence(data);
@@ -719,6 +665,7 @@ class IBoiteServiceClass {
             return null;
         }
     }
+
 
     /**
      * Get sent messages (external correspondence with status SENT)
