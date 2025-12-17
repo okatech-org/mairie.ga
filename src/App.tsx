@@ -51,6 +51,7 @@ import MaireAgendaPage from "./pages/dashboard/maire/MaireAgendaPage";
 import MaireUrbanismePage from "./pages/dashboard/maire/MaireUrbanismePage";
 import MaireDocumentsPage from "./pages/dashboard/maire/MaireDocumentsPage";
 import CorrespondancePage from "./pages/CorrespondancePage";
+import ICorrespondancePage from "./pages/ICorrespondancePage";
 import CommunicationsDashboard from "./pages/dashboard/maire/CommunicationsDashboard";
 import CommunicationDashboard from "./pages/dashboard/communication/CommunicationDashboard";
 
@@ -143,6 +144,7 @@ const App = () => (
                         <Route path="/messaging" element={<MessagingPage />} />
                         <Route path="/iboite" element={<IBoitePage />} />
                         <Route path="/correspondance" element={<CorrespondancePage />} />
+                        <Route path="/icorrespondance" element={<ICorrespondancePage />} />
                         <Route path="/settings" element={<SettingsPage />} />
 
                         {/* DASHBOARDS (Protected in real app) */}

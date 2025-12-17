@@ -84,6 +84,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     title: "COMMUNICATION",
                     items: [
                         { label: "iBoîte", icon: Mail, path: "/iboite" },
+                        { label: "iCorrespondance", icon: FolderOpen, path: "/icorrespondance" },
                         { label: "Notifications", icon: Bell, path: "/dashboard/super-admin/notifications" },
                     ]
                 },
@@ -145,6 +146,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     title: "COMMUNICATION",
                     items: [
                         { label: "iBoîte", icon: Mail, path: "/iboite" },
+                        { label: "iCorrespondance", icon: FolderOpen, path: "/icorrespondance" },
                         { label: "Notifications", icon: BarChart3, path: "/dashboard/maire/communications" },
                     ]
                 },
@@ -178,6 +180,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     title: "COMMUNICATION",
                     items: [
                         { label: "iBoîte", icon: Mail, path: "/iboite" },
+                        { label: "iCorrespondance", icon: FolderOpen, path: "/icorrespondance" },
                     ]
                 }
             ];
@@ -199,6 +202,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     items: [
                         { label: "Rendez-vous", icon: Calendar, path: "/dashboard/agent/appointments" },
                         { label: "iBoîte", icon: Mail, path: "/iboite" },
+                        { label: "iCorrespondance", icon: FolderOpen, path: "/icorrespondance" },
                     ]
                 }
             ];
@@ -212,6 +216,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 { label: "Célébrations", icon: Calendar, path: "/dashboard/agent/appointments" },
                 { label: "Registres", icon: ScrollText, path: "/dashboard/agent/registres" },
                 { label: "iBoîte", icon: Mail, path: "/iboite" },
+                { label: "iCorrespondance", icon: FolderOpen, path: "/icorrespondance" },
             ];
         }
 
@@ -222,6 +227,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 { label: "Dossiers en cours", icon: ClipboardList, path: "/dashboard/agent/requests" },
                 { label: "Rendez-vous", icon: Calendar, path: "/dashboard/agent/appointments" },
                 { label: "iBoîte", icon: Mail, path: "/iboite" },
+                { label: "iCorrespondance", icon: FolderOpen, path: "/icorrespondance" },
             ];
         }
 
@@ -232,6 +238,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 { label: "File d'Attente", icon: Users, path: "/dashboard/agent/queue" },
                 { label: "Orientation", icon: Briefcase, path: "/dashboard/agent/orientation" },
                 { label: "iBoîte", icon: Mail, path: "/iboite" },
+                { label: "iCorrespondance", icon: FolderOpen, path: "/icorrespondance" },
             ];
         }
 
@@ -242,6 +249,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 { label: "Tâches Assignées", icon: ClipboardList, path: "/dashboard/agent/requests?assigned=me" },
                 { label: "Formation", icon: BookOpen, path: "/dashboard/formation" },
                 { label: "iBoîte", icon: Mail, path: "/iboite" },
+                { label: "iCorrespondance", icon: FolderOpen, path: "/icorrespondance" },
             ];
         }
 

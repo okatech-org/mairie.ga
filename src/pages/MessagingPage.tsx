@@ -258,7 +258,7 @@ export default function MessagingPage() {
                                     </Button>
                                     <Button
                                         className="w-full gap-2 mb-4 neu-raised text-amber-600 font-bold"
-                                        onClick={() => navigate('/correspondance')}
+                                        onClick={() => navigate('/icorrespondance')}
                                     >
                                         <FolderOpen className="w-4 h-4" /> Correspondance
                                         <span className="ml-auto bg-amber-500 text-white text-[10px] items-center justify-center flex h-5 min-w-5 rounded-full px-1">
@@ -303,7 +303,7 @@ export default function MessagingPage() {
                     {/* Correspondance Button */}
                     <Button
                         className="gap-2 hidden md:flex neu-raised hover:translate-y-[-2px] transition-transform text-amber-600 font-bold relative mr-2"
-                        onClick={() => navigate('/correspondance')}
+                        onClick={() => navigate('/icorrespondance')}
                     >
                         <FolderOpen className="w-4 h-4" />
                         <span className="hidden lg:inline">Correspondance</span>
@@ -445,6 +445,6 @@ export default function MessagingPage() {
                 onClose={() => setIsComposerOpen(false)}
                 replyTo={replyTo}
             />
-        </DashboardLayout>
+        </DashboardLayout >
     );
 }

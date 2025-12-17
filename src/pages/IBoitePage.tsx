@@ -423,7 +423,7 @@ export default function IBoitePage() {
                         <Button
                             variant="outline"
                             className="w-full justify-start"
-                            onClick={() => navigate('/correspondance')}
+                            onClick={() => navigate('/icorrespondance')}
                         >
                             <FolderOpen className="h-4 w-4 mr-2 text-amber-500" />
                             Correspondance officielle

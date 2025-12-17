@@ -641,10 +641,10 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
 
         try {
             let blob: Blob;
-            
+
             // 1. Essayer de récupérer depuis le store (priorité)
             const storedDoc = doc.id ? getDocument(doc.id) : getDocumentByUrl(doc.url);
-            
+
             if (storedDoc) {
                 console.log('📁 [handleSaveToDocuments] Blob récupéré depuis le store');
                 blob = storedDoc.blob;
@@ -773,18 +773,18 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
         }
 
         // Navigate to correspondance page to start approval workflow
-        navigate('/correspondance', {
+        navigate('/icorrespondance', {
             state: {
                 newCorrespondance: true,
                 document: { ...doc, storedId: doc.id },
             }
         });
 
-        console.log('📨 [handleSendByCorrespondance] Navigation vers /correspondance');
+        console.log('📨 [handleSendByCorrespondance] Navigation vers /icorrespondance');
         onClose();
 
         toast({
-            title: "📨 Redirection vers Correspondance",
+            title: "📨 Redirection vers iCorrespondance",
             description: "Le document sera soumis au workflow d'approbation",
         });
     };
