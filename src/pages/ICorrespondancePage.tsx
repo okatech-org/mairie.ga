@@ -477,31 +477,42 @@ export default function ICorrespondancePage() {
     const handleViewDocument = async (doc: ICorrespondanceDocument) => {
         setIsGeneratingPDF(true);
         try {
+            let previewUrl: string | undefined = doc.url || doc.file_url;
+
             // If document has a file_path in storage, get a signed URL
-            if (doc.file_path && !doc.url) {
+            if (doc.file_path && !previewUrl) {
+                console.log('📄 [Preview] Fetching signed URL for:', doc.file_path);
                 const { data: signedUrlData, error: signedUrlError } = await supabase.storage
                     .from(ICORRESPONDANCE_BUCKET)
                     .createSignedUrl(doc.file_path, 3600); // 1 hour validity
 
                 if (signedUrlError) {
-                    console.error('Error getting signed URL:', signedUrlError);
+                    console.error('❌ [Preview] Error getting signed URL:', signedUrlError);
                     throw new Error('Impossible de récupérer le document');
                 }
-                doc.url = signedUrlData?.signedUrl;
+                previewUrl = signedUrlData?.signedUrl;
+                console.log('✅ [Preview] Got signed URL:', previewUrl ? 'success' : 'failed');
             }
             // If it's a generated document, generate it on the fly
-            else if (!doc.url && doc.generator_type) {
+            else if (!previewUrl && doc.generator_type) {
+                console.log('📄 [Preview] Generating document...');
                 const result = await generateDocumentPDF(doc as any);
-                doc.url = result.url;
-                doc.blob = result.blob;
+                previewUrl = result.url;
             }
 
-            setPreviewDocument(doc);
+            // Create updated document with URL for preview
+            const docWithUrl: ICorrespondanceDocument = {
+                ...doc,
+                url: previewUrl
+            };
+
+            setPreviewDocument(docWithUrl);
             setIsPreviewOpen(true);
-        } catch (err) {
+        } catch (err: any) {
+            console.error('❌ [Preview] Error:', err);
             toast({
                 title: "Erreur",
-                description: "Impossible de prévisualiser le document",
+                description: err.message || "Impossible de prévisualiser le document",
                 variant: "destructive",
             });
         } finally {
@@ -1390,34 +1401,46 @@ export default function ICorrespondancePage() {
                         </DialogTitle>
                     </DialogHeader>
 
-                    <div className="flex-1 min-h-[400px] bg-muted rounded-lg flex items-center justify-center">
-                        {previewDocument?.url || previewDocument?.file_url ? (
+                    <div className="flex-1 min-h-[400px] bg-muted rounded-lg flex items-center justify-center overflow-hidden">
+                        {previewDocument?.url ? (
                             previewDocument.file_type === 'pdf' ? (
-                                <iframe
-                                    src={previewDocument.url || previewDocument.file_url}
+                                <object
+                                    data={previewDocument.url}
+                                    type="application/pdf"
                                     className="w-full h-[500px] rounded-lg"
-                                    title={previewDocument.name}
-                                />
+                                >
+                                    <iframe
+                                        src={`${previewDocument.url}#toolbar=1`}
+                                        className="w-full h-[500px] rounded-lg border-0"
+                                        title={previewDocument.name}
+                                    />
+                                </object>
                             ) : previewDocument.file_type === 'image' ? (
                                 <img
-                                    src={previewDocument.url || previewDocument.file_url}
+                                    src={previewDocument.url}
                                     alt={previewDocument.name}
                                     className="max-w-full max-h-[500px] object-contain"
                                 />
                             ) : (
                                 <div className="text-center text-muted-foreground">
                                     <FileText className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                                    <p>Prévisualisation non disponible</p>
+                                    <p>Prévisualisation non disponible pour ce type de fichier</p>
                                     <Button className="mt-4" onClick={() => previewDocument && handleDownloadDocument(previewDocument)}>
                                         <Download className="w-4 h-4 mr-2" />
                                         Télécharger
                                     </Button>
                                 </div>
                             )
+                        ) : isGeneratingPDF ? (
+                            <div className="text-center text-muted-foreground">
+                                <Loader2 className="w-12 h-12 mx-auto mb-4 animate-spin opacity-50" />
+                                <p>Chargement du document...</p>
+                            </div>
                         ) : (
                             <div className="text-center text-muted-foreground">
                                 <FileText className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                                <p>Prévisualisation</p>
+                                <p>Document non disponible</p>
+                                <p className="text-xs mt-2">Le fichier n'a pas pu être chargé</p>
                             </div>
                         )}
                     </div>
