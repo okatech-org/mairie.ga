@@ -60,6 +60,9 @@ import {
 } from '@/data/correspondanceData';
 import { IBoiteRecipientSearch } from '@/components/iboite/IBoiteRecipientSearch';
 
+// Storage bucket for iCorrespondance documents
+const ICORRESPONDANCE_BUCKET = 'icorrespondance-documents';
+
 // ============================================================
 // TYPES
 // ============================================================
@@ -97,9 +100,10 @@ interface ICorrespondanceDocument {
     is_generated?: boolean;
     generator_type?: string;
     created_at?: string;
-    // Runtime
+    // Runtime properties (not stored in DB)
     url?: string;
     blob?: Blob;
+    file?: File; // Temporary file reference before upload
 }
 
 interface SendDialogRecipient {
@@ -287,22 +291,31 @@ export default function ICorrespondancePage() {
                 throw new Error(folderError.message);
             }
 
-            // Insert documents
+            // Insert documents with file upload to Supabase Storage
             if (newFolderDocs.length > 0) {
-                const docsToInsert = newFolderDocs.map(doc => ({
-                    folder_id: folder.id,
-                    name: doc.name,
-                    file_type: doc.file_type,
-                    file_size: doc.file_size,
-                    file_url: doc.url,
-                    is_generated: doc.is_generated || false,
-                }));
+                for (const doc of newFolderDocs) {
+                    let filePath: string | null = null;
 
-                const { error: docsError } = await (supabase.from as any)('icorrespondance_documents')
-                    .insert(docsToInsert);
+                    // Upload file to storage if it's a real file
+                    if (doc.file) {
+                        filePath = await uploadDocumentToStorage(doc.file, folder.id);
+                    }
 
-                if (docsError) {
-                    console.warn('⚠️ [iCorrespondance] Insert docs error:', docsError);
+                    const docToInsert = {
+                        folder_id: folder.id,
+                        name: doc.name,
+                        file_type: doc.file_type,
+                        file_size: doc.file_size,
+                        file_path: filePath, // Store storage path instead of blob URL
+                        is_generated: doc.is_generated || false,
+                    };
+
+                    const { error: docsError } = await (supabase.from as any)('icorrespondance_documents')
+                        .insert(docToInsert);
+
+                    if (docsError) {
+                        console.warn('⚠️ [iCorrespondance] Insert doc error:', docsError);
+                    }
                 }
             }
 
@@ -460,15 +473,29 @@ export default function ICorrespondancePage() {
         }
     };
 
-    // View document
+    // View document - fetch signed URL from Supabase Storage
     const handleViewDocument = async (doc: ICorrespondanceDocument) => {
         setIsGeneratingPDF(true);
         try {
-            if (!doc.url && doc.generator_type) {
+            // If document has a file_path in storage, get a signed URL
+            if (doc.file_path && !doc.url) {
+                const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+                    .from(ICORRESPONDANCE_BUCKET)
+                    .createSignedUrl(doc.file_path, 3600); // 1 hour validity
+
+                if (signedUrlError) {
+                    console.error('Error getting signed URL:', signedUrlError);
+                    throw new Error('Impossible de récupérer le document');
+                }
+                doc.url = signedUrlData?.signedUrl;
+            }
+            // If it's a generated document, generate it on the fly
+            else if (!doc.url && doc.generator_type) {
                 const result = await generateDocumentPDF(doc as any);
                 doc.url = result.url;
                 doc.blob = result.blob;
             }
+
             setPreviewDocument(doc);
             setIsPreviewOpen(true);
         } catch (err) {
@@ -702,7 +729,7 @@ export default function ICorrespondancePage() {
         }
     };
 
-    // File upload
+    // File upload - store file reference for later upload to Supabase Storage
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (!files) return;
@@ -714,10 +741,37 @@ export default function ICorrespondancePage() {
                 file.type.includes('doc') ? 'doc' :
                     file.type.includes('image') ? 'image' : 'other',
             file_size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
-            url: URL.createObjectURL(file),
+            url: URL.createObjectURL(file), // Temporary preview URL
+            file: file, // Keep file reference for upload
         }));
 
         setNewFolderDocs(prev => [...prev, ...newDocs]);
+    };
+
+    // Upload file to Supabase Storage
+    const uploadDocumentToStorage = async (file: File, folderId: string): Promise<string | null> => {
+        try {
+            const fileExt = file.name.split('.').pop() || 'bin';
+            const timestamp = Date.now();
+            const filePath = `${folderId}/${timestamp}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from(ICORRESPONDANCE_BUCKET)
+                .upload(filePath, file, {
+                    cacheControl: '3600',
+                    upsert: false
+                });
+
+            if (uploadError) {
+                console.error('Upload error:', uploadError);
+                return null;
+            }
+
+            return filePath;
+        } catch (err) {
+            console.error('Upload error:', err);
+            return null;
+        }
     };
 
     const removeDocument = (docId: string) => {
