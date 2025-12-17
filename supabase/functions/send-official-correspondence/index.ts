@@ -233,9 +233,13 @@ serve(async (req: Request) => {
                         </div>
                     `
 
+                    // Get configured from address or use default
+                    const RESEND_FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'onboarding@resend.dev'
+                    const RESEND_FROM_NAME = Deno.env.get('RESEND_FROM_NAME') || 'Mairie de Libreville'
+
                     // Send email via Resend
                     const emailPayload: Record<string, any> = {
-                        from: 'Mairie de Libreville <onboarding@resend.dev>',
+                        from: `${RESEND_FROM_NAME} <${RESEND_FROM_EMAIL}>`,
                         to: [recipient_email],
                         subject: is_urgent ? `[URGENT] ${subject}` : subject,
                         html: emailHtml,
@@ -246,7 +250,7 @@ serve(async (req: Request) => {
                         emailPayload.attachments = attachments
                     }
 
-                    console.log(`📧 Sending email to ${recipient_email}...`)
+                    console.log(`📧 Sending email to ${recipient_email} from ${RESEND_FROM_EMAIL}...`)
                     const response = await fetch('https://api.resend.com/emails', {
                         method: 'POST',
                         headers: {
@@ -260,7 +264,14 @@ serve(async (req: Request) => {
 
                     if (!response.ok) {
                         console.error('❌ Resend API error:', result)
-                        emailError = result.message || 'Erreur envoi email'
+                        // Check if it's a domain verification issue
+                        if (result.message?.includes('verify a domain')) {
+                            emailError = 'Domaine email non vérifié. Veuillez configurer un domaine vérifié sur resend.com/domains'
+                        } else if (result.message?.includes('testing emails')) {
+                            emailError = 'Mode test Resend: envoi limité à l\'email du propriétaire. Vérifiez un domaine pour envoyer à tous.'
+                        } else {
+                            emailError = result.message || 'Erreur envoi email'
+                        }
                     } else {
                         emailSent = true
                         console.log(`✅ Email sent successfully: ${result.id}`)
