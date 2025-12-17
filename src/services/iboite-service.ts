@@ -605,7 +605,7 @@ class IBoiteServiceClass {
     }
 
     /**
-     * Send external correspondence (alias for createExternalCorrespondence with status update)
+     * Send external correspondence via edge function (actual email sending)
      */
     async sendExternalCorrespondence(params: {
         recipientEmail: string;
@@ -615,11 +615,81 @@ class IBoiteServiceClass {
         body: string;
         attachments?: IBoiteAttachment[];
         organizationId?: string;
+        asDraft?: boolean;
     }): Promise<IBoiteExternalCorrespondence | null> {
         try {
             const { data: session } = await supabase.auth.getSession();
             if (!session?.session?.user?.id) return null;
 
+            // If draft, just save without sending
+            if (params.asDraft) {
+                const { data, error } = await (supabase.from as any)('iboite_external_correspondence')
+                    .insert({
+                        sender_id: session.session.user.id,
+                        organization_id: params.organizationId,
+                        direction: 'OUTBOUND',
+                        external_email: params.recipientEmail,
+                        external_name: params.recipientName,
+                        external_organization: params.recipientOrganization,
+                        subject: params.subject,
+                        content: params.body,
+                        attachments: params.attachments || [],
+                        status: 'DRAFT'
+                    })
+                    .select()
+                    .single();
+
+                if (error) {
+                    console.error('[iBoîte] Save draft error:', error);
+                    return null;
+                }
+                return this.mapExternalCorrespondence(data);
+            }
+
+            // Call edge function to send actual email
+            console.log('[iBoîte] Sending external email via edge function...');
+            const { data: edgeResult, error: edgeError } = await supabase.functions.invoke(
+                'send-official-correspondence',
+                {
+                    body: {
+                        recipient_org: params.recipientOrganization || 'Externe',
+                        recipient_name: params.recipientName || '',
+                        recipient_email: params.recipientEmail,
+                        subject: params.subject,
+                        content: params.body,
+                        document_ids: [],
+                        is_urgent: false
+                    }
+                }
+            );
+
+            if (edgeError) {
+                console.error('[iBoîte] Edge function error:', edgeError);
+                // Still save locally as failed
+                const { data, error } = await (supabase.from as any)('iboite_external_correspondence')
+                    .insert({
+                        sender_id: session.session.user.id,
+                        organization_id: params.organizationId,
+                        direction: 'OUTBOUND',
+                        external_email: params.recipientEmail,
+                        external_name: params.recipientName,
+                        external_organization: params.recipientOrganization,
+                        subject: params.subject,
+                        content: params.body,
+                        attachments: params.attachments || [],
+                        status: 'FAILED',
+                        error_message: edgeError.message
+                    })
+                    .select()
+                    .single();
+                
+                if (!error) return this.mapExternalCorrespondence(data);
+                return null;
+            }
+
+            console.log('[iBoîte] Edge function result:', edgeResult);
+
+            // Save sent email locally 
             const { data, error } = await (supabase.from as any)('iboite_external_correspondence')
                 .insert({
                     sender_id: session.session.user.id,
@@ -631,20 +701,140 @@ class IBoiteServiceClass {
                     subject: params.subject,
                     content: params.body,
                     attachments: params.attachments || [],
-                    status: 'PENDING',
-                    sent_at: new Date().toISOString()
+                    status: edgeResult?.email_sent ? 'SENT' : 'FAILED',
+                    sent_at: edgeResult?.email_sent ? new Date().toISOString() : null,
+                    error_message: edgeResult?.email_sent ? null : 'Email non envoyé'
                 })
                 .select()
                 .single();
 
             if (error) {
-                console.error('[iBoîte] Send external correspondence error:', error);
+                console.error('[iBoîte] Save sent correspondence error:', error);
                 return null;
             }
 
             return this.mapExternalCorrespondence(data);
         } catch (error) {
             console.error('[iBoîte] Send external correspondence error:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Get sent messages (external correspondence with status SENT)
+     */
+    async getSentMessages(limit?: number): Promise<IBoiteExternalCorrespondence[]> {
+        return this.getExternalCorrespondence({
+            direction: 'OUTBOUND',
+            status: 'SENT',
+            limit
+        });
+    }
+
+    /**
+     * Get draft messages
+     */
+    async getDrafts(limit?: number): Promise<IBoiteExternalCorrespondence[]> {
+        return this.getExternalCorrespondence({
+            status: 'DRAFT',
+            limit
+        });
+    }
+
+    /**
+     * Get official correspondence (both sent and received)
+     */
+    async getOfficialCorrespondence(options?: {
+        direction?: 'INBOUND' | 'OUTBOUND';
+        limit?: number;
+    }): Promise<IBoiteExternalCorrespondence[]> {
+        try {
+            let query = (supabase.from as any)('iboite_external_correspondence')
+                .select('*')
+                .in('status', ['SENT', 'DELIVERED'])
+                .order('created_at', { ascending: false });
+
+            if (options?.direction) {
+                query = query.eq('direction', options.direction);
+            }
+
+            if (options?.limit) {
+                query = query.limit(options.limit);
+            }
+
+            const { data, error } = await query;
+
+            if (error) {
+                console.error('[iBoîte] Get official correspondence error:', error);
+                return [];
+            }
+
+            return (data || []).map((item: any) => this.mapExternalCorrespondence(item));
+        } catch (error) {
+            console.error('[iBoîte] Get official correspondence error:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Delete a draft
+     */
+    async deleteDraft(id: string): Promise<boolean> {
+        try {
+            const { error } = await (supabase.from as any)('iboite_external_correspondence')
+                .delete()
+                .eq('id', id)
+                .eq('status', 'DRAFT');
+
+            return !error;
+        } catch (error) {
+            console.error('[iBoîte] Delete draft error:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Update and send a draft
+     */
+    async sendDraft(id: string, updates?: {
+        subject?: string;
+        body?: string;
+        recipientEmail?: string;
+        recipientName?: string;
+    }): Promise<IBoiteExternalCorrespondence | null> {
+        try {
+            // Get the draft first
+            const { data: draft, error: fetchError } = await (supabase.from as any)('iboite_external_correspondence')
+                .select('*')
+                .eq('id', id)
+                .eq('status', 'DRAFT')
+                .single();
+
+            if (fetchError || !draft) {
+                console.error('[iBoîte] Draft not found:', fetchError);
+                return null;
+            }
+
+            // Send it
+            const result = await this.sendExternalCorrespondence({
+                recipientEmail: updates?.recipientEmail || draft.external_email,
+                recipientName: updates?.recipientName || draft.external_name,
+                recipientOrganization: draft.external_organization,
+                subject: updates?.subject || draft.subject,
+                body: updates?.body || draft.content,
+                organizationId: draft.organization_id
+            });
+
+            // Delete original draft if sent successfully
+            if (result && result.status === 'SENT') {
+                await (supabase.from as any)('iboite_external_correspondence')
+                    .delete()
+                    .eq('id', id);
+            }
+
+            return result;
+        } catch (error) {
+            console.error('[iBoîte] Send draft error:', error);
             return null;
         }
     }

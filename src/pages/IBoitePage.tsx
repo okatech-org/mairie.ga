@@ -2,6 +2,7 @@
  * Page iBoîte - Messagerie Interne Complète
  * 
  * Liste des conversations, interface de chat et composition de nouveaux messages.
+ * Inclut les dossiers: Boîte de réception, Envoyés, Brouillons, Officiels, Archives
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -38,7 +39,11 @@ import {
     Loader2,
     Inbox,
     FolderOpen,
-    MessageSquare
+    MessageSquare,
+    FileText,
+    Edit3,
+    SendHorizonal,
+    Stamp
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -47,7 +52,10 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { IBoiteConversation, IBoiteMessage } from '@/types/environments';
+import type { IBoiteConversation, IBoiteMessage, IBoiteExternalCorrespondence } from '@/types/environments';
+
+// Types de dossiers
+type FolderType = 'inbox' | 'sent' | 'drafts' | 'official' | 'archive';
 
 // ============================================================
 // COMPOSANTS INTERNES
@@ -121,6 +129,102 @@ function ConversationItem({ conversation, isSelected, onClick }: ConversationIte
     );
 }
 
+// Composant pour afficher un mail externe (Envoyé/Brouillon/Officiel)
+interface ExternalMailItemProps {
+    mail: IBoiteExternalCorrespondence;
+    isSelected: boolean;
+    onClick: () => void;
+    onDelete?: () => void;
+    onSend?: () => void;
+    isDraft?: boolean;
+}
+
+function ExternalMailItem({ mail, isSelected, onClick, onDelete, onSend, isDraft }: ExternalMailItemProps) {
+    const initials = mail.recipientName
+        ?.split(' ')
+        .map(n => n[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase() || mail.recipientEmail?.slice(0, 2).toUpperCase() || '?';
+
+    const statusColors: Record<string, string> = {
+        'SENT': 'bg-green-500',
+        'DELIVERED': 'bg-blue-500',
+        'DRAFT': 'bg-yellow-500',
+        'FAILED': 'bg-red-500',
+        'PENDING': 'bg-gray-500'
+    };
+
+    return (
+        <button
+            onClick={onClick}
+            className={cn(
+                "w-full p-3 flex gap-3 text-left transition-all hover:bg-accent/50 rounded-lg group",
+                isSelected && "bg-accent"
+            )}
+        >
+            <Avatar className="h-10 w-10 shrink-0">
+                <AvatarFallback className={cn(
+                    "text-white text-sm",
+                    mail.status === 'DRAFT' ? 'bg-yellow-500' : 'bg-primary'
+                )}>
+                    {initials}
+                </AvatarFallback>
+            </Avatar>
+
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium truncate text-sm">
+                        {mail.recipientName || mail.recipientEmail}
+                    </span>
+                    <div className="flex items-center gap-1">
+                        <span className={cn("h-2 w-2 rounded-full shrink-0", statusColors[mail.status] || 'bg-gray-400')} />
+                        <span className="text-[10px] text-muted-foreground shrink-0">
+                            {mail.sentAt || mail.createdAt
+                                ? formatDistanceToNow(new Date(mail.sentAt || mail.createdAt), { addSuffix: true, locale: fr })
+                                : ''
+                            }
+                        </span>
+                    </div>
+                </div>
+
+                <p className="text-xs font-medium truncate text-muted-foreground">
+                    {mail.subject || '(Sans objet)'}
+                </p>
+
+                <p className="text-xs truncate mt-0.5 text-muted-foreground">
+                    {mail.body?.slice(0, 60) || ''}...
+                </p>
+            </div>
+
+            {isDraft && (
+                <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {onSend && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={(e) => { e.stopPropagation(); onSend(); }}
+                        >
+                            <Send className="h-3 w-3" />
+                        </Button>
+                    )}
+                    {onDelete && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-destructive"
+                            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                        >
+                            <Trash2 className="h-3 w-3" />
+                        </Button>
+                    )}
+                </div>
+            )}
+        </button>
+    );
+}
+
 interface MessageBubbleProps {
     message: IBoiteMessage;
     isOwnMessage: boolean;
@@ -181,7 +285,9 @@ export default function IBoitePage() {
 
     // États
     const [conversations, setConversations] = useState<IBoiteConversation[]>([]);
+    const [externalMails, setExternalMails] = useState<IBoiteExternalCorrespondence[]>([]);
     const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+    const [selectedExternalMail, setSelectedExternalMail] = useState<IBoiteExternalCorrespondence | null>(null);
     const [messages, setMessages] = useState<IBoiteMessage[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
@@ -190,12 +296,15 @@ export default function IBoitePage() {
     const [isSending, setIsSending] = useState(false);
     const [isComposeOpen, setIsComposeOpen] = useState(false);
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-    const [activeFolder, setActiveFolder] = useState<'inbox' | 'starred' | 'archive'>('inbox');
+    const [activeFolder, setActiveFolder] = useState<FolderType>('inbox');
 
-    // Charger les conversations
+    // Charger les données selon le dossier actif
     useEffect(() => {
         const loadData = async () => {
             setIsLoading(true);
+            setSelectedConversationId(null);
+            setSelectedExternalMail(null);
+            
             try {
                 const { supabase } = await import('@/integrations/supabase/client');
                 const { data: session } = await supabase.auth.getSession();
@@ -203,13 +312,41 @@ export default function IBoitePage() {
                     setCurrentUserId(session.session.user.id);
                 }
 
-                const convs = await iBoiteService.getConversations({
-                    archived: activeFolder === 'archive'
-                });
-                setConversations(convs);
+                // Charger selon le dossier
+                switch (activeFolder) {
+                    case 'inbox':
+                        const convs = await iBoiteService.getConversations({ archived: false });
+                        setConversations(convs);
+                        setExternalMails([]);
+                        break;
+                    
+                    case 'sent':
+                        const sentMails = await iBoiteService.getSentMessages(50);
+                        setExternalMails(sentMails);
+                        setConversations([]);
+                        break;
+                    
+                    case 'drafts':
+                        const drafts = await iBoiteService.getDrafts(50);
+                        setExternalMails(drafts);
+                        setConversations([]);
+                        break;
+                    
+                    case 'official':
+                        const official = await iBoiteService.getOfficialCorrespondence({ limit: 50 });
+                        setExternalMails(official);
+                        setConversations([]);
+                        break;
+                    
+                    case 'archive':
+                        const archived = await iBoiteService.getConversations({ archived: true });
+                        setConversations(archived);
+                        setExternalMails([]);
+                        break;
+                }
             } catch (error) {
-                console.error('[IBoitePage] Error loading conversations:', error);
-                toast.error('Erreur lors du chargement des conversations');
+                console.error('[IBoitePage] Error loading data:', error);
+                toast.error('Erreur lors du chargement');
             } finally {
                 setIsLoading(false);
             }
@@ -256,6 +393,18 @@ export default function IBoitePage() {
             c.lastMessagePreview?.toLowerCase().includes(query)
         );
     }, [conversations, searchQuery]);
+
+    // Filtrer les mails externes
+    const filteredExternalMails = useMemo(() => {
+        if (!searchQuery.trim()) return externalMails;
+        const query = searchQuery.toLowerCase();
+        return externalMails.filter(m =>
+            m.recipientName?.toLowerCase().includes(query) ||
+            m.recipientEmail?.toLowerCase().includes(query) ||
+            m.subject?.toLowerCase().includes(query) ||
+            m.body?.toLowerCase().includes(query)
+        );
+    }, [externalMails, searchQuery]);
 
     // Compteur non lus
     const unreadCount = useMemo(() => {
@@ -354,7 +503,7 @@ export default function IBoitePage() {
                             />
                         </div>
 
-                        {/* Onglets */}
+                        {/* Onglets - Première ligne */}
                         <div className="flex gap-1 p-1 bg-muted/50 rounded-lg">
                             <Button
                                 variant={activeFolder === 'inbox' ? 'secondary' : 'ghost'}
@@ -366,13 +515,35 @@ export default function IBoitePage() {
                                 Boîte
                             </Button>
                             <Button
-                                variant={activeFolder === 'starred' ? 'secondary' : 'ghost'}
+                                variant={activeFolder === 'sent' ? 'secondary' : 'ghost'}
                                 size="sm"
                                 className="flex-1 h-8"
-                                onClick={() => setActiveFolder('starred')}
+                                onClick={() => setActiveFolder('sent')}
                             >
-                                <Star className="h-4 w-4 mr-1" />
-                                Favoris
+                                <SendHorizonal className="h-4 w-4 mr-1" />
+                                Envoyés
+                            </Button>
+                            <Button
+                                variant={activeFolder === 'drafts' ? 'secondary' : 'ghost'}
+                                size="sm"
+                                className="flex-1 h-8"
+                                onClick={() => setActiveFolder('drafts')}
+                            >
+                                <Edit3 className="h-4 w-4 mr-1" />
+                                Brouillons
+                            </Button>
+                        </div>
+                        
+                        {/* Onglets - Deuxième ligne */}
+                        <div className="flex gap-1 p-1 bg-muted/50 rounded-lg">
+                            <Button
+                                variant={activeFolder === 'official' ? 'secondary' : 'ghost'}
+                                size="sm"
+                                className="flex-1 h-8"
+                                onClick={() => setActiveFolder('official')}
+                            >
+                                <Stamp className="h-4 w-4 mr-1" />
+                                Officiels
                             </Button>
                             <Button
                                 variant={activeFolder === 'archive' ? 'secondary' : 'ghost'}
@@ -386,34 +557,88 @@ export default function IBoitePage() {
                         </div>
                     </div>
 
-                    {/* Liste des conversations */}
+                    {/* Liste des conversations ou mails */}
                     <ScrollArea className="flex-1">
                         <div className="p-2 space-y-1">
                             {isLoading ? (
                                 <div className="flex items-center justify-center py-12">
                                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                                 </div>
-                            ) : filteredConversations.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                                    <MessageSquare className="h-12 w-12 opacity-20 mb-3" />
-                                    <p className="text-sm">Aucune conversation</p>
-                                    <Button
-                                        variant="link"
-                                        size="sm"
-                                        onClick={() => setIsComposeOpen(true)}
-                                    >
-                                        Démarrer une conversation
-                                    </Button>
-                                </div>
+                            ) : (activeFolder === 'inbox' || activeFolder === 'archive') ? (
+                                // Afficher les conversations
+                                filteredConversations.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                                        <MessageSquare className="h-12 w-12 opacity-20 mb-3" />
+                                        <p className="text-sm">Aucune conversation</p>
+                                        <Button
+                                            variant="link"
+                                            size="sm"
+                                            onClick={() => setIsComposeOpen(true)}
+                                        >
+                                            Démarrer une conversation
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    filteredConversations.map(conv => (
+                                        <ConversationItem
+                                            key={conv.id}
+                                            conversation={conv}
+                                            isSelected={conv.id === selectedConversationId}
+                                            onClick={() => {
+                                                setSelectedConversationId(conv.id);
+                                                setSelectedExternalMail(null);
+                                            }}
+                                        />
+                                    ))
+                                )
                             ) : (
-                                filteredConversations.map(conv => (
-                                    <ConversationItem
-                                        key={conv.id}
-                                        conversation={conv}
-                                        isSelected={conv.id === selectedConversationId}
-                                        onClick={() => setSelectedConversationId(conv.id)}
-                                    />
-                                ))
+                                // Afficher les mails externes (sent, drafts, official)
+                                filteredExternalMails.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                                        <Mail className="h-12 w-12 opacity-20 mb-3" />
+                                        <p className="text-sm">
+                                            {activeFolder === 'sent' && 'Aucun message envoyé'}
+                                            {activeFolder === 'drafts' && 'Aucun brouillon'}
+                                            {activeFolder === 'official' && 'Aucune correspondance officielle'}
+                                        </p>
+                                        <Button
+                                            variant="link"
+                                            size="sm"
+                                            onClick={() => setIsComposeOpen(true)}
+                                        >
+                                            Composer un message
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    filteredExternalMails.map(mail => (
+                                        <ExternalMailItem
+                                            key={mail.id}
+                                            mail={mail}
+                                            isSelected={selectedExternalMail?.id === mail.id}
+                                            isDraft={activeFolder === 'drafts'}
+                                            onClick={() => {
+                                                setSelectedExternalMail(mail);
+                                                setSelectedConversationId(null);
+                                            }}
+                                            onDelete={activeFolder === 'drafts' ? async () => {
+                                                const success = await iBoiteService.deleteDraft(mail.id);
+                                                if (success) {
+                                                    setExternalMails(prev => prev.filter(m => m.id !== mail.id));
+                                                    toast.success('Brouillon supprimé');
+                                                }
+                                            } : undefined}
+                                            onSend={activeFolder === 'drafts' ? async () => {
+                                                const result = await iBoiteService.sendDraft(mail.id);
+                                                if (result && result.status === 'SENT') {
+                                                    setExternalMails(prev => prev.filter(m => m.id !== mail.id));
+                                                    toast.success('Message envoyé');
+                                                } else {
+                                                    toast.error('Erreur lors de l\'envoi');
+                                                }
+                                            } : undefined}
+                                        />
+                                    ))
+                                )
                             )}
                         </div>
                     </ScrollArea>
@@ -431,10 +656,10 @@ export default function IBoitePage() {
                     </div>
                 </div>
 
-                {/* Zone de chat */}
+                {/* Zone de chat / Prévisualisation */}
                 <div className={cn(
                     "flex-1 flex flex-col",
-                    !selectedConversationId && "hidden md:flex"
+                    (!selectedConversationId && !selectedExternalMail) && "hidden md:flex"
                 )}>
                     {selectedConversation ? (
                         <>
@@ -548,6 +773,119 @@ export default function IBoitePage() {
                                     </Button>
                                 </div>
                             </div>
+                        </>
+                    ) : selectedExternalMail ? (
+                        // Vue détaillée d'un mail externe
+                        <>
+                            {/* Header mail */}
+                            <div className="p-4 border-b flex items-center gap-3">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="md:hidden"
+                                    onClick={() => setSelectedExternalMail(null)}
+                                >
+                                    <ChevronLeft className="h-5 w-5" />
+                                </Button>
+
+                                <Avatar className="h-10 w-10">
+                                    <AvatarFallback className={cn(
+                                        "text-white",
+                                        selectedExternalMail.status === 'DRAFT' ? 'bg-yellow-500' : 'bg-primary'
+                                    )}>
+                                        {selectedExternalMail.recipientName?.slice(0, 2).toUpperCase() || 
+                                         selectedExternalMail.recipientEmail?.slice(0, 2).toUpperCase() || '?'}
+                                    </AvatarFallback>
+                                </Avatar>
+
+                                <div className="flex-1 min-w-0">
+                                    <h2 className="font-semibold truncate">
+                                        {selectedExternalMail.recipientName || selectedExternalMail.recipientEmail}
+                                    </h2>
+                                    <p className="text-xs text-muted-foreground truncate">
+                                        {selectedExternalMail.recipientEmail}
+                                        {selectedExternalMail.recipientOrganization && ` • ${selectedExternalMail.recipientOrganization}`}
+                                    </p>
+                                </div>
+
+                                <Badge variant={
+                                    selectedExternalMail.status === 'SENT' ? 'default' :
+                                    selectedExternalMail.status === 'DRAFT' ? 'secondary' :
+                                    selectedExternalMail.status === 'FAILED' ? 'destructive' : 'outline'
+                                }>
+                                    {selectedExternalMail.status === 'SENT' && 'Envoyé'}
+                                    {selectedExternalMail.status === 'DRAFT' && 'Brouillon'}
+                                    {selectedExternalMail.status === 'DELIVERED' && 'Délivré'}
+                                    {selectedExternalMail.status === 'FAILED' && 'Échec'}
+                                    {selectedExternalMail.status === 'PENDING' && 'En attente'}
+                                </Badge>
+                            </div>
+
+                            {/* Contenu du mail */}
+                            <ScrollArea className="flex-1">
+                                <div className="p-6">
+                                    <div className="mb-4">
+                                        <h3 className="text-lg font-semibold">
+                                            {selectedExternalMail.subject || '(Sans objet)'}
+                                        </h3>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            {selectedExternalMail.sentAt 
+                                                ? format(new Date(selectedExternalMail.sentAt), 'PPpp', { locale: fr })
+                                                : format(new Date(selectedExternalMail.createdAt), 'PPpp', { locale: fr })
+                                            }
+                                        </p>
+                                    </div>
+
+                                    <Separator className="my-4" />
+
+                                    <div className="prose prose-sm max-w-none">
+                                        <p className="whitespace-pre-wrap text-foreground">
+                                            {selectedExternalMail.body}
+                                        </p>
+                                    </div>
+
+                                    {selectedExternalMail.errorMessage && (
+                                        <div className="mt-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+                                            <strong>Erreur:</strong> {selectedExternalMail.errorMessage}
+                                        </div>
+                                    )}
+                                </div>
+                            </ScrollArea>
+
+                            {/* Actions pour les brouillons */}
+                            {selectedExternalMail.status === 'DRAFT' && (
+                                <div className="p-4 border-t bg-background/50 flex gap-2 justify-end">
+                                    <Button
+                                        variant="outline"
+                                        onClick={async () => {
+                                            const success = await iBoiteService.deleteDraft(selectedExternalMail.id);
+                                            if (success) {
+                                                setExternalMails(prev => prev.filter(m => m.id !== selectedExternalMail.id));
+                                                setSelectedExternalMail(null);
+                                                toast.success('Brouillon supprimé');
+                                            }
+                                        }}
+                                    >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Supprimer
+                                    </Button>
+                                    <Button
+                                        onClick={async () => {
+                                            const result = await iBoiteService.sendDraft(selectedExternalMail.id);
+                                            if (result && result.status === 'SENT') {
+                                                setExternalMails(prev => prev.filter(m => m.id !== selectedExternalMail.id));
+                                                setSelectedExternalMail(null);
+                                                toast.success('Message envoyé');
+                                            } else {
+                                                toast.error('Erreur lors de l\'envoi');
+                                            }
+                                        }}
+                                    >
+                                        <Send className="h-4 w-4 mr-2" />
+                                        Envoyer
+                                    </Button>
+                                </div>
+                            )}
                         </>
                     ) : (
                         <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
