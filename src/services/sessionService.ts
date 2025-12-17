@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { invokeWithDemoFallback } from '@/utils/demoMode';
+import { invokeWithDemoFallback, isInDemoMode, getDemoResponse } from '@/utils/demoMode';
 
 export interface ActiveSession {
   id: string;
@@ -81,6 +81,18 @@ async function checkNewDeviceAndAlert(
 ): Promise<{ isNew: boolean; location: string | null }> {
   try {
     if (!userId) return { isNew: false, location: null };
+    
+    // Check demo mode BEFORE calling edge function to avoid auth errors
+    const demoMode = await isInDemoMode();
+    if (demoMode) {
+      console.log('[Session] Demo mode detected - skipping edge function call');
+      const demoResponse = getDemoResponse('new-device-alert') as NewDeviceAlertResponse;
+      return { 
+        isNew: demoResponse?.is_new_device || false, 
+        location: demoResponse?.location || 'Libreville, Gabon' 
+      };
+    }
+    
     const { data, error, isDemo } = await invokeWithDemoFallback<NewDeviceAlertResponse>(
       'new-device-alert',
       {
