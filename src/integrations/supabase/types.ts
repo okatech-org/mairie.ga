@@ -1974,6 +1974,30 @@ export type Database = {
     }
     Functions: {
       cleanup_old_sessions: { Args: never; Returns: undefined }
+      get_all_organizations: {
+        Args: { limit_count?: number }
+        Returns: {
+          city: string
+          contact_email: string
+          departement: string
+          id: string
+          logo_url: string
+          maire_name: string
+          name: string
+          type: string
+        }[]
+      }
+      get_organization_services: {
+        Args: { limit_count?: number; org_id?: string }
+        Returns: {
+          category: string
+          description: string
+          id: string
+          name: string
+          organization_id: string
+          organization_name: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2000,6 +2024,26 @@ export type Database = {
           tags: string[]
           title: string
           view_count: number
+        }[]
+      }
+      search_global_recipients: {
+        Args: {
+          include_organizations?: boolean
+          include_services?: boolean
+          include_users?: boolean
+          limit_count?: number
+          search_query?: string
+          searcher_id?: string
+        }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          email: string
+          organization_id: string
+          organization_name: string
+          recipient_id: string
+          recipient_type: string
+          subtitle: string
         }[]
       }
       search_iboite_services: {
