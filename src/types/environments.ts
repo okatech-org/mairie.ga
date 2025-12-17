@@ -307,6 +307,51 @@ export interface IBoiteExternalCorrespondence {
     updatedAt: string;
 }
 
+/**
+ * Type de destinataire global pour iBoîte
+ */
+export type RecipientType = 'USER' | 'ORGANIZATION' | 'SERVICE' | 'EXTERNAL';
+
+/**
+ * Destinataire global (utilisateur, organisation, service ou externe)
+ */
+export interface GlobalRecipient {
+    recipientType: RecipientType;
+    recipientId: string;
+    displayName: string;
+    subtitle?: string;
+    email?: string;
+    avatarUrl?: string;
+    organizationId?: string;
+    organizationName?: string;
+}
+
+/**
+ * Organisation pour la liste des destinataires
+ */
+export interface OrganizationRecipient {
+    id: string;
+    name: string;
+    city?: string;
+    departement?: string;
+    contactEmail?: string;
+    logoUrl?: string;
+    type?: string;
+    maireName?: string;
+}
+
+/**
+ * Service pour la liste des destinataires
+ */
+export interface ServiceRecipient {
+    id: string;
+    name: string;
+    description?: string;
+    category?: string;
+    organizationId?: string;
+    organizationName?: string;
+}
+
 // ============================================================
 // HELPER FUNCTIONS
 // ============================================================

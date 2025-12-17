@@ -20,7 +20,10 @@ import type {
     IBoiteServiceSearchResult,
     IBoiteExternalCorrespondence,
     ConversationType,
-    IBoiteAttachment
+    IBoiteAttachment,
+    GlobalRecipient,
+    OrganizationRecipient,
+    ServiceRecipient
 } from '@/types/environments';
 
 // Re-export IBoiteService type from environments
@@ -134,6 +137,113 @@ class IBoiteServiceClass {
             }));
         } catch (error) {
             console.error('[iBoîte] Search services error:', error);
+            return [];
+        }
+    }
+
+    // ========================================================
+    // RECHERCHE GLOBALE DE DESTINATAIRES
+    // ========================================================
+
+    /**
+     * Recherche globale parmi utilisateurs, organisations et services
+     */
+    async searchGlobalRecipients(params: {
+        query?: string;
+        includeOrganizations?: boolean;
+        includeServices?: boolean;
+        includeUsers?: boolean;
+        limit?: number;
+    }): Promise<GlobalRecipient[]> {
+        try {
+            const { data: session } = await supabase.auth.getSession();
+            const searcherId = session?.session?.user?.id || null;
+
+            const { data, error } = await (supabase.rpc as any)('search_global_recipients', {
+                search_query: params.query || '',
+                searcher_id: searcherId,
+                include_organizations: params.includeOrganizations ?? true,
+                include_services: params.includeServices ?? true,
+                include_users: params.includeUsers ?? true,
+                limit_count: params.limit || 30
+            });
+
+            if (error) {
+                console.error('[iBoîte] Search global recipients error:', error);
+                return [];
+            }
+
+            return (data || []).map((row: any) => ({
+                recipientType: row.recipient_type as GlobalRecipient['recipientType'],
+                recipientId: row.recipient_id,
+                displayName: row.display_name,
+                subtitle: row.subtitle,
+                email: row.email,
+                avatarUrl: row.avatar_url,
+                organizationId: row.organization_id,
+                organizationName: row.organization_name
+            }));
+        } catch (error) {
+            console.error('[iBoîte] Search global recipients error:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Récupère toutes les organisations disponibles
+     */
+    async getAllOrganizations(limit?: number): Promise<OrganizationRecipient[]> {
+        try {
+            const { data, error } = await (supabase.rpc as any)('get_all_organizations', {
+                limit_count: limit || 100
+            });
+
+            if (error) {
+                console.error('[iBoîte] Get all organizations error:', error);
+                return [];
+            }
+
+            return (data || []).map((row: any) => ({
+                id: row.id,
+                name: row.name,
+                city: row.city,
+                departement: row.departement,
+                contactEmail: row.contact_email,
+                logoUrl: row.logo_url,
+                type: row.type,
+                maireName: row.maire_name
+            }));
+        } catch (error) {
+            console.error('[iBoîte] Get all organizations error:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Récupère tous les services (optionnellement filtrés par organisation)
+     */
+    async getOrganizationServices(organizationId?: string, limit?: number): Promise<ServiceRecipient[]> {
+        try {
+            const { data, error } = await (supabase.rpc as any)('get_organization_services', {
+                org_id: organizationId || null,
+                limit_count: limit || 100
+            });
+
+            if (error) {
+                console.error('[iBoîte] Get organization services error:', error);
+                return [];
+            }
+
+            return (data || []).map((row: any) => ({
+                id: row.id,
+                name: row.name,
+                description: row.description,
+                category: row.category,
+                organizationId: row.organization_id,
+                organizationName: row.organization_name
+            }));
+        } catch (error) {
+            console.error('[iBoîte] Get organization services error:', error);
             return [];
         }
     }

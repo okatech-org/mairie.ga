@@ -33,23 +33,10 @@ import {
     DialogFooter
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import { IBoiteRecipientSearch } from './IBoiteRecipientSearch';
+import { IBoiteRecipientSearch, Recipient } from './IBoiteRecipientSearch';
 import { iBoiteService } from '@/services/iboite-service';
 import { useUserEnvironment } from '@/hooks/useUserEnvironment';
-import { IBoiteAttachment, UserEnvironment } from '@/types/environments';
-
-// ============================================================
-// TYPES
-// ============================================================
-
-interface Recipient {
-    type: 'USER' | 'SERVICE';
-    id: string;
-    displayName: string;
-    subtitle?: string;
-    avatarUrl?: string;
-    environment?: UserEnvironment;
-}
+import { IBoiteAttachment } from '@/types/environments';
 
 interface IBoiteComposeMessageProps {
     open: boolean;
@@ -88,12 +75,6 @@ export function IBoiteComposeMessage({
     const [isOfficial, setIsOfficial] = useState(false);
     const [officialReference, setOfficialReference] = useState('');
 
-    // Mode externe (email)
-    const [isExternalMode, setIsExternalMode] = useState(false);
-    const [externalEmail, setExternalEmail] = useState('');
-    const [externalName, setExternalName] = useState('');
-    const [externalOrganization, setExternalOrganization] = useState('');
-
     // État de soumission
     const [isSending, setIsSending] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -106,10 +87,6 @@ export function IBoiteComposeMessage({
         setAttachments([]);
         setIsOfficial(false);
         setOfficialReference('');
-        setIsExternalMode(false);
-        setExternalEmail('');
-        setExternalName('');
-        setExternalOrganization('');
         setError(null);
     }, []);
 
@@ -152,20 +129,9 @@ export function IBoiteComposeMessage({
     // Envoyer le message
     const handleSend = useCallback(async () => {
         // Validation
-        if (isExternalMode) {
-            if (!externalEmail) {
-                setError('Veuillez saisir une adresse email');
-                return;
-            }
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(externalEmail)) {
-                setError('Adresse email invalide');
-                return;
-            }
-        } else {
-            if (recipients.length === 0 && !replyToConversationId) {
-                setError('Veuillez sélectionner au moins un destinataire');
-                return;
-            }
+        if (recipients.length === 0 && !replyToConversationId) {
+            setError('Veuillez sélectionner au moins un destinataire');
+            return;
         }
 
         if (!content.trim()) {
@@ -177,25 +143,32 @@ export function IBoiteComposeMessage({
         setError(null);
 
         try {
-            if (isExternalMode) {
-                // Envoi de correspondance externe (email)
-                if (!organizationId) {
-                    throw new Error('Organisation non définie');
+            // Séparer les destinataires internes et externes
+            const externalRecipients = recipients.filter(r => r.type === 'EXTERNAL');
+            const internalRecipients = recipients.filter(r => r.type !== 'EXTERNAL');
+
+            // Traiter les destinataires externes (correspondances email)
+            for (const ext of externalRecipients) {
+                if (ext.email) {
+                    await iBoiteService.sendExternalCorrespondence({
+                        recipientEmail: ext.email,
+                        recipientName: ext.displayName !== ext.email ? ext.displayName : undefined,
+                        subject: subject || '(Sans objet)',
+                        body: content,
+                        attachments,
+                        organizationId: organizationId || undefined
+                    });
                 }
+            }
 
-                await iBoiteService.sendExternalCorrespondence({
-                    recipientEmail: externalEmail,
-                    recipientName: externalName || undefined,
-                    recipientOrganization: externalOrganization || undefined,
-                    subject: subject || '(Sans objet)',
-                    body: content,
-                    attachments,
-                    organizationId
-                });
-
+            // Si destinataires externes seulement, marquer comme envoyé
+            if (externalRecipients.length > 0 && internalRecipients.length === 0) {
                 handleClose();
                 onSent?.('external');
-            } else if (replyToConversationId) {
+                return;
+            }
+
+            if (replyToConversationId) {
                 // Réponse dans une conversation existante
                 await iBoiteService.sendMessage({
                     conversationId: replyToConversationId,
@@ -207,12 +180,38 @@ export function IBoiteComposeMessage({
 
                 handleClose();
                 onSent?.(replyToConversationId);
-            } else {
-                // Nouvelle conversation
+            } else if (internalRecipients.length > 0) {
+                // Nouvelle conversation avec destinataires internes
+                // Pour les organisations/services, on utilise l'ID directement
+                const participantIds = internalRecipients
+                    .filter(r => r.type === 'USER')
+                    .map(r => r.id);
+
+                // Si on envoie uniquement à des organisations/services, 
+                // créer une correspondance externe vers leur email
+                if (participantIds.length === 0) {
+                    for (const recipient of internalRecipients) {
+                        if (recipient.email) {
+                            await iBoiteService.sendExternalCorrespondence({
+                                recipientEmail: recipient.email,
+                                recipientName: recipient.displayName,
+                                recipientOrganization: recipient.organizationName,
+                                subject: subject || '(Sans objet)',
+                                body: content,
+                                attachments,
+                                organizationId: organizationId || undefined
+                            });
+                        }
+                    }
+                    handleClose();
+                    onSent?.('external');
+                    return;
+                }
+
                 const conversation = await iBoiteService.createConversation({
-                    type: recipients.length === 1 ? 'PRIVATE' : 'GROUP',
+                    type: participantIds.length === 1 ? 'PRIVATE' : 'GROUP',
                     subject: subject || undefined,
-                    participantIds: recipients.map(r => r.id),
+                    participantIds,
                     initialMessage: content
                 });
 
@@ -231,7 +230,6 @@ export function IBoiteComposeMessage({
             setIsSending(false);
         }
     }, [
-        isExternalMode, externalEmail, externalName, externalOrganization,
         recipients, content, subject, attachments, isOfficial, officialReference,
         replyToConversationId, organizationId, handleClose, onSent, onError
     ]);
@@ -259,82 +257,33 @@ export function IBoiteComposeMessage({
             <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        {isExternalMode ? (
-                            <>
-                                <Mail className="h-5 w-5" />
-                                Nouveau courrier externe
-                            </>
-                        ) : (
-                            <>
-                                <MessageSquare className="h-5 w-5" />
-                                {replyToConversationId ? 'Répondre' : 'Nouveau message'}
-                            </>
-                        )}
+                        <MessageSquare className="h-5 w-5" />
+                        {replyToConversationId ? 'Répondre' : 'Nouveau message'}
                     </DialogTitle>
                 </DialogHeader>
 
                 <div className="flex-1 overflow-y-auto space-y-4 py-4">
-                    {/* Bascule Interne/Externe */}
-                    {canSendExternalEmail && !replyToConversationId && (
-                        <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                            <div>
-                                <Label className="text-sm font-medium">
-                                    {isExternalMode ? 'Courrier externe (Email)' : 'Message interne (iBoîte)'}
-                                </Label>
-                                <p className="text-xs text-muted-foreground">
-                                    {isExternalMode
-                                        ? 'Envoyer par email à un destinataire externe'
-                                        : 'Envoyer via iBoîte (sans email)'}
-                                </p>
-                            </div>
-                            <Switch
-                                checked={isExternalMode}
-                                onCheckedChange={setIsExternalMode}
-                            />
-                        </div>
-                    )}
-
-                    {/* Destinataire(s) */}
+                    {/* Destinataire(s) avec support interne et externe */}
                     {!replyToConversationId && (
                         <div className="space-y-2">
-                            <Label>
-                                {isExternalMode ? 'Destinataire externe' : 'Destinataire(s)'}
-                            </Label>
-
-                            {isExternalMode ? (
-                                <div className="space-y-2">
-                                    <Input
-                                        type="email"
-                                        placeholder="exemple@domaine.com"
-                                        value={externalEmail}
-                                        onChange={e => setExternalEmail(e.target.value)}
-                                    />
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <Input
-                                            placeholder="Nom (optionnel)"
-                                            value={externalName}
-                                            onChange={e => setExternalName(e.target.value)}
-                                        />
-                                        <Input
-                                            placeholder="Organisation (optionnel)"
-                                            value={externalOrganization}
-                                            onChange={e => setExternalOrganization(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-                            ) : (
-                                <IBoiteRecipientSearch
-                                    onSelect={setRecipients}
-                                    selectedRecipients={recipients}
-                                    multiple
-                                    placeholder="Rechercher par nom ou service..."
-                                />
-                            )}
+                            <Label>Destinataire(s)</Label>
+                            <IBoiteRecipientSearch
+                                onSelect={setRecipients}
+                                selectedRecipients={recipients}
+                                multiple
+                                placeholder="Rechercher un utilisateur, mairie, service..."
+                                showExternalInput={canSendExternalEmail || isMunicipalStaff || isBackOffice}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Recherchez des utilisateurs, mairies ou services.
+                                {(canSendExternalEmail || isMunicipalStaff || isBackOffice) &&
+                                    " Utilisez l'onglet 'Externe' pour envoyer un email."}
+                            </p>
                         </div>
                     )}
 
                     {/* Objet */}
-                    {(isExternalMode || recipients.length > 1 || !replyToConversationId) && (
+                    {(recipients.some(r => r.type === 'EXTERNAL' || r.type === 'ORGANIZATION') || recipients.length > 1 || !replyToConversationId) && (
                         <div className="space-y-2">
                             <Label>Objet</Label>
                             <Input
