@@ -256,8 +256,9 @@ class CorrespondanceService {
 
     /**
      * Enrich document content using AI
+     * P4: Made public for use by document generation
      */
-    private async enrichContent(params: {
+    async enrichContent(params: {
         documentType: string;
         subject: string;
         userInput?: string;

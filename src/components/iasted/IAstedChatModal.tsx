@@ -861,10 +861,24 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
     }, [isOpen]);
 
     // Gérer la génération de documents déclenchée par commande vocale
+    // P4: Ajout d'un flag pour éviter la double génération
+    const pendingDocumentProcessed = useRef<string | null>(null);
+    
     useEffect(() => {
         if (pendingDocument && onClearPendingDocument) {
+            // P4: Vérifier si ce document a déjà été traité
+            const docKey = `${pendingDocument.type}-${pendingDocument.subject}-${pendingDocument.recipient}`;
+            if (pendingDocumentProcessed.current === docKey) {
+                console.log('⏭️ [IAstedChatModal] Document déjà traité, skip:', docKey);
+                onClearPendingDocument();
+                return;
+            }
+            
             console.log('📄 [IAstedChatModal] Génération de document depuis voix:', pendingDocument);
 
+            // Marquer comme traité
+            pendingDocumentProcessed.current = docKey;
+            
             // Marquer qu'un document est en cours - empêche l'init d'écraser les messages
             hasDocumentRef.current = true;
 
@@ -885,6 +899,11 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
 
             executeToolCall(toolCall);
             onClearPendingDocument();
+            
+            // Reset le flag après un délai
+            setTimeout(() => {
+                pendingDocumentProcessed.current = null;
+            }, 5000);
         }
     }, [pendingDocument, onClearPendingDocument]);
 
@@ -1108,6 +1127,39 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
 
                     try {
                         let blob: Blob, url: string, filename: string;
+                        
+                        // P4: Enrichir le contenu si vide ou insuffisant
+                        let enrichedContentPoints = args.content_points || [];
+                        const needsEnrichment = !enrichedContentPoints.length || 
+                            enrichedContentPoints.every((p: string) => !p || p.length < 30);
+                        
+                        if (needsEnrichment && args.subject) {
+                            console.log('📄 [generateDocument] Contenu insuffisant, enrichissement...');
+                            try {
+                                const { correspondanceService } = await import('@/services/correspondanceService');
+                                // Use private method via workaround
+                                const enrichResult = await (correspondanceService as any).enrichContent?.({
+                                    documentType: args.type,
+                                    subject: args.subject,
+                                    userInput: enrichedContentPoints.join(' '),
+                                    recipient: args.recipient,
+                                    recipientOrg: args.recipient_org
+                                });
+                                
+                                if (enrichResult?.success && enrichResult.contentPoints?.length) {
+                                    enrichedContentPoints = enrichResult.contentPoints;
+                                    console.log('✅ [generateDocument] Contenu enrichi:', enrichedContentPoints.length, 'paragraphes');
+                                }
+                            } catch (enrichError) {
+                                console.warn('⚠️ [generateDocument] Enrichissement échoué, fallback:', enrichError);
+                                // Fallback: générer un contenu basique
+                                enrichedContentPoints = [
+                                    `Suite à la demande concernant "${args.subject}",`,
+                                    'nous avons le plaisir de vous informer que votre dossier a été traité avec la plus grande attention.',
+                                    'Nous restons à votre entière disposition pour tout complément d\'information.'
+                                ];
+                            }
+                        }
 
                         if (requestedFormat === 'docx') {
                             // Génération DOCX locale sans upload vers Supabase
@@ -1116,7 +1168,7 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                             const { Document, Paragraph, AlignmentType, HeadingLevel, Packer } = await import('docx');
 
                             const title = `${args.type} - ${args.recipient}`;
-                            const contentPoints = args.content_points || [];
+                            const contentPoints = enrichedContentPoints;
 
                             const doc = new Document({
                                 sections: [{
@@ -1161,12 +1213,12 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
 
                             console.log('✅ [generateDOCX] Document généré:', filename);
                         } else {
-                            // Génération PDF existante
+                            // Génération PDF existante - P4: utiliser enrichedContentPoints
                             const pdfResult = await generateOfficialPDFWithURL({
                                 type: args.type,
                                 recipient: args.recipient,
                                 subject: args.subject,
-                                content_points: args.content_points || [],
+                                content_points: enrichedContentPoints,
                                 signature_authority: args.signature_authority,
                                 serviceContext: args.service_context
                             });
@@ -1305,12 +1357,33 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                 case 'create_correspondence': {
                     const { correspondanceService } = await import('@/services/correspondanceService');
                     try {
+                        // P4: Enrichir le contenu si insuffisant
+                        let enrichedContentPoints = args.content_points || [];
+                        const needsEnrichment = !enrichedContentPoints.length || 
+                            enrichedContentPoints.every((p: string) => !p || p.length < 30);
+                        
+                        if (needsEnrichment && args.subject) {
+                            console.log('📄 [create_correspondence] Contenu insuffisant, enrichissement...');
+                            const enrichResult = await correspondanceService.enrichContent({
+                                documentType: args.template || 'courrier',
+                                subject: args.subject,
+                                userInput: enrichedContentPoints.join(' '),
+                                recipient: args.recipient,
+                                recipientOrg: args.recipient_org
+                            });
+                            
+                            if (enrichResult?.success && enrichResult.contentPoints?.length) {
+                                enrichedContentPoints = enrichResult.contentPoints;
+                                console.log('✅ [create_correspondence] Contenu enrichi:', enrichedContentPoints.length, 'paragraphes');
+                            }
+                        }
+                        
                         const result = await correspondanceService.createCorrespondance({
                             recipient: args.recipient,
                             recipientOrg: args.recipient_org,
                             recipientEmail: args.recipient_email,
                             subject: args.subject,
-                            contentPoints: args.content_points || [],
+                            contentPoints: enrichedContentPoints,
                             template: args.template || 'courrier',
                         });
 
@@ -1357,6 +1430,33 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                                 document.body.removeChild(link);
                             }, 500);
                         }
+                        
+                        // P4: Envoyer immédiatement si demandé et email fourni
+                        if (args.send_immediately && args.recipient_email) {
+                            console.log('📤 [create_correspondence] Envoi immédiat demandé...');
+                            const sendResult = await correspondanceService.sendCorrespondance({
+                                recipientEmail: args.recipient_email,
+                                recipientName: args.recipient,
+                                recipientOrg: args.recipient_org,
+                                subject: args.subject,
+                                body: `Veuillez trouver ci-joint notre correspondance concernant: ${args.subject}`,
+                                documentId: docId,
+                            });
+                            
+                            if (sendResult.success) {
+                                toast({
+                                    title: "✉️ Courrier envoyé",
+                                    description: `Email envoyé à ${args.recipient_email}`,
+                                });
+                                
+                                setMessages(prev => [...prev, {
+                                    id: crypto.randomUUID(),
+                                    role: 'assistant',
+                                    content: `✉️ Courrier également envoyé par email à **${args.recipient_email}**`,
+                                    timestamp: new Date().toISOString(),
+                                }]);
+                            }
+                        }
                     } catch (error: any) {
                         toast({
                             title: "Erreur de création",
@@ -1370,10 +1470,16 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                 case 'send_correspondence': {
                     const { correspondanceService } = await import('@/services/correspondanceService');
                     try {
+                        if (!args.recipient_email) {
+                            throw new Error('Email du destinataire requis pour l\'envoi');
+                        }
+                        
                         const result = await correspondanceService.sendCorrespondance({
                             recipientEmail: args.recipient_email,
-                            subject: args.subject,
-                            body: args.body,
+                            recipientName: args.recipient_name,
+                            recipientOrg: args.recipient_org,
+                            subject: args.subject || 'Correspondance officielle',
+                            body: args.body || 'Veuillez trouver ci-joint notre correspondance officielle.',
                             documentId: args.document_id,
                         });
 
@@ -1385,10 +1491,11 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                         setMessages(prev => [...prev, {
                             id: crypto.randomUUID(),
                             role: 'assistant',
-                            content: `Courrier envoyé avec succès à **${args.recipient_email}**.\n\nEnvoyé le: ${new Date(result.sentAt).toLocaleString('fr-FR')}`,
+                            content: `✉️ Courrier envoyé avec succès à **${args.recipient_email}**.\n\nEnvoyé le: ${new Date(result.sentAt).toLocaleString('fr-FR')}`,
                             timestamp: new Date().toISOString(),
                         }]);
                     } catch (error: any) {
+                        console.error('[send_correspondence] Erreur:', error);
                         toast({
                             title: "Erreur d'envoi",
                             description: error.message,
