@@ -286,8 +286,19 @@ export const ROUTE_MAP: RouteInfo[] = [
     // ========== MESSAGING (iBoîte) ==========
     {
         path: '/iboite',
-        aliases: ['iboîte', 'iboite', 'messagerie', 'courrier', 'messages', 'mails', 'boîte de réception', 'inbox', 'communications'],
-        description: 'iBoîte - Messagerie'
+        aliases: ['iboîte', 'iboite', 'messagerie', 'messages', 'mails', 'boîte de réception', 'inbox', 'emails'],
+        description: 'iBoîte - Messagerie interne'
+    },
+
+    // ========== CORRESPONDANCE OFFICIELLE (iCorrespondance) ==========
+    {
+        path: '/icorrespondance',
+        aliases: [
+            'icorrespondance', 'i-correspondance', 'correspondance', 'correspondance officielle',
+            'courrier', 'courrier officiel', 'courriers', 'envoi courrier', 'envoyer courrier',
+            'dossiers correspondance', 'courriers officiels', 'lettres officielles'
+        ],
+        description: 'iCorrespondance - Correspondance officielle'
     },
 
     // ========== SETTINGS ==========
@@ -352,7 +363,7 @@ export function resolveRoute(query: string, userRole?: string, currentPath?: str
 
         // BONUS: Si la route correspond au rôle de l'utilisateur, augmenter le score
         if (score > 0 && route.role && effectiveRole) {
-            if (route.role === effectiveRole || 
+            if (route.role === effectiveRole ||
                 (effectiveRole === 'maire' && route.role === 'maire') ||
                 (effectiveRole === 'admin' && route.path.startsWith('/dashboard/maire'))) {
                 // Si l'utilisateur est maire ou admin sur le dashboard maire, prioriser les routes maire
@@ -381,14 +392,14 @@ export function resolveRoute(query: string, userRole?: string, currentPath?: str
  */
 function detectRoleFromPath(path?: string): string | null {
     if (!path) return null;
-    
+
     if (path.startsWith('/dashboard/maire')) return 'maire';
     if (path.startsWith('/dashboard/super-admin')) return 'super_admin';
     if (path.startsWith('/dashboard/agent')) return 'agent';
     if (path.startsWith('/dashboard/citizen')) return 'citizen';
     if (path.startsWith('/dashboard/admin') || path.startsWith('/admin')) return 'admin';
     if (path.startsWith('/dashboard/foreigner')) return 'foreigner';
-    
+
     return null;
 }
 
@@ -398,7 +409,7 @@ function detectRoleFromPath(path?: string): string | null {
  */
 export function getRouteKnowledgePrompt(userRole?: string): string {
     // Filtrer les routes selon le rôle si fourni
-    const filteredRoutes = userRole 
+    const filteredRoutes = userRole
         ? ROUTE_MAP.filter(route => !route.role || route.role === userRole || route.role === 'public')
         : ROUTE_MAP;
 
@@ -422,7 +433,7 @@ export function getRoutesForRole(role: string): RouteInfo[] {
  */
 export function resolveRouteForMaire(query: string): string | null {
     const normalizedQuery = query.toLowerCase().trim();
-    
+
     // Mapping direct pour les sections du Maire
     const maireRouteMap: Record<string, string> = {
         'budget': '/dashboard/maire/budget',
@@ -443,13 +454,13 @@ export function resolveRouteForMaire(query: string): string | null {
         'cockpit': '/dashboard/maire',
         'tableau de bord': '/dashboard/maire',
     };
-    
+
     for (const [keyword, path] of Object.entries(maireRouteMap)) {
         if (normalizedQuery.includes(keyword)) {
             console.log(`✅ [resolveRouteForMaire] Direct match: "${keyword}" → ${path}`);
             return path;
         }
     }
-    
+
     return null;
 }

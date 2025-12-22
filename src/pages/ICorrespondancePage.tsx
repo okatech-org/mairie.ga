@@ -493,10 +493,37 @@ export default function ICorrespondancePage() {
                 previewUrl = signedUrlData?.signedUrl;
                 console.log('✅ [Preview] Got signed URL:', previewUrl ? 'success' : 'failed');
             }
-            // If it's a generated document, generate it on the fly
-            else if (!previewUrl && doc.generator_type) {
-                console.log('📄 [Preview] Generating document...');
-                const result = await generateDocumentPDF(doc as any);
+            // If it's a generated document or no URL available, generate it on the fly
+            else if (!previewUrl) {
+                console.log('📄 [Preview] Generating document with folder context...');
+
+                // Enrich document with folder context for meaningful content generation
+                const enrichedDoc = {
+                    ...doc,
+                    generatorType: doc.generator_type || 'admin',
+                    generatorParams: {
+                        title: selectedFolder?.name || doc.name,
+                        senderOrg: 'Mairie de Libreville',
+                        recipientOrg: selectedFolder?.recipient_organization || 'Destinataire',
+                        date: doc.created_at || selectedFolder?.created_at || new Date().toISOString(),
+                        content: selectedFolder?.comment
+                            ? [
+                                `À l'attention de ${selectedFolder.recipient_name || selectedFolder.recipient_organization || 'Madame, Monsieur'},`,
+                                '',
+                                selectedFolder.comment,
+                                '',
+                                'Veuillez agréer, Madame, Monsieur, l\'expression de nos salutations distinguées.'
+                            ]
+                            : [
+                                `Ce document concerne : ${selectedFolder?.name || doc.name}.`,
+                                'Pour plus de détails, veuillez contacter le service émetteur.',
+                                `Document généré le ${new Date().toLocaleDateString('fr-FR')}.`
+                            ],
+                        reference: selectedFolder?.reference_number || undefined
+                    }
+                };
+
+                const result = await generateDocumentPDF(enrichedDoc as any);
                 previewUrl = result.url;
             }
 

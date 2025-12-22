@@ -373,6 +373,79 @@ const COMMAND_DEFINITIONS: CommandDef[] = [
         response: 'Navigation vers les communications.'
     },
 
+    // ========== NAVIGATION - CORRESPONDANCE OFFICIELLE (iCorrespondance) ==========
+    {
+        patterns: [
+            /^correspondance$/,
+            /^icorrespondance$/,
+            /^i[\s-]?correspondance$/,
+            /ouvre\s*(la\s*)?correspondance/,
+            /ouvre\s*(la\s*)?icorrespondance/,
+            /va\s*(a\s*)?(la\s*)?correspondance/,
+            /va\s*(a\s*)?(la\s*)?icorrespondance/,
+            /amene[\s-]?moi\s*(a\s*)?(la\s*)?correspondance/,
+            /amene[\s-]?moi\s*(a\s*)?icorrespondance/,
+            /courrier\s*officiel/,
+            /courriers?\s*officiels?/,
+            /envoyer?\s*(un\s*)?courrier/,
+            /gestion\s*(des\s*)?courriers?/,
+            /dossiers?\s*(de\s*)?correspondance/,
+        ],
+        exactPhrases: [
+            'ouvre la correspondance',
+            'ouvre icorrespondance',
+            'va a la correspondance',
+            'correspondance officielle',
+            'courrier officiel',
+            'envoyer un courrier',
+            'envoie un courrier'
+        ],
+        toolName: 'global_navigate',
+        toolArgs: { query: 'correspondance' },
+        response: 'Navigation vers iCorrespondance.'
+    },
+
+    // ========== ENVOI DOCUMENT VIA iCORRESPONDANCE ==========
+    {
+        patterns: [
+            /envoie\s*(le|la|ce)?\s*(document|lettre|courrier)?\s*(par|via|en)\s*(i?correspondance|icorrespondance)/,
+            /envoyer?\s*(par|via)\s*(i?correspondance|icorrespondance)/,
+            /envoie\s*en\s*correspondance/,
+            /classe[r]?\s*(le|ce)?\s*(document|courrier)?\s*dans\s*(la\s*)?correspondance/,
+        ],
+        exactPhrases: [
+            'envoie par correspondance',
+            'envoie via correspondance',
+            'envoie en correspondance',
+            'envoie par icorrespondance',
+            'envoyer par correspondance',
+            'classe dans la correspondance'
+        ],
+        toolName: 'send_to_icorrespondance',
+        toolArgs: {},
+        response: 'Navigation vers iCorrespondance pour envoi officiel.'
+    },
+
+    // ========== ENVOI DOCUMENT VIA iBoîte (MESSAGERIE INTERNE) ==========
+    {
+        patterns: [
+            /envoie\s*(le|la|ce)?\s*(document|lettre|courrier)?\s*(par|via)\s*(i?boite|iboite|messagerie)/,
+            /envoyer?\s*(par|via)\s*(i?boite|iboite|messagerie)/,
+            /envoie\s*(le|ce)?\s*(document)?\s*a\s+[a-z]+/i, // "envoie le document à Pierre"
+            /transmet\s*(a|au)\s+[a-z]+/i, // "transmet à Marie"
+        ],
+        exactPhrases: [
+            'envoie par iboite',
+            'envoie par messagerie',
+            'envoie via iboite',
+            'envoie via messagerie',
+            'envoyer par messagerie interne'
+        ],
+        toolName: 'send_to_iboite',
+        toolArgs: {},
+        response: 'Navigation vers iBoîte pour envoi interne.'
+    },
+
     // ========== NAVIGATION - MESSAGERIE (iBoîte) ==========
     // IMPORTANT: Ne PAS matcher "courrier" seul car ça peut être une demande de génération de document
     // Matcher uniquement les demandes explicites de navigation vers la messagerie

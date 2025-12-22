@@ -99,11 +99,11 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
     const audioContext = useRef<AudioContext | null>(null);
     const analyser = useRef<AnalyserNode | null>(null);
     const animationFrame = useRef<number | null>(null);
-    
+
     // P3: Tracking for tool call deduplication
     const processedToolCalls = useRef<Set<string>>(new Set());
     const pendingLocalAction = useRef<boolean>(false);
-    
+
     const { toast } = useToast();
     const location = useLocation();
     const navigate = useNavigate();
@@ -174,7 +174,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
 
             // P2: Track session.updated event before greeting
             let sessionUpdated = false;
-            
+
             // Session greeting tracking - persist across same session
             const SESSION_GREETING_KEY = 'iasted_last_greeting';
             const getGreetingContext = () => {
@@ -185,7 +185,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                         const now = Date.now();
                         const hour = new Date().getHours();
                         const currentPeriod = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
-                        
+
                         // If greeted within last 30 minutes AND same period of day, skip greeting
                         if (now - timestamp < 30 * 60 * 1000 && period === currentPeriod) {
                             return 'already_greeted';
@@ -194,7 +194,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                 } catch { }
                 return 'should_greet';
             };
-            
+
             const markGreeted = () => {
                 try {
                     const hour = new Date().getHours();
@@ -205,24 +205,24 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                     }));
                 } catch { }
             };
-            
+
             dc.onopen = () => {
                 console.log('Data Channel Open');
                 setVoiceState('listening');
                 updateSession(voice, systemPrompt); // Send initial config
             };
-            
+
             // Single message handler that handles all events
             dc.onmessage = (e: MessageEvent) => {
                 const event = JSON.parse(e.data);
-                
+
                 // P2: Wait for session.updated before triggering greeting
                 if (event.type === 'session.updated' && !sessionUpdated) {
                     sessionUpdated = true;
                     console.log('✅ [WebRTC] Session.updated reçu');
-                    
+
                     const greetingContext = getGreetingContext();
-                    
+
                     if (dc.readyState === 'open') {
                         if (greetingContext === 'already_greeted') {
                             console.log('👂 [WebRTC] Déjà salué cette session - mode écoute');
@@ -246,7 +246,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                         }
                     }
                 }
-                
+
                 // Forward to main handler
                 handleServerEvent(event);
             };
@@ -556,9 +556,9 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                                 recipient_org: { type: 'string', description: 'Organisation du destinataire' },
                                 recipient_email: { type: 'string', description: 'Email du destinataire (obligatoire pour envoi)' },
                                 subject: { type: 'string', description: 'Objet du courrier' },
-                                content_points: { 
-                                    type: 'array', 
-                                    items: { type: 'string' }, 
+                                content_points: {
+                                    type: 'array',
+                                    items: { type: 'string' },
                                     description: 'OBLIGATOIRE: 3-5 paragraphes de contenu. Chaque paragraphe doit être complet et professionnel.'
                                 },
                                 template: { type: 'string', enum: ['courrier', 'lettre', 'note_service'], description: 'Template à utiliser (défaut: courrier)' },
@@ -582,6 +582,32 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                                 document_id: { type: 'string', description: 'ID du document à joindre (optionnel)' }
                             },
                             required: ['recipient_email', 'subject']
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'send_to_icorrespondance',
+                        description: 'Envoyer un document/courrier vers iCorrespondance pour créer un dossier officiel. Utiliser quand l\'utilisateur dit "envoie par correspondance", "via icorrespondance" ou veut créer un dossier de correspondance officielle (PAS un email).',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                recipient: { type: 'string', description: 'Nom du destinataire' },
+                                recipient_org: { type: 'string', description: 'Organisation du destinataire' },
+                                document_id: { type: 'string', description: 'ID du document à envoyer (optionnel, utilise le dernier généré)' }
+                            }
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'send_to_iboite',
+                        description: 'Envoyer un document/courrier via iBoîte (messagerie interne). Utiliser pour envoyer à un collaborateur ou contact interne, quand l\'utilisateur dit "envoie par iBoîte", "envoie par messagerie" ou "envoie à [nom collaborateur]".',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                recipient: { type: 'string', description: 'Nom du destinataire (collaborateur)' },
+                                subject: { type: 'string', description: 'Objet du message' },
+                                document_id: { type: 'string', description: 'ID du document à joindre (optionnel)' }
+                            }
                         }
                     },
                     // ============= DOCUMENT VAULT TOOLS =============
@@ -837,29 +863,29 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                         const result = matchLocalCommand(transcript);
                         if (result.matched && result.toolName) {
                             console.log(`✅ [LocalRouter] Match trouvé: ${result.toolName}`);
-                            
+
                             // P3: Mark that a local action is pending - prevents API from duplicating
                             pendingLocalAction.current = true;
-                            
+
                             // P0 FIX: Cancel API response BEFORE executing local action
                             // This prevents the API from generating a conflicting response
                             if (dataChannel.current?.readyState === 'open') {
                                 console.log('🛑 [P0] Envoi response.cancel AVANT exécution locale');
                                 dataChannel.current.send(JSON.stringify({ type: 'response.cancel' }));
                             }
-                            
+
                             // Small delay to ensure cancel is processed before execution
                             setTimeout(() => {
                                 console.log(`🚀 [LocalRouter] Exécution: ${result.toolName}`);
                                 handleLocalToolCall(result);
                                 recordRequest('local', 0);
-                                
+
                                 // Reset pending flag after a short delay
                                 setTimeout(() => {
                                     pendingLocalAction.current = false;
                                 }, 500);
                             }, 50);
-                            
+
                             break;
                         }
                     }
@@ -897,13 +923,13 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                 break;
             case 'response.done':
                 setVoiceState('listening'); // Back to listening after response
-                
+
                 // P3: Skip API tool calls if local action was just processed
                 if (pendingLocalAction.current) {
                     console.log('⏭️ [P3] Skip API tool calls - local action en cours');
                     break;
                 }
-                
+
                 if (event.response?.output) {
                     event.response.output.forEach((item: any) => {
                         if (item.type === 'function_call') {
@@ -1023,12 +1049,12 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                     output: JSON.stringify({ success: true, message: toolResult })
                 }
             }));
-            
+
             // P3: Only trigger response.create for non-navigation/non-UI actions
             // Navigation and UI actions don't need verbal acknowledgment (reduces latency)
             const silentActions = ['control_ui', 'manage_chat', 'navigate_app', 'global_navigate', 'toggle_sidebar'];
             const isSilentAction = silentActions.some(a => name.includes(a) || name === a);
-            
+
             if (!isSilentAction) {
                 // Trigger response to acknowledge the action verbally
                 dataChannel.current.send(JSON.stringify({ type: 'response.create' }));

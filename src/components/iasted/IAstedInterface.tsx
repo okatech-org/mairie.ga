@@ -1418,6 +1418,94 @@ export default function IAstedInterface({
             }
         }
 
+        // Outil pour envoyer un document vers iCorrespondance (dossiers de correspondance officielle)
+        if (toolName === 'send_to_icorrespondance') {
+            console.log('📬 [IAstedInterface] Envoi vers iCorrespondance:', args);
+
+            try {
+                // Récupérer le document en attente ou le dernier document généré
+                const docToSend = pendingDocument || args;
+
+                if (!docToSend?.id && !docToSend?.url && !docToSend?.name) {
+                    return {
+                        success: false,
+                        message: 'Aucun document à envoyer. Créez d\'abord un courrier avec la commande de génération.'
+                    };
+                }
+
+                // Naviguer vers iCorrespondance avec le document en state
+                navigate('/icorrespondance', {
+                    state: {
+                        newCorrespondance: true,
+                        document: {
+                            id: docToSend.id,
+                            name: docToSend.name || 'Document',
+                            url: docToSend.url,
+                            type: docToSend.type || 'application/pdf',
+                            size: docToSend.size || 'N/A',
+                            recipient: args.recipient || docToSend.recipient,
+                            recipientOrg: args.recipient_org || docToSend.recipientOrg,
+                        }
+                    }
+                });
+
+                toast.success('📬 Navigation vers iCorrespondance pour envoi officiel');
+
+                // Garder le document en attente pour permettre des modifications
+                // setPendingDocument(null);
+
+                return {
+                    success: true,
+                    message: 'Navigation vers iCorrespondance. Vous pouvez maintenant créer un dossier et envoyer le courrier.'
+                };
+            } catch (error: any) {
+                console.error('❌ [IAstedInterface] Erreur envoi vers iCorrespondance:', error);
+                toast.error(`Erreur: ${error.message}`);
+                return {
+                    success: false,
+                    message: `Erreur: ${error.message}`
+                };
+            }
+        }
+
+        // Outil pour envoyer un document via iBoîte (messagerie interne)
+        if (toolName === 'send_to_iboite') {
+            console.log('📧 [IAstedInterface] Envoi vers iBoîte:', args);
+
+            try {
+                const docToSend = pendingDocument || args;
+
+                // Naviguer vers iBoîte avec le document et le destinataire
+                navigate('/iboite', {
+                    state: {
+                        newMessage: true,
+                        attachment: docToSend?.id || docToSend?.url ? {
+                            id: docToSend.id,
+                            name: docToSend.name || 'Document',
+                            url: docToSend.url,
+                            type: docToSend.type || 'application/pdf',
+                        } : null,
+                        recipient: args.recipient,
+                        subject: args.subject || docToSend?.subject,
+                    }
+                });
+
+                toast.success('📧 Navigation vers iBoîte pour envoi interne');
+
+                return {
+                    success: true,
+                    message: 'Navigation vers iBoîte. Sélectionnez un destinataire et envoyez le message.'
+                };
+            } catch (error: any) {
+                console.error('❌ [IAstedInterface] Erreur envoi vers iBoîte:', error);
+                toast.error(`Erreur: ${error.message}`);
+                return {
+                    success: false,
+                    message: `Erreur: ${error.message}`
+                };
+            }
+        }
+
         if (toolName === 'read_correspondence') {
             console.log('📬 [IAstedInterface] Lecture correspondance:', args);
 

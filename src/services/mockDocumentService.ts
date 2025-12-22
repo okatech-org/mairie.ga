@@ -487,13 +487,19 @@ export async function generateDocumentPDF(doc: MockDocument): Promise<{ url: str
             break;
 
         default:
-            // Générer un PDF générique
+            // Générer un PDF générique avec contenu contextualisé
+            // Utiliser le contenu passé en paramètre ou générer un contenu basé sur le nom
+            const defaultContent = doc.generatorParams?.content || [
+                `Ce document fait référence à : ${doc.name}.`,
+                'Pour plus de détails, veuillez consulter les pièces jointes ou contacter le service émetteur.',
+                `Document généré le ${new Date().toLocaleDateString('fr-FR')}.`
+            ];
             result = await generateAdminPDF(
-                doc.name,
-                'Mairie de Libreville',
-                'Destinataire',
-                doc.date,
-                ['Contenu du document.']
+                doc.generatorParams?.title || doc.name,
+                doc.generatorParams?.senderOrg || 'Mairie de Libreville',
+                doc.generatorParams?.recipientOrg || 'Destinataire',
+                doc.generatorParams?.date || doc.date || new Date().toISOString(),
+                defaultContent
             );
     }
 
