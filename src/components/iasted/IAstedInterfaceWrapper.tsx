@@ -100,13 +100,40 @@ export default function IAstedInterfaceWrapper() {
     }
   }, [authUser, authLoading, demoUser]);
 
+  // Détecter le contexte basé sur la route actuelle
+  const getRouteContext = (pathname: string): string | null => {
+    // Dashboard du Maire
+    if (pathname.startsWith('/dashboard/maire')) return 'maire';
+    // Dashboard Super Admin
+    if (pathname.startsWith('/dashboard/super-admin')) return 'super_admin';
+    // Dashboard Agent
+    if (pathname.startsWith('/dashboard/agent')) return 'agent';
+    // Dashboard Citoyen
+    if (pathname.startsWith('/dashboard/citizen')) return 'citizen';
+    // Dashboard Admin général
+    if (pathname.startsWith('/admin') || pathname.startsWith('/dashboard/admin')) return 'admin';
+    return null;
+  };
+
   // Mapper les rôles du système municipal vers les rôles iAsted
-  const mapUserRole = (role?: string): string => {
+  const mapUserRole = (role?: string, routeContext?: string | null): string => {
     if (!role) return 'unknown';
 
     const upperRole = role.toUpperCase();
 
-    // Rôles précis de user_environments ou user_roles
+    // PRIORITÉ 1: Le contexte de la route (si l'utilisateur est sur /dashboard/maire, c'est le maire)
+    if (routeContext) {
+      console.log('🔐 [IAstedWrapper] Contexte de route détecté:', routeContext);
+      // Si l'utilisateur a un rôle admin mais est sur le dashboard maire, c'est le maire
+      if (routeContext === 'maire' && (upperRole === 'ADMIN' || upperRole === 'MAIRE')) {
+        return 'maire';
+      }
+      // Retourner le contexte de route si compatible avec le rôle
+      if (routeContext === 'super_admin' && upperRole === 'SUPER_ADMIN') return 'super_admin';
+      if (routeContext === 'agent' && (upperRole === 'AGENT' || upperRole === 'AGENT_MUNICIPAL')) return 'agent';
+    }
+
+    // PRIORITÉ 2: Rôles précis de user_environments ou user_roles
     switch (upperRole) {
       // Personnel municipal - Élus
       case 'MAIRE':
@@ -133,10 +160,10 @@ export default function IAstedInterfaceWrapper() {
       case 'SUPER_ADMIN':
         return 'super_admin';
       
-      // Le rôle 'admin' de user_roles peut être un maire ou un admin selon le contexte
-      // Priorité donnée à user_environments donc si on arrive ici avec 'admin', 
-      // c'est un admin système, pas un maire
+      // Le rôle 'admin' - vérifier le contexte de la route
       case 'ADMIN':
+        // Si on est sur le dashboard du maire avec rôle admin, c'est le maire
+        if (routeContext === 'maire') return 'maire';
         return 'admin';
 
       // Usagers - Citoyens
@@ -164,7 +191,15 @@ export default function IAstedInterfaceWrapper() {
     }
   };
 
-  const mappedRole = mapUserRole(userRole);
+  const routeContext = getRouteContext(location.pathname);
+  const mappedRole = mapUserRole(userRole, routeContext);
+  
+  console.log('🔐 [IAstedWrapper] Role mapping:', { 
+    originalRole: userRole, 
+    routeContext, 
+    mappedRole,
+    pathname: location.pathname 
+  });
 
   return (
     <IAstedInterface
