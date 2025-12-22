@@ -435,7 +435,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                     {
                         type: 'function',
                         name: 'generate_document',
-                        description: 'Générer un document officiel (note de service, lettre, arrêté, attestation, etc.) en PDF ou DOCX. IMPORTANT: Le chat iAsted s\'ouvre automatiquement pour afficher le document. Rédige le contenu complet dans content_points.',
+                        description: 'Générer UN SEUL document officiel (note de service, lettre, arrêté, attestation, etc.) en PDF. IMPORTANT: Rédige le contenu complet dans content_points avec au moins 3 paragraphes professionnels. NE génère qu\'UN seul document par demande.',
                         parameters: {
                             type: 'object',
                             properties: {
@@ -455,7 +455,7 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                                 content_points: {
                                     type: 'array',
                                     items: { type: 'string' },
-                                    description: 'Liste des paragraphes du corps du document. Rédige CHAQUE point en phrases complètes et professionnelles. Ex: ["Il est rappelé à l\'ensemble des collaborateurs que la ponctualité est essentielle au bon fonctionnement des services.", "Le traitement des dossiers doit être effectué dans les délais impartis.", "L\'accueil des citoyens doit se faire avec courtoisie et professionnalisme."]'
+                                    description: 'OBLIGATOIRE: Liste de 3 à 5 paragraphes du corps du document. Chaque paragraphe doit faire au moins 2 phrases complètes et professionnelles. Exemple: ["Nous avons l\'honneur de porter à votre attention que le traitement des dossiers nécessite une attention particulière. Il est essentiel que chaque agent respecte les délais impartis.", "Dans ce cadre, il est rappelé que la qualité du service public repose sur l\'engagement de chacun. Nous comptons sur votre professionnalisme.", "Veuillez prendre les dispositions nécessaires pour assurer le bon fonctionnement des services. Tout manquement sera sanctionné."]'
                                 },
                                 format: {
                                     type: 'string',
@@ -548,16 +548,21 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                     {
                         type: 'function',
                         name: 'create_correspondence',
-                        description: 'Créer un courrier officiel en PDF. Réservé au Maire, Adjoint, et Secrétaire Général.',
+                        description: 'Créer et enregistrer un courrier officiel dans le système de correspondance. À utiliser pour la correspondance inter-services/inter-administrations. NE PAS utiliser si generate_document a déjà été appelé pour le même courrier.',
                         parameters: {
                             type: 'object',
                             properties: {
                                 recipient: { type: 'string', description: 'Nom du destinataire' },
                                 recipient_org: { type: 'string', description: 'Organisation du destinataire' },
-                                recipient_email: { type: 'string', description: 'Email du destinataire (optionnel)' },
+                                recipient_email: { type: 'string', description: 'Email du destinataire (obligatoire pour envoi)' },
                                 subject: { type: 'string', description: 'Objet du courrier' },
-                                content_points: { type: 'array', items: { type: 'string' }, description: 'Points clés du contenu' },
-                                template: { type: 'string', description: 'Template à utiliser (défaut: courrier)' }
+                                content_points: { 
+                                    type: 'array', 
+                                    items: { type: 'string' }, 
+                                    description: 'OBLIGATOIRE: 3-5 paragraphes de contenu. Chaque paragraphe doit être complet et professionnel.'
+                                },
+                                template: { type: 'string', enum: ['courrier', 'lettre', 'note_service'], description: 'Template à utiliser (défaut: courrier)' },
+                                send_immediately: { type: 'boolean', description: 'Envoyer immédiatement par email (défaut: false)' }
                             },
                             required: ['recipient', 'recipient_org', 'subject', 'content_points']
                         }
@@ -565,16 +570,18 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                     {
                         type: 'function',
                         name: 'send_correspondence',
-                        description: 'Envoyer une correspondance par email. Réservé au Maire, Adjoint, et Secrétaire Général.',
+                        description: 'Envoyer un courrier déjà créé par email. Utiliser APRÈS create_correspondence ou generate_document.',
                         parameters: {
                             type: 'object',
                             properties: {
-                                recipient_email: { type: 'string', description: 'Email du destinataire' },
+                                recipient_email: { type: 'string', description: 'Email du destinataire (OBLIGATOIRE)' },
+                                recipient_name: { type: 'string', description: 'Nom du destinataire' },
+                                recipient_org: { type: 'string', description: 'Organisation du destinataire' },
                                 subject: { type: 'string', description: 'Objet de l\'email' },
-                                body: { type: 'string', description: 'Corps du message' },
-                                document_id: { type: 'string', description: 'ID du document à joindre' }
+                                body: { type: 'string', description: 'Corps du message d\'accompagnement' },
+                                document_id: { type: 'string', description: 'ID du document à joindre (optionnel)' }
                             },
-                            required: ['recipient_email']
+                            required: ['recipient_email', 'subject']
                         }
                     },
                     // ============= DOCUMENT VAULT TOOLS =============
