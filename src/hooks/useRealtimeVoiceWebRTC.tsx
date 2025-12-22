@@ -33,7 +33,7 @@ function isNoisyTranscription(text: string): boolean {
     const nonLatinPattern = /[\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\uAC00-\uD7AF\u0900-\u097F\u0600-\u06FF\u0590-\u05FF]/;
     if (nonLatinPattern.test(text)) return true;
 
-    // Common noise phrases from Whisper misinterpretation
+    // Common noise phrases from Whisper misinterpretation (P2: Extended noise filter)
     const noisePatterns = [
         /^(thanks?|thank you)\.?$/i,
         /^(ok|okay)\.?$/i,
@@ -41,8 +41,18 @@ function isNoisyTranscription(text: string): boolean {
         /^(um+|uh+|hmm+|huh)\.?$/i,
         /^(hi|hey|hello)\.?$/i,
         /^[\.\,\!\?]+$/,
-        /^(mbc|cnn|bbc|abc)/i, // TV channel names from background
+        /^(mbc|cnn|bbc|abc|tf1|france\s*\d)/i, // TV channel names from background
         /^un+o+t?$/i, // Random syllables
+        // P2: Additional noise patterns
+        /sous[- ]?titres?\s*(realis|par|fr)/i, // Subtitles attribution
+        /musique\s*(de\s*fond)?/i, // Background music mentions
+        /\[.*\]/i, // Bracketed content like [Musique]
+        /\(.*\)/i, // Parenthesized content like (Musique)
+        /^[\*\~\#\@\^\&]+$/i, // Special characters only
+        /^(la|le|les|un|une|des|de|du|et|ou|mais)$/i, // Single French articles
+        /abonne[z-]*toi/i, // YouTube subscribe prompts
+        /like.*video/i, // YouTube like prompts
+        /^(oui|non|si)\.?$/i, // Single word yes/no
     ];
 
     for (const pattern of noisePatterns) {
@@ -157,26 +167,41 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             const dc = pc.createDataChannel('oai-events');
             dataChannel.current = dc;
 
+            // P2: Track session.updated event before greeting
+            let sessionUpdated = false;
+            
             dc.onopen = () => {
                 console.log('Data Channel Open');
                 setVoiceState('listening');
                 updateSession(voice, systemPrompt); // Send initial config
-
-                // IMPORTANT: Trigger iAsted greeting AFTER session update is processed
-                // Using presidence.ga approach: response.create with explicit instructions
-                setTimeout(() => {
+            };
+            
+            // Separate message handler to detect session.updated
+            const handleInitialEvents = (e: MessageEvent) => {
+                const event = JSON.parse(e.data);
+                
+                // P2: Wait for session.updated before triggering greeting
+                if (event.type === 'session.updated' && !sessionUpdated) {
+                    sessionUpdated = true;
+                    console.log('✅ [WebRTC] Session.updated reçu, déclenchement de la salutation');
+                    
                     if (dc.readyState === 'open') {
                         console.log('👋 [WebRTC] Déclenchement de la salutation initiale contextuelle');
                         dc.send(JSON.stringify({
                             type: 'response.create',
                             response: {
                                 modalities: ['text', 'audio'],
-                                instructions: `Tu viens d'être activé. Salue IMMÉDIATEMENT l'utilisateur en utilisant son titre exact tel qu'indiqué dans tes instructions système. NE demande PAS son identité. Tu la connais. Sois bref et professionnel.`
+                                instructions: `Tu viens d'être activé. Salue IMMÉDIATEMENT l'utilisateur en utilisant son titre exact tel qu'indiqué dans tes instructions système. NE demande PAS son identité. Tu la connais. Sois bref et professionnel. Parle en français UNIQUEMENT.`
                             }
                         }));
                     }
-                }, 1000); // 1 seconde de délai pour que session.update soit traité
+                }
+                
+                // Forward to main handler
+                handleServerEvent(event);
             };
+            
+            dc.onmessage = handleInitialEvents;
 
             dc.onmessage = (e) => {
                 const event = JSON.parse(e.data);
@@ -761,14 +786,19 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                     if (USE_LOCAL_ROUTER) {
                         const result = matchLocalCommand(transcript);
                         if (result.matched && result.toolName) {
-                            console.log(`✅ [LocalRouter] Executing locally: ${result.toolName}`);
-                            handleLocalToolCall(result);
-                            recordRequest('local', 0);
-
-                            // Cancel the pending API response to save costs
+                            console.log(`✅ [LocalRouter] Match trouvé: ${result.toolName}`);
+                            
+                            // P0 FIX: Cancel API response BEFORE executing local action
+                            // This prevents the API from generating a conflicting response
                             if (dataChannel.current?.readyState === 'open') {
+                                console.log('🛑 [P0] Envoi response.cancel AVANT exécution locale');
                                 dataChannel.current.send(JSON.stringify({ type: 'response.cancel' }));
                             }
+                            
+                            // Now execute the local action
+                            console.log(`🚀 [LocalRouter] Exécution: ${result.toolName}`);
+                            handleLocalToolCall(result);
+                            recordRequest('local', 0);
                             break;
                         }
                     }
@@ -862,37 +892,62 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
     };
 
     const handleToolCall = async (item: any) => {
-        const { name, arguments: argsString } = item;
+        const { name, arguments: argsString, call_id } = item;
 
         let args: any = {};
         try {
             args = JSON.parse(argsString || '{}');
         } catch (e) {
             console.warn(`⚠️ [handleToolCall] JSON parse error for ${name}:`, e);
-            // Try to extract what we can from malformed JSON
             args = {};
         }
 
         console.log(`🔧 Tool Call: ${name}`, args);
 
-        if (name === 'stop_conversation') {
-            disconnect();
-            return;
-        }
+        let toolResult = 'Action exécutée avec succès.';
 
-        if (name === 'change_voice') {
+        if (name === 'stop_conversation') {
+            toolResult = 'Conversation terminée.';
+            disconnect();
+        } else if (name === 'change_voice') {
             const nextVoice = currentVoice === 'shimmer' ? 'ash' : 'shimmer';
             changeVoice(nextVoice);
-            // Send output to acknowledge?
-        }
-
-        if (onToolCall) {
+            toolResult = `Voix changée vers ${nextVoice === 'shimmer' ? 'féminine' : 'masculine'}.`;
+        } else if (onToolCall) {
             onToolCall(name, args);
+            // Generate contextual result based on tool
+            if (name === 'control_ui') {
+                if (args.action === 'set_theme_dark') toolResult = 'Mode sombre activé.';
+                else if (args.action === 'set_theme_light') toolResult = 'Mode clair activé.';
+                else if (args.action === 'toggle_theme') toolResult = 'Thème changé.';
+                else if (args.action === 'toggle_sidebar') toolResult = 'Menu basculé.';
+            } else if (name === 'manage_chat') {
+                if (args.action === 'open') toolResult = 'Fenêtre de chat ouverte.';
+                else if (args.action === 'close') toolResult = 'Fenêtre de chat fermée.';
+                else if (args.action === 'clear') toolResult = 'Conversation effacée.';
+            } else if (name === 'navigate_app' || name === 'global_navigate') {
+                toolResult = `Navigation vers ${args.path || args.query || 'la page demandée'}.`;
+            } else if (name === 'generate_document') {
+                toolResult = `Document ${args.type || ''} en cours de génération.`;
+            }
         }
 
-        // We should send tool output back to OpenAI if needed, 
-        // but for now we just execute the side effect.
-        // Ideally: send 'conversation.item.create' with type 'function_call_output'
+        // P0 FIX: Send function_call_output back to OpenAI
+        // This informs the model of the action result so it can respond appropriately
+        if (dataChannel.current?.readyState === 'open' && call_id) {
+            console.log(`📤 [P0] Envoi function_call_output pour ${name}: ${toolResult}`);
+            dataChannel.current.send(JSON.stringify({
+                type: 'conversation.item.create',
+                item: {
+                    type: 'function_call_output',
+                    call_id: call_id,
+                    output: JSON.stringify({ success: true, message: toolResult })
+                }
+            }));
+            
+            // Trigger response to acknowledge the action
+            dataChannel.current.send(JSON.stringify({ type: 'response.create' }));
+        }
     };
 
     const sendMessage = (text: string) => {
