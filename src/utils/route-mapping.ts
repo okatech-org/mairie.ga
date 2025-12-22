@@ -112,12 +112,66 @@ export const ROUTE_MAP: RouteInfo[] = [
         description: 'Tableau de bord résident étranger'
     },
 
-    // ========== MUNICIPAL STAFF - DIRECTION ==========
+    // ========== MUNICIPAL STAFF - MAIRE ==========
     {
         path: '/dashboard/maire',
-        aliases: ['cockpit', 'espace maire', 'cockpit maire', 'tableau de bord maire', 'direction', 'pilotage'],
+        aliases: ['cockpit', 'espace maire', 'cockpit maire', 'tableau de bord maire', 'direction', 'pilotage', 'accueil maire', 'mon espace'],
         role: 'maire',
         description: 'Cockpit du Maire'
+    },
+    {
+        path: '/dashboard/maire/budget',
+        aliases: ['budget', 'finances', 'gestion budgétaire', 'budget municipal', 'trésorerie', 'finances municipales', 'section budget', 'page budget'],
+        role: 'maire',
+        description: 'Gestion du budget municipal'
+    },
+    {
+        path: '/dashboard/maire/deliberations',
+        aliases: ['délibérations', 'deliberations', 'conseil municipal', 'décisions', 'votes', 'séances'],
+        role: 'maire',
+        description: 'Délibérations du conseil municipal'
+    },
+    {
+        path: '/dashboard/maire/arretes',
+        aliases: ['arrêtés', 'arretes', 'arrêtés municipaux', 'décrets', 'ordonnances'],
+        role: 'maire',
+        description: 'Arrêtés municipaux'
+    },
+    {
+        path: '/dashboard/maire/analytics',
+        aliases: ['statistiques maire', 'analytics maire', 'indicateurs', 'métriques municipales', 'tableau de bord analytique'],
+        role: 'maire',
+        description: 'Statistiques et indicateurs'
+    },
+    {
+        path: '/dashboard/maire/agenda',
+        aliases: ['agenda maire', 'calendrier maire', 'planning maire', 'rendez-vous maire', 'emploi du temps'],
+        role: 'maire',
+        description: 'Agenda du Maire'
+    },
+    {
+        path: '/dashboard/maire/urbanisme',
+        aliases: ['urbanisme', 'permis de construire', 'construction', 'aménagement', 'plan local', 'PLU'],
+        role: 'maire',
+        description: 'Urbanisme et permis'
+    },
+    {
+        path: '/dashboard/maire/documents',
+        aliases: ['documents maire', 'archives', 'dossiers officiels', 'documents officiels'],
+        role: 'maire',
+        description: 'Documents officiels'
+    },
+    {
+        path: '/dashboard/maire/communications',
+        aliases: ['communications', 'presse', 'médias', 'actualités mairie', 'communiqués'],
+        role: 'maire',
+        description: 'Communications officielles'
+    },
+    {
+        path: '/dashboard/maire/contacts',
+        aliases: ['contacts maire', 'annuaire mairie', 'répertoire'],
+        role: 'maire',
+        description: 'Annuaire des contacts'
     },
     {
         path: '/dashboard/sg',
@@ -147,29 +201,29 @@ export const ROUTE_MAP: RouteInfo[] = [
     },
     {
         path: '/dashboard/agent/appointments',
-        aliases: ['rendez-vous', 'rdv', 'appointments', 'agenda', 'planning', 'calendrier'],
+        aliases: ['rendez-vous agent', 'rdv agent', 'appointments', 'agenda agent', 'planning agent', 'calendrier agent'],
         role: 'agent',
         description: 'Gestion des rendez-vous'
     },
 
-    // ========== ADMIN DASHBOARD ==========
+    // ========== ADMIN DASHBOARD (pour les directeurs, pas le Maire) ==========
     {
         path: '/admin',
         aliases: ['admin', 'administration', 'espace admin', 'dashboard admin', 'back office'],
         role: 'admin',
-        description: 'Espace administration'
+        description: 'Espace administration technique'
     },
     {
         path: '/dashboard/admin/agents',
-        aliases: ['agents', 'personnel', 'gestion agents', 'liste agents', 'équipe', 'collaborateurs', 'employés', 'mes agents', 'mon équipe'],
+        aliases: ['gestion agents admin', 'personnel admin'],
         role: 'admin',
-        description: 'Gestion des agents/personnel'
+        description: 'Gestion des agents (Admin)'
     },
     {
         path: '/dashboard/admin/settings',
-        aliases: ['paramètres mairie', 'configuration mairie', 'settings admin', 'paramètres admin', 'configuration'],
+        aliases: ['paramètres admin', 'configuration admin'],
         role: 'admin',
-        description: 'Paramètres de la mairie'
+        description: 'Paramètres (Admin)'
     },
 
     // ========== SUPER ADMIN DASHBOARD ==========
@@ -247,12 +301,17 @@ export const ROUTE_MAP: RouteInfo[] = [
 /**
  * Resolve a natural language query to an actual route
  * Uses fuzzy matching on aliases with priority scoring
+ * IMPORTANT: Prend en compte le rôle de l'utilisateur et la route actuelle
  */
-export function resolveRoute(query: string): string | null {
+export function resolveRoute(query: string, userRole?: string, currentPath?: string): string | null {
     if (!query) return null;
 
     const normalizedQuery = query.toLowerCase().trim();
-    console.log(`🔍 [resolveRoute] Searching for: "${normalizedQuery}"`);
+    console.log(`🔍 [resolveRoute] Searching for: "${normalizedQuery}", role: ${userRole}, currentPath: ${currentPath}`);
+
+    // Détecter le contexte à partir de la route actuelle si le rôle n'est pas fourni
+    const effectiveRole = userRole || detectRoleFromPath(currentPath);
+    console.log(`🔍 [resolveRoute] Effective role: ${effectiveRole}`);
 
     // Exact path match first (if user says the exact path)
     const exactPathMatch = ROUTE_MAP.find(route => route.path.toLowerCase() === normalizedQuery);
@@ -291,6 +350,17 @@ export function resolveRoute(query: string): string | null {
             score = Math.max(score, 25);
         }
 
+        // BONUS: Si la route correspond au rôle de l'utilisateur, augmenter le score
+        if (score > 0 && route.role && effectiveRole) {
+            if (route.role === effectiveRole || 
+                (effectiveRole === 'maire' && route.role === 'maire') ||
+                (effectiveRole === 'admin' && route.path.startsWith('/dashboard/maire'))) {
+                // Si l'utilisateur est maire ou admin sur le dashboard maire, prioriser les routes maire
+                score += 50;
+                console.log(`📈 [resolveRoute] Bonus role match: ${route.path} +50`);
+            }
+        }
+
         // Update best match
         if (score > 0 && (!bestMatch || score > bestMatch.score)) {
             bestMatch = { route, score };
@@ -307,14 +377,36 @@ export function resolveRoute(query: string): string | null {
 }
 
 /**
- * Get route information for system prompt
+ * Détecte le rôle à partir du chemin actuel
  */
-export function getRouteKnowledgePrompt(): string {
-    const routeList = ROUTE_MAP.map(route =>
+function detectRoleFromPath(path?: string): string | null {
+    if (!path) return null;
+    
+    if (path.startsWith('/dashboard/maire')) return 'maire';
+    if (path.startsWith('/dashboard/super-admin')) return 'super_admin';
+    if (path.startsWith('/dashboard/agent')) return 'agent';
+    if (path.startsWith('/dashboard/citizen')) return 'citizen';
+    if (path.startsWith('/dashboard/admin') || path.startsWith('/admin')) return 'admin';
+    if (path.startsWith('/dashboard/foreigner')) return 'foreigner';
+    
+    return null;
+}
+
+/**
+ * Get route information for system prompt
+ * Génère une liste de routes adaptée au rôle de l'utilisateur
+ */
+export function getRouteKnowledgePrompt(userRole?: string): string {
+    // Filtrer les routes selon le rôle si fourni
+    const filteredRoutes = userRole 
+        ? ROUTE_MAP.filter(route => !route.role || route.role === userRole || route.role === 'public')
+        : ROUTE_MAP;
+
+    const routeList = filteredRoutes.map(route =>
         `- **${route.path}** : ${route.description}\n  Aliases: ${route.aliases.slice(0, 5).join(', ')}${route.aliases.length > 5 ? '...' : ''}`
     ).join('\n');
 
-    return `# CARTOGRAPHIE DES ROUTES DISPONIBLES\n${routeList}\n\nIMPORTANT: Utilise TOUJOURS ces chemins exacts. Si l'utilisateur demande "page d'accueil" ou "home", utilise "/" et NON "/home".`;
+    return `# CARTOGRAPHIE DES ROUTES DISPONIBLES\n${routeList}\n\nIMPORTANT: Utilise TOUJOURS ces chemins exacts. NE JAMAIS inventer de routes comme /dashboard/admin/budget. Si l'utilisateur demande "budget", utilise la route correspondante à son rôle.`;
 }
 
 /**
@@ -322,4 +414,42 @@ export function getRouteKnowledgePrompt(): string {
  */
 export function getRoutesForRole(role: string): RouteInfo[] {
     return ROUTE_MAP.filter(route => !route.role || route.role === role);
+}
+
+/**
+ * Résout une destination en tenant compte du contexte du Maire
+ * IMPORTANT: Cette fonction est utilisée pour éviter les erreurs de navigation
+ */
+export function resolveRouteForMaire(query: string): string | null {
+    const normalizedQuery = query.toLowerCase().trim();
+    
+    // Mapping direct pour les sections du Maire
+    const maireRouteMap: Record<string, string> = {
+        'budget': '/dashboard/maire/budget',
+        'finances': '/dashboard/maire/budget',
+        'délibérations': '/dashboard/maire/deliberations',
+        'deliberations': '/dashboard/maire/deliberations',
+        'arrêtés': '/dashboard/maire/arretes',
+        'arretes': '/dashboard/maire/arretes',
+        'urbanisme': '/dashboard/maire/urbanisme',
+        'agenda': '/dashboard/maire/agenda',
+        'calendrier': '/dashboard/maire/agenda',
+        'statistiques': '/dashboard/maire/analytics',
+        'analytics': '/dashboard/maire/analytics',
+        'documents': '/dashboard/maire/documents',
+        'communications': '/dashboard/maire/communications',
+        'contacts': '/dashboard/maire/contacts',
+        'accueil': '/dashboard/maire',
+        'cockpit': '/dashboard/maire',
+        'tableau de bord': '/dashboard/maire',
+    };
+    
+    for (const [keyword, path] of Object.entries(maireRouteMap)) {
+        if (normalizedQuery.includes(keyword)) {
+            console.log(`✅ [resolveRouteForMaire] Direct match: "${keyword}" → ${path}`);
+            return path;
+        }
+    }
+    
+    return null;
 }

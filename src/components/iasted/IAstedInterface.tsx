@@ -773,9 +773,11 @@ export default function IAstedInterface({
 
         if (toolName === 'global_navigate') {
             console.log('🌍 [IAstedInterface] Navigation Globale:', args);
+            console.log('🔐 [IAstedInterface] Contexte navigation - userRole:', userRole, 'currentPath:', location.pathname);
 
-            // Use intelligent route resolution
-            const resolvedPath = resolveRoute(args.query);
+            // CRITICAL: Passer le rôle et la route actuelle pour une résolution contextuelle
+            // Cela évite les erreurs comme naviguer vers /dashboard/admin/budget au lieu de /dashboard/maire/budget
+            const resolvedPath = resolveRoute(args.query, userRole, location.pathname);
 
             if (resolvedPath) {
                 console.log(`✅ [IAstedInterface] Route resolved: "${args.query}" -> ${resolvedPath}`);
