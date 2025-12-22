@@ -24,29 +24,6 @@ export default function IAstedInterfaceWrapper() {
     console.log('🎭 [IAstedInterfaceWrapper] showPresentation changed:', showPresentation);
   }, [showPresentation]);
 
-  // Auto-trigger presentation for new visitors
-  useEffect(() => {
-    // Only trigger on home page
-    if (location.pathname === '/') {
-      // Check localStorage
-      const hasSeenPresentation = localStorage.getItem('hasSeenIAstedPresentation');
-
-      if (!hasSeenPresentation) {
-        console.log('🆕 [IAstedInterfaceWrapper] New visitor detected on Home, scheduling presentation...');
-
-        // Delay start to let the page load and user settle
-        const timer = setTimeout(() => {
-          if (!localStorage.getItem('hasSeenIAstedPresentation')) { // Double check
-            console.log('🎬 [IAstedInterfaceWrapper] Auto-starting presentation!');
-            startPresentation();
-            localStorage.setItem('hasSeenIAstedPresentation', 'true');
-          }
-        }, 3000); // 3 seconds delay
-
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [location.pathname, startPresentation]);
 
   useEffect(() => {
     const detectUserAndRole = async () => {
