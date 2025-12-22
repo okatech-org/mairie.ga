@@ -22,14 +22,11 @@ import {
   Briefcase,
   GraduationCap,
   Phone,
-  Mic,
   Calendar,
   Navigation,
   TestTube2
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { IAstedDemoButton } from "@/components/iasted/IAstedDemoButton";
-import { IAstedGuideInline } from "@/components/iasted/IAstedGuideInline";
 import { MairiesLogosSection } from "@/components/home/MairiesLogosSection";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
@@ -233,12 +230,6 @@ export default function Home() {
                     <TestTube2 className="h-5 w-5" />
                     Démo
                   </Button>
-                  <a href="#iasted-section">
-                    <Button size="lg" variant="outline" className="w-full sm:w-auto min-w-[180px] gap-2 h-12 text-base bg-violet-500/20 border-violet-400/40 text-white hover:bg-violet-500/30 backdrop-blur-sm animate-pulse hover:animate-none">
-                      <Mic className="h-5 w-5" />
-                      Découvrir iAsted
-                    </Button>
-                  </a>
                 </div>
 
                 {/* Features Mini Grid */}
@@ -367,74 +358,6 @@ export default function Home() {
       {/* Unified Map & Mairies Section - Combines "9 Provinces, 52 Communes" with "Les Communes Connectées" */}
       <MairiesLogosSection />
 
-      {/* iAsted Section */}
-      <section id="iasted-section" className="py-20 md:py-24 bg-gradient-to-br from-violet-500/5 via-background to-primary/5 overflow-hidden">
-        <div className="container mx-auto px-4">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Left - Visual */}
-            <div className="relative order-2 lg:order-1">
-              <div className="relative mx-auto w-72 h-72 md:w-96 md:h-96 flex items-center justify-center">
-                {/* Animated rings */}
-                <div className="absolute inset-0 rounded-full border-2 border-cyan-500/20 animate-ping" style={{ animationDuration: '3s' }} />
-                <div className="absolute inset-4 rounded-full border-2 border-cyan-500/30 animate-ping" style={{ animationDuration: '3s', animationDelay: '0.5s' }} />
-                <div className="absolute inset-8 rounded-full border-2 border-cyan-500/40 animate-ping" style={{ animationDuration: '3s', animationDelay: '1s' }} />
-
-                {/* Center - Demo iAsted Button (Real spherical visual) */}
-                <IAstedDemoButton size="md" />
-
-                {/* Floating feature cards */}
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-card rounded-xl p-3 shadow-lg border border-border animate-fade-in z-20" style={{ animationDelay: '0.2s' }}>
-                  <div className="flex items-center gap-2">
-                    <Mic className="h-4 w-4 text-cyan-500" />
-                    <span className="text-xs font-medium">Commande vocale</span>
-                  </div>
-                </div>
-
-                <div className="absolute top-1/4 -right-4 md:right-0 bg-card rounded-xl p-3 shadow-lg border border-border animate-fade-in z-20" style={{ animationDelay: '0.4s' }}>
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-primary" />
-                    <span className="text-xs font-medium">Documents</span>
-                  </div>
-                </div>
-
-                <div className="absolute bottom-1/4 -left-4 md:left-0 bg-card rounded-xl p-3 shadow-lg border border-border animate-fade-in z-20" style={{ animationDelay: '0.6s' }}>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-emerald-500" />
-                    <span className="text-xs font-medium">Rendez-vous</span>
-                  </div>
-                </div>
-
-                <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-card rounded-xl p-3 shadow-lg border border-border animate-fade-in z-20" style={{ animationDelay: '0.8s' }}>
-                  <div className="flex items-center gap-2">
-                    <Navigation className="h-4 w-4 text-orange-500" />
-                    <span className="text-xs font-medium">Navigation</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right - Content with inline guide */}
-            <div className="order-1 lg:order-2">
-              <Badge className="mb-4 bg-violet-500/20 text-violet-600 dark:text-violet-400 border-violet-500/30">
-                <Sparkles className="h-3 w-3 mr-1" />
-                Intelligence Artificielle
-              </Badge>
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                Rencontrez <span className="text-violet-500">iAsted</span>
-              </h2>
-              <p className="text-muted-foreground text-base mb-6">
-                Votre assistant municipal intelligent qui vous accompagne dans toutes vos démarches
-                administratives. Parlez-lui naturellement, il comprend et agit pour vous.
-              </p>
-
-              {/* Inline Guide */}
-              <div className="p-4 rounded-xl bg-card border border-border shadow-sm">
-                <IAstedGuideInline />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Programs Section */}
       <section className="py-20 md:py-24">
