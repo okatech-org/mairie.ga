@@ -170,41 +170,79 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             // P2: Track session.updated event before greeting
             let sessionUpdated = false;
             
+            // Session greeting tracking - persist across same session
+            const SESSION_GREETING_KEY = 'iasted_last_greeting';
+            const getGreetingContext = () => {
+                try {
+                    const stored = sessionStorage.getItem(SESSION_GREETING_KEY);
+                    if (stored) {
+                        const { timestamp, period } = JSON.parse(stored);
+                        const now = Date.now();
+                        const hour = new Date().getHours();
+                        const currentPeriod = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
+                        
+                        // If greeted within last 30 minutes AND same period of day, skip greeting
+                        if (now - timestamp < 30 * 60 * 1000 && period === currentPeriod) {
+                            return 'already_greeted';
+                        }
+                    }
+                } catch { }
+                return 'should_greet';
+            };
+            
+            const markGreeted = () => {
+                try {
+                    const hour = new Date().getHours();
+                    const period = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
+                    sessionStorage.setItem(SESSION_GREETING_KEY, JSON.stringify({
+                        timestamp: Date.now(),
+                        period
+                    }));
+                } catch { }
+            };
+            
             dc.onopen = () => {
                 console.log('Data Channel Open');
                 setVoiceState('listening');
                 updateSession(voice, systemPrompt); // Send initial config
             };
             
-            // Separate message handler to detect session.updated
-            const handleInitialEvents = (e: MessageEvent) => {
+            // Single message handler that handles all events
+            dc.onmessage = (e: MessageEvent) => {
                 const event = JSON.parse(e.data);
                 
                 // P2: Wait for session.updated before triggering greeting
                 if (event.type === 'session.updated' && !sessionUpdated) {
                     sessionUpdated = true;
-                    console.log('✅ [WebRTC] Session.updated reçu, déclenchement de la salutation');
+                    console.log('✅ [WebRTC] Session.updated reçu');
+                    
+                    const greetingContext = getGreetingContext();
                     
                     if (dc.readyState === 'open') {
-                        console.log('👋 [WebRTC] Déclenchement de la salutation initiale contextuelle');
-                        dc.send(JSON.stringify({
-                            type: 'response.create',
-                            response: {
-                                modalities: ['text', 'audio'],
-                                instructions: `Tu viens d'être activé. Salue IMMÉDIATEMENT l'utilisateur en utilisant son titre exact tel qu'indiqué dans tes instructions système. NE demande PAS son identité. Tu la connais. Sois bref et professionnel. Parle en français UNIQUEMENT.`
-                            }
-                        }));
+                        if (greetingContext === 'already_greeted') {
+                            console.log('👂 [WebRTC] Déjà salué cette session - mode écoute');
+                            dc.send(JSON.stringify({
+                                type: 'response.create',
+                                response: {
+                                    modalities: ['text', 'audio'],
+                                    instructions: `Tu es de nouveau connecté. Dis simplement "Je vous écoute" ou une variante courte et professionnelle. NE salue PAS de nouveau. L'utilisateur a déjà été salué récemment.`
+                                }
+                            }));
+                        } else {
+                            console.log('👋 [WebRTC] Déclenchement de la salutation initiale');
+                            markGreeted();
+                            dc.send(JSON.stringify({
+                                type: 'response.create',
+                                response: {
+                                    modalities: ['text', 'audio'],
+                                    instructions: `Tu viens d'être activé. Salue IMMÉDIATEMENT l'utilisateur en utilisant son titre exact tel qu'indiqué dans tes instructions système. NE demande PAS son identité. Tu la connais. Sois bref et professionnel. Parle en français UNIQUEMENT.`
+                                }
+                            }));
+                        }
                     }
                 }
                 
                 // Forward to main handler
-                handleServerEvent(event);
-            };
-            
-            dc.onmessage = handleInitialEvents;
-
-            dc.onmessage = (e) => {
-                const event = JSON.parse(e.data);
                 handleServerEvent(event);
             };
 
