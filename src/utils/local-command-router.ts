@@ -285,6 +285,94 @@ const COMMAND_DEFINITIONS: CommandDef[] = [
         response: 'Navigation vers le tableau de bord.'
     },
 
+    // ========== NAVIGATION - SECTIONS MAIRE (Navigations spécifiques) ==========
+    // Ces navigations utilisent global_navigate qui résoudra la route selon le contexte du rôle
+    {
+        patterns: [
+            /budget/,
+            /finances/,
+            /gestion\s*budgetaire/,
+            /va\s*(au|a\s*la\s*section)?\s*budget/,
+            /ouvre\s*(le\s*)?budget/,
+            /section\s*budget/,
+        ],
+        anyKeywords: ['budget', 'finances', 'tresorerie'],
+        toolName: 'global_navigate',
+        toolArgs: { query: 'budget' },
+        response: 'Navigation vers le budget.'
+    },
+    {
+        patterns: [
+            /deliberations?/,
+            /conseil\s*municipal/,
+            /seances?/,
+            /votes?/,
+        ],
+        anyKeywords: ['deliberation', 'conseil', 'seance'],
+        toolName: 'global_navigate',
+        toolArgs: { query: 'délibérations' },
+        response: 'Navigation vers les délibérations.'
+    },
+    {
+        patterns: [
+            /arretes?\s*(municipaux)?/,
+            /decrets?/,
+            /ordonnances?/,
+        ],
+        anyKeywords: ['arrete', 'decret', 'ordonnance'],
+        toolName: 'global_navigate',
+        toolArgs: { query: 'arrêtés' },
+        response: 'Navigation vers les arrêtés.'
+    },
+    {
+        patterns: [
+            /urbanisme/,
+            /permis\s*(de\s*)?construire/,
+            /construction/,
+            /amenagement/,
+        ],
+        anyKeywords: ['urbanisme', 'permis', 'construction'],
+        toolName: 'global_navigate',
+        toolArgs: { query: 'urbanisme' },
+        response: 'Navigation vers l\'urbanisme.'
+    },
+    {
+        patterns: [
+            /agenda/,
+            /calendrier/,
+            /planning/,
+            /emploi\s*du\s*temps/,
+        ],
+        anyKeywords: ['agenda', 'calendrier', 'planning'],
+        toolName: 'global_navigate',
+        toolArgs: { query: 'agenda' },
+        response: 'Navigation vers l\'agenda.'
+    },
+    {
+        patterns: [
+            /statistiques/,
+            /analytics/,
+            /indicateurs/,
+            /metriques/,
+        ],
+        anyKeywords: ['statistiques', 'analytics', 'indicateurs'],
+        toolName: 'global_navigate',
+        toolArgs: { query: 'statistiques' },
+        response: 'Navigation vers les statistiques.'
+    },
+    {
+        patterns: [
+            /communications?/,
+            /communiques?/,
+            /presse/,
+            /medias?/,
+        ],
+        anyKeywords: ['communication', 'communique', 'presse'],
+        toolName: 'global_navigate',
+        toolArgs: { query: 'communications' },
+        response: 'Navigation vers les communications.'
+    },
+
     // ========== NAVIGATION - MESSAGERIE (iBoîte) ==========
     // IMPORTANT: Ne PAS matcher "courrier" seul car ça peut être une demande de génération de document
     // Matcher uniquement les demandes explicites de navigation vers la messagerie

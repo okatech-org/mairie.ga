@@ -98,7 +98,7 @@ export function canUseCorrespondance(role: string): boolean {
 /**
  * Get capabilities text based on role
  */
-function getRoleCapabilities(role: string, isConnected: boolean): string {
+function getRoleCapabilities(role: string, isConnected: boolean, currentPage: string): string {
     if (!isConnected) {
         return `
 ## OUTILS DISPONIBLES (VISITEUR)
@@ -110,6 +110,7 @@ function getRoleCapabilities(role: string, isConnected: boolean): string {
     }
 
     const isMunicipalStaff = canUseCorrespondance(role);
+    const isMaire = role === 'maire' || currentPage.startsWith('/dashboard/maire');
 
     let tools = `
 ## OUTILS DISPONIBLES POUR ${role.toUpperCase()}
@@ -119,6 +120,28 @@ function getRoleCapabilities(role: string, isConnected: boolean): string {
 - stop_conversation() : Arrêter
 - manage_chat(action) : Gérer le chat
 `;
+
+    // NAVIGATION SPÉCIFIQUE AU RÔLE - CRITIQUE
+    if (isMaire) {
+        tools += `
+### 🚨 NAVIGATION POUR LE MAIRE - ROUTES EXACTES
+| DEMANDE | ROUTE À UTILISER (global_navigate) |
+|---------|-----------------------------------|
+| "budget" ou "finances" | /dashboard/maire/budget |
+| "délibérations" | /dashboard/maire/deliberations |
+| "arrêtés" | /dashboard/maire/arretes |
+| "urbanisme" | /dashboard/maire/urbanisme |
+| "agenda" ou "calendrier" | /dashboard/maire/agenda |
+| "documents" | /dashboard/maire/documents |
+| "communications" | /dashboard/maire/communications |
+| "statistiques" | /dashboard/maire/analytics |
+| "contacts" | /dashboard/maire/contacts |
+| "accueil" | /dashboard/maire |
+
+⚠️ NE JAMAIS utiliser /dashboard/admin/budget ou /dashboard/admin/[...] pour le Maire !
+⚠️ Les routes du Maire sont TOUJOURS /dashboard/maire/[section]
+`;
+    }
 
     if (isMunicipalStaff) {
         tools += `
@@ -177,7 +200,7 @@ export function buildContextualPrompt(params: {
 `;
     }
 
-    const roleCapabilities = getRoleCapabilities(userRole, isConnected);
+    const roleCapabilities = getRoleCapabilities(userRole, isConnected, currentPage);
 
     return IASTED_VOICE_PROMPT_LITE
         .replace(/{USER_TITLE}/g, userTitle || 'Visiteur')
