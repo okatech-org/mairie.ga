@@ -99,6 +99,11 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
     const audioContext = useRef<AudioContext | null>(null);
     const analyser = useRef<AnalyserNode | null>(null);
     const animationFrame = useRef<number | null>(null);
+    
+    // P3: Tracking for tool call deduplication
+    const processedToolCalls = useRef<Set<string>>(new Set());
+    const pendingLocalAction = useRef<boolean>(false);
+    
     const { toast } = useToast();
     const location = useLocation();
     const navigate = useNavigate();
@@ -826,6 +831,9 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                         if (result.matched && result.toolName) {
                             console.log(`✅ [LocalRouter] Match trouvé: ${result.toolName}`);
                             
+                            // P3: Mark that a local action is pending - prevents API from duplicating
+                            pendingLocalAction.current = true;
+                            
                             // P0 FIX: Cancel API response BEFORE executing local action
                             // This prevents the API from generating a conflicting response
                             if (dataChannel.current?.readyState === 'open') {
@@ -833,10 +841,18 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                                 dataChannel.current.send(JSON.stringify({ type: 'response.cancel' }));
                             }
                             
-                            // Now execute the local action
-                            console.log(`🚀 [LocalRouter] Exécution: ${result.toolName}`);
-                            handleLocalToolCall(result);
-                            recordRequest('local', 0);
+                            // Small delay to ensure cancel is processed before execution
+                            setTimeout(() => {
+                                console.log(`🚀 [LocalRouter] Exécution: ${result.toolName}`);
+                                handleLocalToolCall(result);
+                                recordRequest('local', 0);
+                                
+                                // Reset pending flag after a short delay
+                                setTimeout(() => {
+                                    pendingLocalAction.current = false;
+                                }, 500);
+                            }, 50);
+                            
                             break;
                         }
                     }
@@ -874,9 +890,27 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                 break;
             case 'response.done':
                 setVoiceState('listening'); // Back to listening after response
+                
+                // P3: Skip API tool calls if local action was just processed
+                if (pendingLocalAction.current) {
+                    console.log('⏭️ [P3] Skip API tool calls - local action en cours');
+                    break;
+                }
+                
                 if (event.response?.output) {
                     event.response.output.forEach((item: any) => {
                         if (item.type === 'function_call') {
+                            // P3: Deduplicate tool calls by call_id
+                            const callId = item.call_id;
+                            if (callId && processedToolCalls.current.has(callId)) {
+                                console.log(`⏭️ [P3] Tool call déjà traité: ${callId}`);
+                                return;
+                            }
+                            if (callId) {
+                                processedToolCalls.current.add(callId);
+                                // Clean up old entries after 30s
+                                setTimeout(() => processedToolCalls.current.delete(callId), 30000);
+                            }
                             handleToolCall(item);
                         }
                     });
@@ -983,8 +1017,17 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
                 }
             }));
             
-            // Trigger response to acknowledge the action
-            dataChannel.current.send(JSON.stringify({ type: 'response.create' }));
+            // P3: Only trigger response.create for non-navigation/non-UI actions
+            // Navigation and UI actions don't need verbal acknowledgment (reduces latency)
+            const silentActions = ['control_ui', 'manage_chat', 'navigate_app', 'global_navigate', 'toggle_sidebar'];
+            const isSilentAction = silentActions.some(a => name.includes(a) || name === a);
+            
+            if (!isSilentAction) {
+                // Trigger response to acknowledge the action verbally
+                dataChannel.current.send(JSON.stringify({ type: 'response.create' }));
+            } else {
+                console.log(`🔇 [P3] Action silencieuse, pas de réponse vocale: ${name}`);
+            }
         }
     };
 
@@ -1012,6 +1055,9 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
             dataChannel.current.close();
             dataChannel.current = null;
         }
+        // P3: Clear tracking state on disconnect
+        processedToolCalls.current.clear();
+        pendingLocalAction.current = false;
         setVoiceState('idle');
     };
 
