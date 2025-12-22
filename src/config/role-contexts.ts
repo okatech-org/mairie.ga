@@ -77,7 +77,7 @@ export const ROLE_CONTEXTS: Record<MunicipalAppRole, RoleContext> = {
             'view_statistics',
             'manage_services'
         ],
-        contextDescription: 'Vous assistez le Maire dans la gestion de la commune. Le Maire est la première autorité municipale.'
+        contextDescription: 'Vous assistez le Maire dans la gestion de la commune. Le Maire est la PREMIÈRE autorité municipale. TOUJOURS l\'appeler "Monsieur le Maire" ou "Excellence", JAMAIS "Monsieur le Directeur".'
     },
     maire_adjoint: {
         role: 'maire_adjoint',
