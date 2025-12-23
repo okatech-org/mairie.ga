@@ -124,7 +124,7 @@ class UserEnvironmentService {
                 case 'citizen':
                 default:
                     environment = UserEnvironment.PUBLIC_USER;
-                    role = PublicUserRole.CITOYEN;
+                    role = PublicUserRole.USAGER;
                     break;
             }
 
@@ -227,7 +227,7 @@ class UserEnvironmentService {
 
             // For now, we update the legacy user_roles table
             let appRole = 'citizen';
-            
+
             switch (params.environment) {
                 case UserEnvironment.BACK_OFFICE:
                     appRole = 'super_admin';
@@ -355,7 +355,7 @@ class UserEnvironmentService {
                 break;
             default:
                 environment = UserEnvironment.PUBLIC_USER;
-                publicRole = PublicUserRole.CITOYEN;
+                publicRole = PublicUserRole.USAGER;
         }
 
         return {
@@ -385,26 +385,33 @@ class UserEnvironmentService {
             case UserEnvironment.BACK_OFFICE:
                 return '/dashboard/super-admin';
             case UserEnvironment.MUNICIPAL_STAFF:
-                const leadershipRoles = [
-                    MunicipalStaffRole.MAIRE,
-                    MunicipalStaffRole.MAIRE_ADJOINT
-                ];
-                if (leadershipRoles.includes(env.role as MunicipalStaffRole)) {
+                const role = env.role as MunicipalStaffRole;
+
+                // Direction
+                if (role === MunicipalStaffRole.MAIRE || role === MunicipalStaffRole.MAIRE_ADJOINT) {
                     return '/dashboard/maire';
                 }
-                if (env.role === MunicipalStaffRole.SECRETAIRE_GENERAL) {
+                if (role === MunicipalStaffRole.SECRETAIRE_GENERAL) {
                     return '/dashboard/sg';
                 }
-                if ([MunicipalStaffRole.CHEF_SERVICE, MunicipalStaffRole.CHEF_BUREAU]
-                    .includes(env.role as MunicipalStaffRole)) {
+
+                // Chefs de Service
+                if (role === MunicipalStaffRole.CHEF_SERVICE_ETAT_CIVIL || role === MunicipalStaffRole.CHEF_SERVICE_URBANISME) {
                     return '/dashboard/chef-service';
                 }
-                return '/dashboard/agent';
-            case UserEnvironment.PUBLIC_USER:
-                if (env.role === PublicUserRole.ETRANGER_RESIDENT) {
-                    return '/dashboard/foreigner';
+
+                // Front Office
+                if (role === MunicipalStaffRole.AGENT_ACCUEIL) {
+                    return '/dashboard/accueil';
                 }
+
+                // Agents et Stagiaires (shared agent dashboard with conditional content)
+                return '/dashboard/agent';
+
+            case UserEnvironment.PUBLIC_USER:
+                // Unified Usager dashboard (handling Resident/Non-resident/Foreigner via profile data)
                 return '/dashboard/citizen';
+
             default:
                 return '/dashboard/citizen';
         }

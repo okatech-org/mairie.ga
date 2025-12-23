@@ -8,6 +8,7 @@ export interface DemoUser {
   id: string;
   role: UserRole;
   name: string;
+  gender?: 'M' | 'F' | string;
   entityId?: string;
   permissions: string[];
   badge: string;

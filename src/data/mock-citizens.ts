@@ -3,9 +3,9 @@ import { GabonaisCitizen, CitizenType, RegistrationStatus } from '@/types/citize
 export const MOCK_GABONAIS_CITIZENS: GabonaisCitizen[] = [
     {
         id: 'citizen-gab-001',
-        citizenType: CitizenType.GABONAIS,
-        firstName: 'Jean',
-        lastName: 'Mba',
+        citizenType: CitizenType.RESIDENT,
+        firstName: 'Ghislain',
+        lastName: 'MOUBAMBA',
         dateOfBirth: new Date('1985-05-15'),
         birthPlace: 'Libreville',
         gender: 'M',

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { useCitizenProfile } from '@/hooks/useCitizenProfile';
+import { CitizenType } from '@/types/citizen';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 // 🧠 Neuro-Hexagonal: Using Neuron hook instead of legacy service
@@ -61,9 +62,16 @@ export default function CitizenDashboard() {
             {/* Welcome Banner */}
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary to-primary/80 p-8 text-primary-foreground shadow-lg">
                 <div className="relative z-10">
-                    <h1 className="text-3xl font-bold mb-2">
-                        Bonjour, {citizen.firstName} {citizen.lastName}
-                    </h1>
+                    <div className="flex items-center gap-3 mb-2">
+                        <h1 className="text-3xl font-bold">
+                            Bonjour, {citizen.firstName} {citizen.lastName}
+                        </h1>
+                        <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-xs font-semibold uppercase tracking-wider">
+                            {citizen.citizenType === CitizenType.RESIDENT ? 'Usager Résident' :
+                                citizen.citizenType === CitizenType.NON_RESIDENT ? 'Usager (Autre Commune)' :
+                                    'Usager Étranger'}
+                        </span>
+                    </div>
                     <p className="opacity-90 max-w-xl">
                         Bienvenue sur votre espace citoyen unifié. Gérez toutes vos démarches administratives,
                         suivez vos demandes et accédez à vos documents officiels en un seul endroit.
@@ -194,11 +202,13 @@ export default function CitizenDashboard() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <p className="text-sm font-medium text-muted-foreground">N° NIP / CNI</p>
-                                    <p className="font-medium">{citizen.cniNumber || "Non renseigné"}</p>
+                                    <p className="font-medium">{(citizen as any).cniNumber || "Non renseigné"}</p>
                                 </div>
                                 <div>
                                     <p className="text-sm font-medium text-muted-foreground">Nationalité</p>
-                                    <p className="font-medium">Gabonaise 🇬🇦</p>
+                                    <p className="font-medium">
+                                        {citizen.citizenType === CitizenType.ETRANGER ? (citizen as any).nationality || 'Étrangère' : 'Gabonaise 🇬🇦'}
+                                    </p>
                                 </div>
                             </div>
                             <div>
@@ -222,7 +232,7 @@ export default function CitizenDashboard() {
                         <div className="bg-primary/5 rounded-lg p-4 mt-2">
                             <div className="flex justify-between items-center mb-2">
                                 <p className="text-sm font-medium">Dossier Municipal</p>
-                                <span className="text-xs font-mono bg-background px-2 py-0.5 rounded border">{citizen.municipalFile}</span>
+                                <span className="text-xs font-mono bg-background px-2 py-0.5 rounded border">{(citizen as any).municipalFile || "DOS-PENDING"}</span>
                             </div>
                             <p className="text-xs text-muted-foreground">
                                 Votre dossier est actif auprès de {citizen.assignedMunicipality}.

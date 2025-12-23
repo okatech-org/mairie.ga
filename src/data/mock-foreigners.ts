@@ -4,8 +4,8 @@ export const MOCK_FOREIGNERS: ForeignerUser[] = [
     {
         id: 'foreigner-001',
         citizenType: CitizenType.ETRANGER,
-        firstName: 'John',
-        lastName: 'Doe',
+        firstName: 'Moussa',
+        lastName: 'DIOP',
         dateOfBirth: new Date('1990-02-20'),
         birthPlace: 'New York',
         gender: 'M',

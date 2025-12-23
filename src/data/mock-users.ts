@@ -11,7 +11,7 @@ import { Organization } from '@/types/organization';
 const ADMIN_USER: DemoUser = {
   id: 'admin-system',
   role: 'ADMIN',
-  name: 'Super Admin National',
+  name: 'Marc-Aurèle NDONG',
   entityId: undefined,
   permissions: [
     'Accès total au système',
@@ -30,16 +30,40 @@ const ADMIN_USER: DemoUser = {
 
 // --- DYNAMIC STAFF GENERATION FOR MAIRIES (using full Organization data) ---
 
+const GABONAIS_LAST_NAMES = [
+  'MBA', 'OBAME', 'NDONG', 'NGUEMA', 'OYONO', 'MEZUI', 'BOGUIKOUMA', 'OGANDAGA',
+  'MOMBO', 'KOMBILA', 'MOUSSAVOU', 'MOUNDOUNGA', 'MAPANGOU', 'BOUNGOUENDZA', 'MAGANGA'
+];
+
+const GABONAIS_FIRST_NAMES_MALE = [
+  'Jean-Pierre', 'Marc', 'Célestin', 'Ghislain', 'Hervé', 'Simplice', 'Rodrigue',
+  'Dieudonné', 'Franck', 'Yannick', 'Brice', 'Arnaud', 'Guy-Roger', 'Patrice'
+];
+
+const GABONAIS_FIRST_NAMES_FEMALE = [
+  'Chantal', 'Solange', 'Marie-Claire', 'Sandrine', 'Edwige', 'Nadège', 'Sylvie',
+  'Clémence', 'Prisca', 'Tatiana', 'Flavie', 'Paulette', 'Inès', 'Rose'
+];
+
 const generateStaffForOrganization = (org: Organization): DemoUser[] => {
   const staff: DemoUser[] = [];
   const city = org.city || org.name;
   const idPrefix = org.id;
 
+  const getRandom = (arr: any[]) => arr[Math.floor(Math.random() * arr.length)];
+  const generateName = (isFemale: boolean = false) => {
+    const fn = isFemale ? getRandom(GABONAIS_FIRST_NAMES_FEMALE) : getRandom(GABONAIS_FIRST_NAMES_MALE);
+    const ln = getRandom(GABONAIS_LAST_NAMES);
+    return { name: `${fn} ${ln}`, gender: isFemale ? 'F' : 'M' };
+  };
+
   // 1. MAIRE
+  const maireInfo = generateName();
   staff.push({
     id: `${idPrefix}-maire`,
     role: MunicipalRole.MAIRE,
-    name: org.maire_name || `M. le Maire de ${city}`,
+    name: org.maire_name || maireInfo.name,
+    gender: maireInfo.gender,
     entityId: org.id,
     hierarchyLevel: 1,
     employmentStatus: EmploymentStatus.FONCTIONNAIRE,
@@ -51,10 +75,12 @@ const generateStaffForOrganization = (org: Organization): DemoUser[] => {
   });
 
   // 2. MAIRE ADJOINT
+  const adjointInfo = generateName(true);
   staff.push({
     id: `${idPrefix}-maire-adjoint`,
     role: MunicipalRole.MAIRE_ADJOINT,
-    name: `Maire Adjoint (${city})`,
+    name: adjointInfo.name,
+    gender: adjointInfo.gender,
     entityId: org.id,
     hierarchyLevel: 2,
     employmentStatus: EmploymentStatus.FONCTIONNAIRE,
@@ -64,10 +90,12 @@ const generateStaffForOrganization = (org: Organization): DemoUser[] => {
   });
 
   // 3. SECRÉTAIRE GÉNÉRAL
+  const sgInfo = generateName();
   staff.push({
     id: `${idPrefix}-sg`,
     role: MunicipalRole.SECRETAIRE_GENERAL,
-    name: `Secrétaire Général (${city})`,
+    name: sgInfo.name,
+    gender: sgInfo.gender,
     entityId: org.id,
     hierarchyLevel: 3,
     employmentStatus: EmploymentStatus.FONCTIONNAIRE,
@@ -77,10 +105,12 @@ const generateStaffForOrganization = (org: Organization): DemoUser[] => {
   });
 
   // 4. CHEF SERVICE ÉTAT CIVIL
+  const chefEcInfo = generateName(true);
   staff.push({
     id: `${idPrefix}-chef-ec`,
-    role: MunicipalRole.CHEF_SERVICE,
-    name: `Chef Service État Civil (${city})`,
+    role: MunicipalRole.CHEF_SERVICE_ETAT_CIVIL,
+    name: chefEcInfo.name,
+    gender: chefEcInfo.gender,
     entityId: org.id,
     hierarchyLevel: 4,
     employmentStatus: EmploymentStatus.FONCTIONNAIRE,
@@ -90,10 +120,12 @@ const generateStaffForOrganization = (org: Organization): DemoUser[] => {
   });
 
   // 5. CHEF SERVICE URBANISME
+  const chefUrbInfo = generateName();
   staff.push({
     id: `${idPrefix}-chef-urb`,
-    role: MunicipalRole.CHEF_SERVICE,
-    name: `Chef Service Urbanisme (${city})`,
+    role: MunicipalRole.CHEF_SERVICE_URBANISME,
+    name: chefUrbInfo.name,
+    gender: chefUrbInfo.gender,
     entityId: org.id,
     hierarchyLevel: 4,
     employmentStatus: EmploymentStatus.FONCTIONNAIRE,
@@ -103,10 +135,12 @@ const generateStaffForOrganization = (org: Organization): DemoUser[] => {
   });
 
   // 6. OFFICIER ÉTAT CIVIL 1
+  const oec1Info = generateName();
   staff.push({
     id: `${idPrefix}-oec-1`,
-    role: MunicipalRole.AGENT_ETAT_CIVIL,
-    name: `Officier État Civil 1 (${city})`,
+    role: MunicipalRole.OFFICIER_ETAT_CIVIL,
+    name: oec1Info.name,
+    gender: oec1Info.gender,
     entityId: org.id,
     hierarchyLevel: 6,
     employmentStatus: EmploymentStatus.FONCTIONNAIRE,
@@ -116,10 +150,12 @@ const generateStaffForOrganization = (org: Organization): DemoUser[] => {
   });
 
   // 7. OFFICIER ÉTAT CIVIL 2
+  const oec2Info = generateName(true);
   staff.push({
     id: `${idPrefix}-oec-2`,
-    role: MunicipalRole.AGENT_ETAT_CIVIL,
-    name: `Officier État Civil 2 (${city})`,
+    role: MunicipalRole.OFFICIER_ETAT_CIVIL,
+    name: oec2Info.name,
+    gender: oec2Info.gender,
     entityId: org.id,
     hierarchyLevel: 6,
     employmentStatus: EmploymentStatus.FONCTIONNAIRE,
@@ -129,10 +165,12 @@ const generateStaffForOrganization = (org: Organization): DemoUser[] => {
   });
 
   // 8. AGENT MUNICIPAL
+  const agent1Info = generateName();
   staff.push({
     id: `${idPrefix}-agent-1`,
     role: MunicipalRole.AGENT_MUNICIPAL,
-    name: `Agent Municipal (${city})`,
+    name: agent1Info.name,
+    gender: agent1Info.gender,
     entityId: org.id,
     hierarchyLevel: 6,
     employmentStatus: EmploymentStatus.CONTRACTUEL,
@@ -142,10 +180,12 @@ const generateStaffForOrganization = (org: Organization): DemoUser[] => {
   });
 
   // 9. AGENT ACCUEIL
+  const accueilInfo = generateName(true);
   staff.push({
     id: `${idPrefix}-accueil`,
     role: MunicipalRole.AGENT_ACCUEIL,
-    name: `Agent Accueil (${city})`,
+    name: accueilInfo.name,
+    gender: accueilInfo.gender,
     entityId: org.id,
     hierarchyLevel: 7,
     employmentStatus: EmploymentStatus.CONTRACTUEL,
@@ -155,10 +195,12 @@ const generateStaffForOrganization = (org: Organization): DemoUser[] => {
   });
 
   // 10. STAGIAIRE
+  const stagiaireInfo = generateName();
   staff.push({
     id: `${idPrefix}-stagiaire`,
     role: MunicipalRole.STAGIAIRE,
-    name: `Stagiaire (${city})`,
+    name: stagiaireInfo.name,
+    gender: stagiaireInfo.gender,
     entityId: org.id,
     hierarchyLevel: 7,
     employmentStatus: EmploymentStatus.STAGIAIRE,
@@ -173,17 +215,17 @@ const generateStaffForOrganization = (org: Organization): DemoUser[] => {
 // Generate staff for all mairies using complete Organization data
 const GENERATED_STAFF = MAIRIES_GABON.flatMap(mairie => generateStaffForOrganization(mairie));
 
-// --- CITIZENS MAPPING ---
+// --- USAGER MAPPING ---
 
 // Convert detailed citizens to DemoUser
 const MAPPED_CITIZENS: DemoUser[] = MOCK_GABONAIS_CITIZENS.map(c => ({
   id: c.id,
-  role: MunicipalRole.CITOYEN,
+  role: MunicipalRole.USAGER,
   name: `${c.firstName} ${c.lastName}`,
   entityId: c.assignedMunicipality, // Mapped to municipality
   permissions: ['Accès complet', 'État Civil', 'Urbanisme', 'Légalisation'],
-  badge: '🇬🇦',
-  description: `Citoyen Gabonais - ${c.profession}`,
+  badge: '🏠',
+  description: `Usager Résident - ${c.profession}`,
   hierarchyLevel: 0,
   employmentStatus: EmploymentStatus.USAGER
 }));
@@ -191,12 +233,12 @@ const MAPPED_CITIZENS: DemoUser[] = MOCK_GABONAIS_CITIZENS.map(c => ({
 // Convert detailed foreigners to DemoUser
 const MAPPED_FOREIGNERS: DemoUser[] = MOCK_FOREIGNERS.map(f => ({
   id: f.id,
-  role: MunicipalRole.ETRANGER_RESIDENT,
+  role: MunicipalRole.USAGER,
   name: `${f.firstName} ${f.lastName}`,
   entityId: f.assignedMunicipality, // Mapped to municipality
   permissions: ['Certificat résidence', 'Légalisations', 'Attestations'],
   badge: '🌍',
-  description: `Étranger Résident - ${f.nationality}`,
+  description: `Usager Étranger - ${f.nationality}`,
   hierarchyLevel: 0,
   employmentStatus: EmploymentStatus.USAGER
 }));
@@ -205,12 +247,13 @@ const MAPPED_FOREIGNERS: DemoUser[] = MOCK_FOREIGNERS.map(f => ({
 
 const DEMO_CITOYEN_RESIDENT: DemoUser = {
   id: 'demo-citoyen-resident',
-  role: MunicipalRole.CITOYEN,
-  name: 'Jean-Baptiste Ndong',
+  role: MunicipalRole.USAGER,
+  name: 'Lucia MBADINGA',
+  gender: 'F',
   entityId: 'mairie-libreville-centrale',
   permissions: ['Mes demandes', 'Mon profil', 'État Civil', 'Urbanisme'],
   badge: '🏠',
-  description: 'Citoyen résidant à Libreville',
+  description: 'Usager résidant à Libreville',
   residenceCountry: 'GA',
   currentLocation: 'GA',
   hierarchyLevel: 0,
@@ -219,12 +262,13 @@ const DEMO_CITOYEN_RESIDENT: DemoUser = {
 
 const DEMO_CITOYEN_AUTRE_COMMUNE: DemoUser = {
   id: 'demo-citoyen-autre-commune',
-  role: MunicipalRole.CITOYEN_AUTRE_COMMUNE,
-  name: 'Marie-Claire Obame',
+  role: MunicipalRole.USAGER,
+  name: 'Hervé MOMBO',
+  gender: 'M',
   entityId: 'mairie-libreville-centrale',
   permissions: ['Légalisations', 'Certificats', 'Attestations'],
   badge: '🌍',
-  description: 'Citoyen gabonais d\'une autre commune',
+  description: 'Usager gabonais d\'une autre commune',
   residenceCountry: 'GA',
   currentLocation: 'GA',
   hierarchyLevel: 0,
@@ -233,26 +277,15 @@ const DEMO_CITOYEN_AUTRE_COMMUNE: DemoUser = {
 
 const DEMO_ETRANGER_RESIDENT: DemoUser = {
   id: 'demo-etranger-resident',
-  role: MunicipalRole.ETRANGER_RESIDENT,
-  name: 'Ahmed Ben Youssef',
+  role: MunicipalRole.USAGER,
+  name: 'Moussa DIOP', // West African name common in Gabon
+  gender: 'M',
   entityId: 'mairie-libreville-centrale',
   permissions: ['Certificat résidence', 'Attestations', 'Légalisations'],
   badge: '🌐',
-  description: 'Étranger résidant à Libreville',
-  residenceCountry: 'TN',
+  description: 'Usager étranger résidant à Libreville',
+  residenceCountry: 'SN', // Set to Senegal for realism
   currentLocation: 'GA',
-  hierarchyLevel: 0,
-  employmentStatus: EmploymentStatus.USAGER
-};
-
-const DEMO_ENTREPRISE: DemoUser = {
-  id: 'demo-entreprise-association',
-  role: MunicipalRole.PERSONNE_MORALE,
-  name: 'SARL Construction Plus',
-  entityId: 'mairie-libreville-centrale',
-  permissions: ['Patente', 'Autorisations commerce', 'Marchés publics'],
-  badge: '🏢',
-  description: 'Entité morale opérant à Libreville',
   hierarchyLevel: 0,
   employmentStatus: EmploymentStatus.USAGER
 };
@@ -261,8 +294,7 @@ const DEMO_ENTREPRISE: DemoUser = {
 export const DEMO_CITIZEN_ACCOUNTS: DemoUser[] = [
   DEMO_CITOYEN_RESIDENT,
   DEMO_CITOYEN_AUTRE_COMMUNE,
-  DEMO_ETRANGER_RESIDENT,
-  DEMO_ENTREPRISE
+  DEMO_ETRANGER_RESIDENT
 ];
 
 export const MOCK_USERS: DemoUser[] = [
@@ -284,8 +316,6 @@ export const getUsersByEntity = (entityId: string): DemoUser[] => {
 export const getStaffByMairie = (mairieId: string): DemoUser[] => {
   return MOCK_USERS.filter(user =>
     user.entityId === mairieId &&
-    user.role !== MunicipalRole.CITOYEN &&
-    user.role !== MunicipalRole.ETRANGER_RESIDENT &&
-    user.role !== MunicipalRole.PERSONNE_MORALE
+    user.role !== MunicipalRole.USAGER
   );
 };

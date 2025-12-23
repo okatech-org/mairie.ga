@@ -1,6 +1,7 @@
-// Énumération des types d'usagers
+// Énumération des types d'usagers types pour une mairie
 export enum CitizenType {
-    GABONAIS = 'GABONAIS',
+    RESIDENT = 'RESIDENT',
+    NON_RESIDENT = 'NON_RESIDENT',
     ETRANGER = 'ETRANGER'
 }
 
@@ -49,7 +50,7 @@ export interface DocumentFile {
 // Interface pour l'usager Gabonais
 export interface GabonaisCitizen {
     id: string;
-    citizenType: CitizenType.GABONAIS;
+    citizenType: CitizenType.RESIDENT | CitizenType.NON_RESIDENT;
 
     // Identification
     firstName: string;

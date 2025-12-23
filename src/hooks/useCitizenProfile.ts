@@ -1,10 +1,10 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { GabonaisCitizen, CitizenType, RegistrationStatus } from "@/types/citizen";
+import { Citizen, CitizenType, RegistrationStatus } from "@/types/citizen";
 
 export function useCitizenProfile() {
-    const [user, setUser] = useState<GabonaisCitizen | null>(null);
+    const [user, setUser] = useState<Citizen | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -90,23 +90,35 @@ export function useCitizenProfile() {
 
                     // Map Supabase profile to GabonaisCitizen interface
                     const addressData = profile.address as any;
-                    const citizen: GabonaisCitizen = {
+                    // Logic to determine CitizenType
+                    let citizenType: CitizenType = CitizenType.RESIDENT;
+                    const country = addressData?.country || 'Gabon';
+                    const city = addressData?.city || '';
+                    const assignedMairie = profile.arrondissement || '';
+
+                    if (country !== 'Gabon' && country !== 'GA') {
+                        citizenType = CitizenType.ETRANGER;
+                    } else if (city && city !== assignedMairie) {
+                        citizenType = CitizenType.NON_RESIDENT;
+                    }
+
+                    const citizen: Citizen = {
                         id: profile.user_id,
-                        citizenType: CitizenType.GABONAIS,
+                        citizenType: citizenType as any,
                         firstName: profile.first_name || '',
                         lastName: profile.last_name || '',
                         dateOfBirth: profile.date_of_birth ? new Date(profile.date_of_birth) : undefined as any,
                         birthPlace: profile.lieu_naissance || undefined,
-                        gender: undefined as any, // Not in DB schema yet - should be added
+                        gender: undefined as any,
                         photoUrl,
                         cniNumber: profile.numero_cni || undefined,
-                        cniExpireDate: undefined as any, // Not in DB schema yet
+                        cniExpireDate: undefined as any,
                         maritalStatus: mapMaritalStatus(profile.situation_matrimoniale),
                         profession: profile.profession || undefined,
                         currentAddress: {
                             street: addressData?.full || addressData?.street || '',
                             city: addressData?.city || '',
-                            country: 'Gabon',
+                            country: country,
                             postalCode: addressData?.postalCode || ''
                         },
                         phone: profile.phone || undefined,
@@ -119,7 +131,7 @@ export function useCitizenProfile() {
                         registrationDate: new Date(profile.created_at),
                         approvalDate: new Date(profile.created_at),
                         accessLevel: 'FULL',
-                        uploadedDocuments: [], // Would need separate fetch
+                        uploadedDocuments: [],
                         createdAt: new Date(profile.created_at),
                         updatedAt: new Date(profile.updated_at || profile.created_at),
                         verifiedAt: new Date(profile.updated_at || profile.created_at)

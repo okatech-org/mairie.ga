@@ -322,8 +322,9 @@ export default function IBoitePage() {
 
                     case 'sent':
                         const sentMails = await iBoiteService.getSentMessages(50);
+                        const sentConvs = await iBoiteService.getSentConversations(50);
                         setExternalMails(sentMails);
-                        setConversations([]);
+                        setConversations(sentConvs);
                         break;
 
                     case 'drafts':
@@ -607,34 +608,50 @@ export default function IBoitePage() {
                                         </Button>
                                     </div>
                                 ) : (
-                                    filteredExternalMails.map(mail => (
-                                        <ExternalMailItem
-                                            key={mail.id}
-                                            mail={mail}
-                                            isSelected={selectedExternalMail?.id === mail.id}
-                                            isDraft={activeFolder === 'drafts'}
-                                            onClick={() => {
-                                                setSelectedExternalMail(mail);
-                                                setSelectedConversationId(null);
-                                            }}
-                                            onDelete={activeFolder === 'drafts' ? async () => {
-                                                const success = await iBoiteService.deleteDraft(mail.id);
-                                                if (success) {
-                                                    setExternalMails(prev => prev.filter(m => m.id !== mail.id));
-                                                    toast.success('Brouillon supprimé');
-                                                }
-                                            } : undefined}
-                                            onSend={activeFolder === 'drafts' ? async () => {
-                                                const result = await iBoiteService.sendDraft(mail.id);
-                                                if (result && result.status === 'SENT') {
-                                                    setExternalMails(prev => prev.filter(m => m.id !== mail.id));
-                                                    toast.success('Message envoyé');
-                                                } else {
-                                                    toast.error('Erreur lors de l\'envoi');
-                                                }
-                                            } : undefined}
-                                        />
-                                    ))
+                                    <>
+                                        {/* Show internal conversations sent by user */}
+                                        {filteredConversations.map(conv => (
+                                            <ConversationItem
+                                                key={conv.id}
+                                                conversation={conv}
+                                                isSelected={conv.id === selectedConversationId}
+                                                onClick={() => {
+                                                    setSelectedConversationId(conv.id);
+                                                    setSelectedExternalMail(null);
+                                                }}
+                                            />
+                                        ))}
+
+                                        {/* Show external mails sent by user */}
+                                        {filteredExternalMails.map(mail => (
+                                            <ExternalMailItem
+                                                key={mail.id}
+                                                mail={mail}
+                                                isSelected={selectedExternalMail?.id === mail.id}
+                                                isDraft={activeFolder === 'drafts'}
+                                                onClick={() => {
+                                                    setSelectedExternalMail(mail);
+                                                    setSelectedConversationId(null);
+                                                }}
+                                                onDelete={activeFolder === 'drafts' ? async () => {
+                                                    const success = await iBoiteService.deleteDraft(mail.id);
+                                                    if (success) {
+                                                        setExternalMails(prev => prev.filter(m => m.id !== mail.id));
+                                                        toast.success('Brouillon supprimé');
+                                                    }
+                                                } : undefined}
+                                                onSend={activeFolder === 'drafts' ? async () => {
+                                                    const result = await iBoiteService.sendDraft(mail.id);
+                                                    if (result && result.status === 'SENT') {
+                                                        setExternalMails(prev => prev.filter(m => m.id !== mail.id));
+                                                        toast.success('Message envoyé');
+                                                    } else {
+                                                        toast.error('Erreur lors de l\'envoi');
+                                                    }
+                                                } : undefined}
+                                            />
+                                        ))}
+                                    </>
                                 )
                             )}
                         </div>

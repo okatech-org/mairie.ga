@@ -68,11 +68,14 @@ interface Agent {
     department: string;
     location: string;
     hireDate: string;
+    entityId: string; // Added to filter by mairie
 }
 
-const MOCK_AGENTS: Agent[] = [
+// Agents organized by mairie
+const ALL_AGENTS: Agent[] = [
+    // ====== MAIRIE DE LIBREVILLE ======
     {
-        id: '1',
+        id: 'lbv-1',
         name: 'Jean-Pierre Mba',
         role: MunicipalRole.MAIRE,
         email: 'jp.mba@mairie-libreville.ga',
@@ -81,9 +84,10 @@ const MOCK_AGENTS: Agent[] = [
         department: 'Direction',
         location: 'Libreville',
         hireDate: '2019-06-15',
+        entityId: 'mairie-libreville-centrale',
     },
     {
-        id: '2',
+        id: 'lbv-2',
         name: 'Sophie Nze',
         role: MunicipalRole.MAIRE_ADJOINT,
         email: 's.nze@mairie-libreville.ga',
@@ -92,9 +96,10 @@ const MOCK_AGENTS: Agent[] = [
         department: 'Direction',
         location: 'Libreville',
         hireDate: '2019-06-15',
+        entityId: 'mairie-libreville-centrale',
     },
     {
-        id: '3',
+        id: 'lbv-3',
         name: 'Paul Obame',
         role: MunicipalRole.SECRETAIRE_GENERAL,
         email: 'p.obame@mairie-libreville.ga',
@@ -103,9 +108,10 @@ const MOCK_AGENTS: Agent[] = [
         department: 'Administration',
         location: 'Libreville',
         hireDate: '2020-01-10',
+        entityId: 'mairie-libreville-centrale',
     },
     {
-        id: '4',
+        id: 'lbv-4',
         name: 'Marie Essono',
         role: MunicipalRole.CHEF_SERVICE,
         email: 'm.essono@mairie-libreville.ga',
@@ -113,9 +119,10 @@ const MOCK_AGENTS: Agent[] = [
         department: 'État Civil',
         location: 'Libreville',
         hireDate: '2018-03-20',
+        entityId: 'mairie-libreville-centrale',
     },
     {
-        id: '5',
+        id: 'lbv-5',
         name: 'Jean Nguema',
         role: MunicipalRole.CHEF_SERVICE,
         email: 'j.nguema@mairie-libreville.ga',
@@ -123,9 +130,10 @@ const MOCK_AGENTS: Agent[] = [
         department: 'Urbanisme',
         location: 'Libreville',
         hireDate: '2017-09-01',
+        entityId: 'mairie-libreville-centrale',
     },
     {
-        id: '6',
+        id: 'lbv-6',
         name: 'Léa Mboumba',
         role: MunicipalRole.AGENT_ETAT_CIVIL,
         email: 'l.mboumba@mairie-libreville.ga',
@@ -133,9 +141,10 @@ const MOCK_AGENTS: Agent[] = [
         department: 'État Civil',
         location: 'Libreville - Centre',
         hireDate: '2021-02-15',
+        entityId: 'mairie-libreville-centrale',
     },
     {
-        id: '7',
+        id: 'lbv-7',
         name: 'Marc Ondo',
         role: MunicipalRole.AGENT_ETAT_CIVIL,
         email: 'm.ondo@mairie-libreville.ga',
@@ -143,9 +152,10 @@ const MOCK_AGENTS: Agent[] = [
         department: 'État Civil',
         location: 'Libreville - 1er Arr.',
         hireDate: '2020-06-01',
+        entityId: 'mairie-libreville-centrale',
     },
     {
-        id: '8',
+        id: 'lbv-8',
         name: 'Alice Koumba',
         role: MunicipalRole.AGENT_ACCUEIL,
         email: 'a.koumba@mairie-libreville.ga',
@@ -153,9 +163,10 @@ const MOCK_AGENTS: Agent[] = [
         department: 'Accueil',
         location: 'Libreville',
         hireDate: '2022-01-10',
+        entityId: 'mairie-libreville-centrale',
     },
     {
-        id: '9',
+        id: 'lbv-9',
         name: 'Pierre Ndong',
         role: MunicipalRole.AGENT_MUNICIPAL,
         email: 'p.ndong@mairie-libreville.ga',
@@ -163,9 +174,10 @@ const MOCK_AGENTS: Agent[] = [
         department: 'Urbanisme',
         location: 'Libreville',
         hireDate: '2021-09-01',
+        entityId: 'mairie-libreville-centrale',
     },
     {
-        id: '10',
+        id: 'lbv-10',
         name: 'Fatima Bongo',
         role: MunicipalRole.STAGIAIRE,
         email: 'f.bongo@mairie-libreville.ga',
@@ -173,7 +185,123 @@ const MOCK_AGENTS: Agent[] = [
         department: 'État Civil',
         location: 'Libreville',
         hireDate: '2024-09-01',
-    }
+        entityId: 'mairie-libreville-centrale',
+    },
+
+    // ====== MAIRIE DE PORT-GENTIL ======
+    {
+        id: 'pg-1',
+        name: 'François Ntoutoume',
+        role: MunicipalRole.MAIRE,
+        email: 'f.ntoutoume@mairie-portgentil.ga',
+        phone: '+241 77 10 00 01',
+        status: 'active',
+        department: 'Direction',
+        location: 'Port-Gentil',
+        hireDate: '2019-07-01',
+        entityId: 'ogoue-maritime-port-gentil',
+    },
+    {
+        id: 'pg-2',
+        name: 'Clarisse Ndong',
+        role: MunicipalRole.MAIRE_ADJOINT,
+        email: 'c.ndong@mairie-portgentil.ga',
+        phone: '+241 77 10 00 02',
+        status: 'active',
+        department: 'Direction',
+        location: 'Port-Gentil',
+        hireDate: '2019-07-01',
+        entityId: 'ogoue-maritime-port-gentil',
+    },
+    {
+        id: 'pg-3',
+        name: 'Robert Mboumba',
+        role: MunicipalRole.SECRETAIRE_GENERAL,
+        email: 'r.mboumba@mairie-portgentil.ga',
+        phone: '+241 77 10 00 03',
+        status: 'active',
+        department: 'Administration',
+        location: 'Port-Gentil',
+        hireDate: '2020-02-15',
+        entityId: 'ogoue-maritime-port-gentil',
+    },
+    {
+        id: 'pg-4',
+        name: 'Hélène Oyane',
+        role: MunicipalRole.CHEF_SERVICE,
+        email: 'h.oyane@mairie-portgentil.ga',
+        status: 'active',
+        department: 'État Civil',
+        location: 'Port-Gentil',
+        hireDate: '2018-05-10',
+        entityId: 'ogoue-maritime-port-gentil',
+    },
+    {
+        id: 'pg-5',
+        name: 'André Moussavou',
+        role: MunicipalRole.CHEF_SERVICE,
+        email: 'a.moussavou@mairie-portgentil.ga',
+        status: 'active',
+        department: 'Urbanisme',
+        location: 'Port-Gentil',
+        hireDate: '2017-11-20',
+        entityId: 'ogoue-maritime-port-gentil',
+    },
+    {
+        id: 'pg-6',
+        name: 'Jeanne Minko',
+        role: MunicipalRole.AGENT_ETAT_CIVIL,
+        email: 'j.minko@mairie-portgentil.ga',
+        status: 'active',
+        department: 'État Civil',
+        location: 'Port-Gentil - Centre',
+        hireDate: '2021-03-01',
+        entityId: 'ogoue-maritime-port-gentil',
+    },
+    {
+        id: 'pg-7',
+        name: 'Patrick Nze',
+        role: MunicipalRole.AGENT_ETAT_CIVIL,
+        email: 'p.nze@mairie-portgentil.ga',
+        status: 'leave',
+        department: 'État Civil',
+        location: 'Port-Gentil - Nord',
+        hireDate: '2020-08-15',
+        entityId: 'ogoue-maritime-port-gentil',
+    },
+    {
+        id: 'pg-8',
+        name: 'Christine Evouna',
+        role: MunicipalRole.AGENT_ACCUEIL,
+        email: 'c.evouna@mairie-portgentil.ga',
+        status: 'active',
+        department: 'Accueil',
+        location: 'Port-Gentil',
+        hireDate: '2022-02-20',
+        entityId: 'ogoue-maritime-port-gentil',
+    },
+    {
+        id: 'pg-9',
+        name: 'Emmanuel Bibang',
+        role: MunicipalRole.AGENT_MUNICIPAL,
+        email: 'e.bibang@mairie-portgentil.ga',
+        status: 'active',
+        department: 'Urbanisme',
+        location: 'Port-Gentil',
+        hireDate: '2021-10-01',
+        entityId: 'ogoue-maritime-port-gentil',
+    },
+    {
+        id: 'pg-10',
+        name: 'Sylvie Ogandaga',
+        role: MunicipalRole.STAGIAIRE,
+        email: 's.ogandaga@mairie-portgentil.ga',
+        status: 'active',
+        department: 'Administration',
+        location: 'Port-Gentil',
+        hireDate: '2024-10-01',
+        entityId: 'ogoue-maritime-port-gentil',
+    },
 ];
 
 export default function AgentsPage() {
@@ -183,26 +311,36 @@ export default function AgentsPage() {
     const [statusFilter, setStatusFilter] = useState<string>("all");
     const [departmentFilter, setDepartmentFilter] = useState<string>("all");
 
-    // Statistics
-    const stats = useMemo(() => ({
-        total: MOCK_AGENTS.length,
-        active: MOCK_AGENTS.filter(a => a.status === 'active').length,
-        onLeave: MOCK_AGENTS.filter(a => a.status === 'leave').length,
-        inactive: MOCK_AGENTS.filter(a => a.status === 'inactive').length,
-    }), []);
+    // Filter agents by current user's organization (mairie)
+    const MAIRIE_AGENTS = useMemo(() => {
+        const userEntityId = currentUser?.entityId;
+        if (!userEntityId) {
+            // Super admin sees all agents
+            return ALL_AGENTS;
+        }
+        return ALL_AGENTS.filter(agent => agent.entityId === userEntityId);
+    }, [currentUser?.entityId]);
 
-    // Unique values for filters
+    // Statistics (based on filtered agents for this mairie)
+    const stats = useMemo(() => ({
+        total: MAIRIE_AGENTS.length,
+        active: MAIRIE_AGENTS.filter(a => a.status === 'active').length,
+        onLeave: MAIRIE_AGENTS.filter(a => a.status === 'leave').length,
+        inactive: MAIRIE_AGENTS.filter(a => a.status === 'inactive').length,
+    }), [MAIRIE_AGENTS]);
+
+    // Unique values for filters (from this mairie's agents)
     const departments = useMemo(() =>
-        [...new Set(MOCK_AGENTS.map(a => a.department))],
-        []);
+        [...new Set(MAIRIE_AGENTS.map(a => a.department))],
+        [MAIRIE_AGENTS]);
 
     const roles = useMemo(() =>
-        [...new Set(MOCK_AGENTS.map(a => a.role))],
-        []);
+        [...new Set(MAIRIE_AGENTS.map(a => a.role))],
+        [MAIRIE_AGENTS]);
 
-    // Filtered agents
+    // Filtered agents (applying search and filters on mairie agents)
     const filteredAgents = useMemo(() =>
-        MOCK_AGENTS.filter(agent => {
+        MAIRIE_AGENTS.filter(agent => {
             const matchesSearch = agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 agent.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 agent.department.toLowerCase().includes(searchTerm.toLowerCase());
@@ -211,7 +349,7 @@ export default function AgentsPage() {
             const matchesDepartment = departmentFilter === 'all' || agent.department === departmentFilter;
             return matchesSearch && matchesRole && matchesStatus && matchesDepartment;
         }),
-        [searchTerm, roleFilter, statusFilter, departmentFilter]);
+        [MAIRIE_AGENTS, searchTerm, roleFilter, statusFilter, departmentFilter]);
 
     const getStatusBadge = (status: string) => {
         switch (status) {

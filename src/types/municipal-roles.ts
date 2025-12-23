@@ -6,22 +6,18 @@ export enum MunicipalRole {
     MAIRE_ADJOINT = 'MAIRE_ADJOINT',
     SECRETAIRE_GENERAL = 'SECRETAIRE_GENERAL',
 
-    // Encadrement
-    CHEF_SERVICE = 'CHEF_SERVICE',
-    CHEF_BUREAU = 'CHEF_BUREAU',
-
-    // Agents
+    // Services Techniques
+    CHEF_SERVICE_ETAT_CIVIL = 'CHEF_SERVICE_ETAT_CIVIL',
+    CHEF_SERVICE_URBANISME = 'CHEF_SERVICE_URBANISME',
+    OFFICIER_ETAT_CIVIL = 'OFFICIER_ETAT_CIVIL',
     AGENT_MUNICIPAL = 'AGENT_MUNICIPAL',
-    AGENT_ETAT_CIVIL = 'AGENT_ETAT_CIVIL',
-    AGENT_TECHNIQUE = 'AGENT_TECHNIQUE',
+
+    // Support
     AGENT_ACCUEIL = 'AGENT_ACCUEIL',
     STAGIAIRE = 'STAGIAIRE',
 
     // Usagers
-    CITOYEN = 'CITOYEN',
-    CITOYEN_AUTRE_COMMUNE = 'CITOYEN_AUTRE_COMMUNE',
-    ETRANGER_RESIDENT = 'ETRANGER_RESIDENT',
-    PERSONNE_MORALE = 'PERSONNE_MORALE'
+    USAGER = 'USAGER'
 }
 
 export enum EmploymentStatus {
@@ -67,11 +63,10 @@ export const MUNICIPAL_ROLE_MAPPING: Record<MunicipalRole, RoleMunicipalMapping>
         canManageRoles: [
             MunicipalRole.MAIRE_ADJOINT,
             MunicipalRole.SECRETAIRE_GENERAL,
-            MunicipalRole.CHEF_SERVICE,
-            MunicipalRole.CHEF_BUREAU,
+            MunicipalRole.CHEF_SERVICE_ETAT_CIVIL,
+            MunicipalRole.CHEF_SERVICE_URBANISME,
+            MunicipalRole.OFFICIER_ETAT_CIVIL,
             MunicipalRole.AGENT_MUNICIPAL,
-            MunicipalRole.AGENT_ETAT_CIVIL,
-            MunicipalRole.AGENT_TECHNIQUE,
             MunicipalRole.STAGIAIRE
         ],
         permissions: [
@@ -93,11 +88,10 @@ export const MUNICIPAL_ROLE_MAPPING: Record<MunicipalRole, RoleMunicipalMapping>
         hierarchyLevel: 2,
         department: ServiceDepartment.DIRECTION,
         canManageRoles: [
-            MunicipalRole.CHEF_SERVICE,
-            MunicipalRole.CHEF_BUREAU,
+            MunicipalRole.CHEF_SERVICE_ETAT_CIVIL,
+            MunicipalRole.CHEF_SERVICE_URBANISME,
+            MunicipalRole.OFFICIER_ETAT_CIVIL,
             MunicipalRole.AGENT_MUNICIPAL,
-            MunicipalRole.AGENT_ETAT_CIVIL,
-            MunicipalRole.AGENT_TECHNIQUE,
             MunicipalRole.STAGIAIRE
         ],
         permissions: [
@@ -117,11 +111,10 @@ export const MUNICIPAL_ROLE_MAPPING: Record<MunicipalRole, RoleMunicipalMapping>
         hierarchyLevel: 3,
         department: ServiceDepartment.DIRECTION,
         canManageRoles: [
-            MunicipalRole.CHEF_SERVICE,
-            MunicipalRole.CHEF_BUREAU,
+            MunicipalRole.CHEF_SERVICE_ETAT_CIVIL,
+            MunicipalRole.CHEF_SERVICE_URBANISME,
+            MunicipalRole.OFFICIER_ETAT_CIVIL,
             MunicipalRole.AGENT_MUNICIPAL,
-            MunicipalRole.AGENT_ETAT_CIVIL,
-            MunicipalRole.AGENT_TECHNIQUE,
             MunicipalRole.STAGIAIRE
         ],
         permissions: [
@@ -132,45 +125,59 @@ export const MUNICIPAL_ROLE_MAPPING: Record<MunicipalRole, RoleMunicipalMapping>
         ]
     },
 
-    [MunicipalRole.CHEF_SERVICE]: {
-        role: MunicipalRole.CHEF_SERVICE,
-        label: 'Chef de Service',
-        labelFeminin: 'Cheffe de Service',
-        allowedOrgTypes: ['MAIRIE_CENTRALE', 'MAIRIE_ARRONDISSEMENT', 'MAIRIE_COMMUNE', 'COMMUNAUTE_URBAINE'],
+    [MunicipalRole.CHEF_SERVICE_ETAT_CIVIL]: {
+        role: MunicipalRole.CHEF_SERVICE_ETAT_CIVIL,
+        label: 'Chef Service État Civil',
+        labelFeminin: 'Cheffe Service État Civil',
+        allowedOrgTypes: ['MAIRIE_CENTRALE', 'MAIRIE_ARRONDISSEMENT', 'MAIRIE_COMMUNE'],
         employmentStatus: EmploymentStatus.FONCTIONNAIRE,
         hierarchyLevel: 4,
+        department: ServiceDepartment.ETAT_CIVIL,
         canManageRoles: [
-            MunicipalRole.CHEF_BUREAU,
-            MunicipalRole.AGENT_MUNICIPAL,
-            MunicipalRole.AGENT_ETAT_CIVIL,
-            MunicipalRole.AGENT_TECHNIQUE,
+            MunicipalRole.OFFICIER_ETAT_CIVIL,
             MunicipalRole.STAGIAIRE
         ],
         permissions: [
-            'Gestion service',
-            'Validation technique',
-            'Encadrement équipe',
-            'Planification'
+            'Gestion service état civil',
+            'Validation technique actes',
+            'Encadrement officiers',
+            'Rapports statistiques'
         ]
     },
 
-    [MunicipalRole.CHEF_BUREAU]: {
-        role: MunicipalRole.CHEF_BUREAU,
-        label: 'Chef de Bureau',
-        labelFeminin: 'Cheffe de Bureau',
-        allowedOrgTypes: ['MAIRIE_CENTRALE', 'MAIRIE_ARRONDISSEMENT', 'MAIRIE_COMMUNE', 'COMMUNAUTE_URBAINE'],
+    [MunicipalRole.CHEF_SERVICE_URBANISME]: {
+        role: MunicipalRole.CHEF_SERVICE_URBANISME,
+        label: 'Chef Service Urbanisme',
+        labelFeminin: 'Cheffe Service Urbanisme',
+        allowedOrgTypes: ['MAIRIE_CENTRALE', 'MAIRIE_ARRONDISSEMENT', 'MAIRIE_COMMUNE'],
         employmentStatus: EmploymentStatus.FONCTIONNAIRE,
-        hierarchyLevel: 5,
+        hierarchyLevel: 4,
+        department: ServiceDepartment.URBANISME,
         canManageRoles: [
             MunicipalRole.AGENT_MUNICIPAL,
-            MunicipalRole.AGENT_ETAT_CIVIL,
-            MunicipalRole.AGENT_TECHNIQUE,
             MunicipalRole.STAGIAIRE
         ],
         permissions: [
-            'Gestion bureau',
-            'Traitement dossiers',
-            'Encadrement agents'
+            'Gestion service urbanisme',
+            'Instruction permis',
+            'Validation technique dossiers',
+            'Suivi terrain'
+        ]
+    },
+
+    [MunicipalRole.OFFICIER_ETAT_CIVIL]: {
+        role: MunicipalRole.OFFICIER_ETAT_CIVIL,
+        label: 'Officier d\'État Civil',
+        labelFeminin: 'Officière d\'État Civil',
+        allowedOrgTypes: ['MAIRIE_CENTRALE', 'MAIRIE_ARRONDISSEMENT', 'MAIRIE_COMMUNE'],
+        employmentStatus: EmploymentStatus.FONCTIONNAIRE,
+        hierarchyLevel: 6,
+        department: ServiceDepartment.ETAT_CIVIL,
+        canManageRoles: [MunicipalRole.STAGIAIRE],
+        permissions: [
+            'Établissement actes',
+            'Célébration mariages',
+            'Tenue des registres'
         ]
     },
 
@@ -194,47 +201,16 @@ export const MUNICIPAL_ROLE_MAPPING: Record<MunicipalRole, RoleMunicipalMapping>
         role: MunicipalRole.AGENT_ACCUEIL,
         label: 'Agent d\'Accueil',
         labelFeminin: 'Agente d\'Accueil',
-        allowedOrgTypes: ['MAIRIE_CENTRALE', 'MAIRIE_ARRONDISSEMENT', 'MAIRIE_COMMUNE', 'COMMUNAUTE_URBAINE'],
+        allowedOrgTypes: ['MAIRIE_CENTRALE', 'MAIRIE_ARRONDISSEMENT', 'MAIRIE_COMMUNE'],
         employmentStatus: EmploymentStatus.CONTRACTUEL,
         hierarchyLevel: 7,
         department: ServiceDepartment.ACCUEIL,
-        canManageRoles: [],
+        canManageRoles: [MunicipalRole.STAGIAIRE],
         permissions: [
             'Accueil usagers',
             'Orientation',
+            'Délivrance formulaires',
             'Information générale'
-        ]
-    },
-
-    [MunicipalRole.AGENT_ETAT_CIVIL]: {
-        role: MunicipalRole.AGENT_ETAT_CIVIL,
-        label: 'Officier d\'État Civil',
-        labelFeminin: 'Officière d\'État Civil',
-        allowedOrgTypes: ['MAIRIE_CENTRALE', 'MAIRIE_ARRONDISSEMENT', 'MAIRIE_COMMUNE'],
-        employmentStatus: EmploymentStatus.FONCTIONNAIRE,
-        hierarchyLevel: 6,
-        department: ServiceDepartment.ETAT_CIVIL,
-        canManageRoles: [MunicipalRole.STAGIAIRE],
-        permissions: [
-            'Établissement actes',
-            'Célébration mariages',
-            'Registres état civil'
-        ]
-    },
-
-    [MunicipalRole.AGENT_TECHNIQUE]: {
-        role: MunicipalRole.AGENT_TECHNIQUE,
-        label: 'Agent Technique',
-        labelFeminin: 'Agente Technique',
-        allowedOrgTypes: ['MAIRIE_CENTRALE', 'MAIRIE_ARRONDISSEMENT', 'MAIRIE_COMMUNE', 'COMMUNAUTE_URBAINE'],
-        employmentStatus: EmploymentStatus.CONTRACTUEL,
-        hierarchyLevel: 6,
-        department: ServiceDepartment.URBANISME,
-        canManageRoles: [MunicipalRole.STAGIAIRE],
-        permissions: [
-            'Instruction technique',
-            'Visites terrain',
-            'Avis techniques'
         ]
     },
 
@@ -253,11 +229,11 @@ export const MUNICIPAL_ROLE_MAPPING: Record<MunicipalRole, RoleMunicipalMapping>
         ]
     },
 
-    [MunicipalRole.CITOYEN]: {
-        role: MunicipalRole.CITOYEN,
-        label: 'Citoyen Résident',
-        labelFeminin: 'Citoyenne Résidente',
-        allowedOrgTypes: ['MAIRIE_CENTRALE', 'MAIRIE_ARRONDISSEMENT', 'MAIRIE_COMMUNE', 'COMMUNAUTE_URBAINE'],
+    [MunicipalRole.USAGER]: {
+        role: MunicipalRole.USAGER,
+        label: 'Usager',
+        labelFeminin: 'Usager',
+        allowedOrgTypes: ['MAIRIE_CENTRALE', 'MAIRIE_ARRONDISSEMENT', 'MAIRIE_COMMUNE'],
         employmentStatus: EmploymentStatus.USAGER,
         hierarchyLevel: 0,
         canManageRoles: [],
@@ -265,53 +241,8 @@ export const MUNICIPAL_ROLE_MAPPING: Record<MunicipalRole, RoleMunicipalMapping>
             'Mes demandes',
             'Mon profil',
             'État Civil',
-            'Urbanisme'
-        ]
-    },
-
-    [MunicipalRole.CITOYEN_AUTRE_COMMUNE]: {
-        role: MunicipalRole.CITOYEN_AUTRE_COMMUNE,
-        label: 'Citoyen (Autre Commune)',
-        labelFeminin: 'Citoyenne (Autre Commune)',
-        allowedOrgTypes: ['MAIRIE_CENTRALE', 'MAIRIE_ARRONDISSEMENT', 'MAIRIE_COMMUNE', 'COMMUNAUTE_URBAINE'],
-        employmentStatus: EmploymentStatus.USAGER,
-        hierarchyLevel: 0,
-        canManageRoles: [],
-        permissions: [
-            'Légalisations',
-            'Certificats',
-            'Attestations'
-        ]
-    },
-
-    [MunicipalRole.ETRANGER_RESIDENT]: {
-        role: MunicipalRole.ETRANGER_RESIDENT,
-        label: 'Étranger Résident',
-        labelFeminin: 'Étrangère Résidente',
-        allowedOrgTypes: ['MAIRIE_CENTRALE', 'MAIRIE_ARRONDISSEMENT', 'MAIRIE_COMMUNE', 'COMMUNAUTE_URBAINE'],
-        employmentStatus: EmploymentStatus.USAGER,
-        hierarchyLevel: 0,
-        canManageRoles: [],
-        permissions: [
-            'Certificat résidence',
-            'Attestations',
+            'Urbanisme',
             'Légalisations'
-        ]
-    },
-
-    [MunicipalRole.PERSONNE_MORALE]: {
-        role: MunicipalRole.PERSONNE_MORALE,
-        label: 'Personne Morale',
-        labelFeminin: 'Personne Morale',
-        allowedOrgTypes: ['MAIRIE_CENTRALE', 'MAIRIE_ARRONDISSEMENT', 'MAIRIE_COMMUNE', 'COMMUNAUTE_URBAINE'],
-        employmentStatus: EmploymentStatus.USAGER,
-        hierarchyLevel: 0,
-        canManageRoles: [],
-        permissions: [
-            'Patente commerciale',
-            'Autorisations',
-            'Marchés publics',
-            'Fiscalité entreprise'
         ]
     }
 };
@@ -331,11 +262,11 @@ export const canManageRole = (managerRole: MunicipalRole, targetRole: MunicipalR
 };
 
 export const isStaffRole = (role: MunicipalRole): boolean => {
-    return ![MunicipalRole.CITOYEN, MunicipalRole.ETRANGER_RESIDENT, MunicipalRole.PERSONNE_MORALE].includes(role);
+    return role !== MunicipalRole.USAGER;
 };
 
 export const isUserRole = (role: MunicipalRole): boolean => {
-    return [MunicipalRole.CITOYEN, MunicipalRole.CITOYEN_AUTRE_COMMUNE, MunicipalRole.ETRANGER_RESIDENT, MunicipalRole.PERSONNE_MORALE].includes(role);
+    return role === MunicipalRole.USAGER;
 };
 
 // Compatibility aliases for legacy code
@@ -344,10 +275,10 @@ export const ConsularRole = {
     CONSUL_GENERAL: MunicipalRole.MAIRE,
     CONSUL: MunicipalRole.MAIRE_ADJOINT,
     VICE_CONSUL: MunicipalRole.SECRETAIRE_GENERAL,
-    CHARGE_AFFAIRES_CONSULAIRES: MunicipalRole.CHEF_SERVICE,
+    CHARGE_AFFAIRES_CONSULAIRES: MunicipalRole.CHEF_SERVICE_ETAT_CIVIL,
     AGENT_CONSULAIRE: MunicipalRole.AGENT_MUNICIPAL,
-    CITIZEN: MunicipalRole.CITOYEN,
-    FOREIGNER: MunicipalRole.ETRANGER_RESIDENT
+    CITIZEN: MunicipalRole.USAGER,
+    FOREIGNER: MunicipalRole.USAGER
 } as const;
 
 export type ConsularRoleType = MunicipalRole;

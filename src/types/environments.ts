@@ -24,28 +24,29 @@ export enum BackOfficeRole {
     AUDITOR = 'AUDITOR'
 }
 
-// Rôles Personnel Municipal
+// Rôles Personnel Municipal (Les 10 rôles types par Mairie)
 export enum MunicipalStaffRole {
     MAIRE = 'MAIRE',
     MAIRE_ADJOINT = 'MAIRE_ADJOINT',
-    CONSEILLER_MUNICIPAL = 'CONSEILLER_MUNICIPAL',
     SECRETAIRE_GENERAL = 'SECRETAIRE_GENERAL',
-    CHEF_SERVICE = 'CHEF_SERVICE',
-    CHEF_BUREAU = 'CHEF_BUREAU',
+    CHEF_SERVICE_ETAT_CIVIL = 'CHEF_SERVICE_ETAT_CIVIL',
+    CHEF_SERVICE_URBANISME = 'CHEF_SERVICE_URBANISME',
+    OFFICIER_ETAT_CIVIL = 'OFFICIER_ETAT_CIVIL',
     AGENT_MUNICIPAL = 'AGENT_MUNICIPAL',
-    AGENT_ETAT_CIVIL = 'AGENT_ETAT_CIVIL',
-    AGENT_TECHNIQUE = 'AGENT_TECHNIQUE',
     AGENT_ACCUEIL = 'AGENT_ACCUEIL',
     STAGIAIRE = 'STAGIAIRE'
 }
 
 // Rôles Usagers Publics
 export enum PublicUserRole {
-    CITOYEN = 'CITOYEN',
-    CITOYEN_AUTRE = 'CITOYEN_AUTRE',
-    ETRANGER_RESIDENT = 'ETRANGER_RESIDENT',
-    ASSOCIATION = 'ASSOCIATION',
-    ENTREPRISE = 'ENTREPRISE'
+    USAGER = 'USAGER'
+}
+
+// Statuts Internes Usager (pour la gestion de la mairie)
+export enum UsagerStatus {
+    RESIDENT = 'RESIDENT',
+    NON_RESIDENT = 'NON_RESIDENT',
+    ETRANGER = 'ETRANGER'
 }
 
 // ============================================================
@@ -428,22 +429,16 @@ export function getRoleLabel(
         // Municipal Staff
         [MunicipalStaffRole.MAIRE]: 'Maire',
         [MunicipalStaffRole.MAIRE_ADJOINT]: 'Adjoint au Maire',
-        [MunicipalStaffRole.CONSEILLER_MUNICIPAL]: 'Conseiller Municipal',
         [MunicipalStaffRole.SECRETAIRE_GENERAL]: 'Secrétaire Général',
-        [MunicipalStaffRole.CHEF_SERVICE]: 'Chef de Service',
-        [MunicipalStaffRole.CHEF_BUREAU]: 'Chef de Bureau',
+        [MunicipalStaffRole.CHEF_SERVICE_ETAT_CIVIL]: 'Chef Service État Civil',
+        [MunicipalStaffRole.CHEF_SERVICE_URBANISME]: 'Chef Service Urbanisme',
+        [MunicipalStaffRole.OFFICIER_ETAT_CIVIL]: 'Officier État Civil',
         [MunicipalStaffRole.AGENT_MUNICIPAL]: 'Agent Municipal',
-        [MunicipalStaffRole.AGENT_ETAT_CIVIL]: 'Agent État Civil',
-        [MunicipalStaffRole.AGENT_TECHNIQUE]: 'Agent Technique',
         [MunicipalStaffRole.AGENT_ACCUEIL]: 'Agent d\'Accueil',
         [MunicipalStaffRole.STAGIAIRE]: 'Stagiaire',
 
         // Public Users
-        [PublicUserRole.CITOYEN]: 'Citoyen',
-        [PublicUserRole.CITOYEN_AUTRE]: 'Citoyen (Autre Commune)',
-        [PublicUserRole.ETRANGER_RESIDENT]: 'Résident Étranger',
-        [PublicUserRole.ASSOCIATION]: 'Association',
-        [PublicUserRole.ENTREPRISE]: 'Entreprise'
+        [PublicUserRole.USAGER]: 'Usager'
     };
     return labels[role] || role;
 }

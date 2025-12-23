@@ -2,7 +2,7 @@
 type FormFieldValue = string | boolean | File | null;
 
 interface FormAssistantState {
-  currentForm: 'registration_choice' | 'gabonais_registration' | 'foreigner_registration' | null;
+  currentForm: 'registration_choice' | 'gabonais_registration' | 'foreigner_registration' | 'unified_registration' | null;
   currentStep: number;
   formData: Record<string, FormFieldValue>;
   listeners: Set<() => void>;

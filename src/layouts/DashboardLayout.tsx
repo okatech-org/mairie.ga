@@ -8,6 +8,7 @@ import { MunicipalRole } from "@/types/municipal-roles";
 import { LogoutConfirmDialog } from "@/components/auth/LogoutConfirmDialog";
 import { SecurityNotificationBell } from "@/components/notifications/SecurityNotificationBell";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { UserContextCard } from "@/components/dashboard/UserContextCard";
 
 type NavItem = { label: string; icon: React.ElementType; path: string };
 type NavGroup = { title: string; items: NavItem[] };
@@ -33,24 +34,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const isMaireAdjoint = userRole === MunicipalRole.MAIRE_ADJOINT;
     const isDirection = isMaire || isMaireAdjoint;
 
-    // Encadrement (Secrétaire Général, Chefs de Service/Bureau)
+    // Encadrement (Secrétaire Général, Chefs de Service)
     const isSecretaireGeneral = userRole === MunicipalRole.SECRETAIRE_GENERAL;
-    const isChefService = userRole === MunicipalRole.CHEF_SERVICE;
-    const isChefBureau = userRole === MunicipalRole.CHEF_BUREAU;
-    const isEncadrement = isSecretaireGeneral || isChefService || isChefBureau;
+    const isChefService = userRole === MunicipalRole.CHEF_SERVICE_ETAT_CIVIL || userRole === MunicipalRole.CHEF_SERVICE_URBANISME;
+    const isEncadrement = isSecretaireGeneral || isChefService;
 
     // Agents
-    const isOfficierEtatCivil = userRole === MunicipalRole.AGENT_ETAT_CIVIL;
+    const isOfficierEtatCivil = userRole === MunicipalRole.OFFICIER_ETAT_CIVIL;
     const isAgentMunicipal = userRole === MunicipalRole.AGENT_MUNICIPAL;
-    const isAgentTechnique = userRole === MunicipalRole.AGENT_TECHNIQUE;
     const isAgentAccueil = userRole === MunicipalRole.AGENT_ACCUEIL;
     const isStagiaire = userRole === MunicipalRole.STAGIAIRE;
-    const isAgent = isOfficierEtatCivil || isAgentMunicipal || isAgentTechnique || isAgentAccueil || isStagiaire;
+    const isAgent = isOfficierEtatCivil || isAgentMunicipal || isAgentAccueil || isStagiaire;
 
     // Usagers
-    const isCitizen = userRole === MunicipalRole.CITOYEN || userRole === 'CITIZEN';
-    const isForeigner = userRole === MunicipalRole.ETRANGER_RESIDENT || userRole === 'FOREIGNER';
-    const isPersonneMorale = userRole === MunicipalRole.PERSONNE_MORALE;
+    const isUsager = userRole === MunicipalRole.USAGER || userRole === 'CITIZEN' || userRole === 'USAGER';
+    const isCitizen = isUsager; // Fallback for existing logic
+    const isForeigner = false; // Consolidated into Usager
+    const isPersonneMorale = false; // Consolidated into Usager
 
     // ========== NAVIGATION BY ROLE ==========
 
@@ -186,8 +186,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             ];
         }
 
-        // Chef de Service / Chef de Bureau
-        if (isChefService || isChefBureau) {
+        // Chef de Service
+        if (isChefService) {
             return [
                 {
                     title: "MON SERVICE",
@@ -220,8 +220,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             ];
         }
 
-        // Agent Municipal / Agent Technique
-        if (isAgentMunicipal || isAgentTechnique) {
+        // Agent Municipal
+        if (isAgentMunicipal) {
             return [
                 { label: "Mon Espace", icon: LayoutDashboard, path: "/dashboard/agent" },
                 { label: "Dossiers en cours", icon: ClipboardList, path: "/dashboard/agent/requests" },
@@ -253,22 +253,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             ];
         }
 
-        // Étranger Résident
-        if (isForeigner) {
-            return [
-                { label: "Tableau de Bord", icon: LayoutDashboard, path: "/dashboard/foreigner" },
-                { label: "Mes Demandes", icon: FileText, path: "/dashboard/foreigner/requests" },
-                { label: "Mes Documents", icon: ShieldCheck, path: "/dashboard/foreigner/documents" },
-                { label: "iBoîte", icon: Mail, path: "/iboite" },
-            ];
-        }
-
-        // Personne Morale (fallback to citizen nav)
-        if (isPersonneMorale) {
+        // Usager (Citizen, Foreigner, Personne Morale)
+        if (isUsager) {
             return [
                 { label: "Tableau de Bord", icon: LayoutDashboard, path: "/dashboard/citizen" },
                 { label: "Mes Demandes", icon: FileText, path: "/dashboard/citizen/requests" },
                 { label: "Mes Documents", icon: ShieldCheck, path: "/dashboard/citizen/documents" },
+                { label: "Associations", icon: Users, path: "/dashboard/citizen/associations" },
+                { label: "Entreprises", icon: Building2, path: "/dashboard/citizen/companies" },
+                { label: "Mon CV", icon: FileText, path: "/dashboard/citizen/cv" },
                 { label: "iBoîte", icon: Mail, path: "/iboite" },
             ];
         }
@@ -295,14 +288,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         if (isMaireAdjoint) return { title: "HÔTEL DE VILLE", subtitle: "Maire Adjoint" };
         if (isSecretaireGeneral) return { title: "SECRÉTARIAT", subtitle: "Secrétaire Général" };
         if (isChefService) return { title: "SERVICE", subtitle: "Chef de Service" };
-        if (isChefBureau) return { title: "BUREAU", subtitle: "Chef de Bureau" };
         if (isOfficierEtatCivil) return { title: "ÉTAT CIVIL", subtitle: "Officier" };
-        if (isAgentMunicipal || isAgentTechnique) return { title: "MAIRIE", subtitle: "Agent Municipal" };
+        if (isAgentMunicipal) return { title: "MAIRIE", subtitle: "Agent Municipal" };
         if (isAgentAccueil) return { title: "ACCUEIL", subtitle: "Agent d'Accueil" };
         if (isStagiaire) return { title: "MAIRIE", subtitle: "Stagiaire" };
-        if (isForeigner) return { title: "MAIRIE", subtitle: "Espace Résident" };
-        if (isPersonneMorale) return { title: "MAIRIE", subtitle: "Espace Pro" };
-        return { title: "MAIRIE", subtitle: "Espace Citoyen" };
+        if (isUsager) return { title: "MAIRIE", subtitle: "Espace Usager" };
+        return { title: "MAIRIE", subtitle: "Espace Usager" };
     };
 
     const header = getSidebarHeader();
@@ -323,6 +314,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </div>
                 {isSuperAdmin && <SecurityNotificationBell />}
             </div>
+
+            {/* User Context Card */}
+            <UserContextCard />
 
             {/* Navigation */}
             <nav className="flex-1 overflow-y-auto pr-2 no-scrollbar">

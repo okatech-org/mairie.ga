@@ -18,9 +18,7 @@ import DemoPortal from "./pages/DemoPortal";
 import EntityPortal from "./pages/EntityPortal";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
-import RegistrationChoice from "./pages/auth/RegistrationChoice";
-import RegisterGabonais from "./pages/auth/RegisterGabonais";
-import RegisterForeigner from "./pages/auth/RegisterForeigner";
+import RegisterPage from "./pages/auth/RegisterPage";
 import CitizenDashboard from "./pages/dashboard/CitizenDashboard";
 import ForeignerDashboard from "./pages/dashboard/ForeignerDashboard";
 import ChildRegistrationPage from "./pages/registration/ChildRegistrationPage";
@@ -54,6 +52,9 @@ import CorrespondancePage from "./pages/CorrespondancePage";
 import ICorrespondancePage from "./pages/ICorrespondancePage";
 import CommunicationsDashboard from "./pages/dashboard/maire/CommunicationsDashboard";
 import CommunicationDashboard from "./pages/dashboard/communication/CommunicationDashboard";
+import SGDashboard from "./pages/dashboard/SGDashboard";
+import ChefServiceDashboard from "./pages/dashboard/ChefServiceDashboard";
+import AccueilDashboard from "./pages/dashboard/AccueilDashboard";
 
 
 import CompaniesPage from "./pages/companies/CompaniesPage";
@@ -124,9 +125,7 @@ const App = () => (
                           <Route path="/reset-password" element={<ResetPassword />} />
 
                           {/* REGISTRATION FLOW */}
-                          <Route path="/register" element={<RegistrationChoice />} />
-                          <Route path="/register/gabonais" element={<RegisterGabonais />} />
-                          <Route path="/register/etranger" element={<RegisterForeigner />} />
+                          <Route path="/register" element={<RegisterPage />} />
 
                           <Route path="/portal/:entityId" element={<EntityPortal />} />
                           <Route path="/rendez-vous" element={<AppointmentBookingPage />} />
@@ -195,8 +194,9 @@ const App = () => (
                         <Route path="/dashboard/maire/communications" element={<DashboardLayout><CommunicationsDashboard /></DashboardLayout>} />
                         <Route path="/dashboard/maire/contacts" element={<DashboardLayout><ContactsPage /></DashboardLayout>} />
                         <Route path="/contacts" element={<ContactsPage />} />
-                        <Route path="/dashboard/sg" element={<DashboardLayout><AgentDashboard /></DashboardLayout>} />
-                        <Route path="/dashboard/chef-service" element={<DashboardLayout><AgentDashboard /></DashboardLayout>} />
+                        <Route path="/dashboard/sg" element={<DashboardLayout><SGDashboard /></DashboardLayout>} />
+                        <Route path="/dashboard/chef-service" element={<DashboardLayout><ChefServiceDashboard /></DashboardLayout>} />
+                        <Route path="/dashboard/accueil" element={<DashboardLayout><AccueilDashboard /></DashboardLayout>} />
 
                         {/* Agent Routes */}
                         <Route path="/dashboard/agent" element={<DashboardLayout><AgentDashboard /></DashboardLayout>} />

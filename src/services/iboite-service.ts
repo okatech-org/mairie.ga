@@ -346,11 +346,11 @@ class IBoiteServiceClass {
                     *,
                     participants:iboite_conversation_participants!inner(
                         *,
-                        user:profiles(first_name, last_name)
+                        profiles(first_name, last_name)
                     )
                 `)
-                .eq('iboite_conversation_participants.user_id', session.session.user.id)
-                .eq('iboite_conversation_participants.is_active', true)
+                .eq('participants.user_id', session.session.user.id)
+                .eq('participants.is_active', true)
                 .order('last_message_at', { ascending: false, nullsFirst: false });
 
             if (options?.archived !== undefined) {
@@ -475,8 +475,8 @@ class IBoiteServiceClass {
             let query = (supabase.from as any)('iboite_messages')
                 .select(`
                     *,
-                    sender:profiles!iboite_messages_sender_id_fkey(
-                        first_name, last_name
+                    sender:profiles(
+                        first_name, last_name, avatar_url
                     )
                 `)
                 .eq('conversation_id', conversationId)
@@ -526,8 +526,8 @@ class IBoiteServiceClass {
                 })
                 .select(`
                     *,
-                    sender:profiles!iboite_messages_sender_id_fkey(
-                        first_name, last_name
+                    sender:profiles(
+                        first_name, last_name, avatar_url
                     )
                 `)
                 .single();
@@ -678,6 +678,47 @@ class IBoiteServiceClass {
             status: 'SENT',
             limit
         });
+    }
+
+    /**
+     * Get internal conversations where the user sent the last message
+     */
+    async getSentConversations(limit?: number): Promise<IBoiteConversation[]> {
+        try {
+            const { data: session } = await supabase.auth.getSession();
+            if (!session?.session?.user?.id) return [];
+
+            const userId = session.session.user.id;
+
+            let query = (supabase.from as any)('iboite_conversations')
+                .select(`
+                    *,
+                    participants:iboite_conversation_participants!inner(
+                        *,
+                        profiles(first_name, last_name, avatar_url)
+                    )
+                `)
+                .eq('participants.user_id', userId)
+                .eq('last_message_sender_id', userId) // Filter for those where user is the last sender
+                .order('last_message_at', { ascending: false, nullsFirst: false });
+
+            if (limit) {
+                query = query.limit(limit);
+            }
+
+            const { data, error } = await query;
+
+            if (error) {
+                console.error('[iBoîte] Get sent conversations error:', error);
+                // Fallback to all user conversations if last_message_sender_id is null/not working
+                return [];
+            }
+
+            return this.mapConversations(data || [], userId);
+        } catch (error) {
+            console.error('[iBoîte] Get sent conversations error:', error);
+            return [];
+        }
     }
 
     /**
@@ -920,7 +961,7 @@ class IBoiteServiceClass {
     }
 
     private mapParticipant(data: any): IBoiteParticipant {
-        const user = data.user || {};
+        const user = data.user || data.profiles || {};
         return {
             id: data.id || '',
             conversationId: data.conversation_id || '',
@@ -940,7 +981,7 @@ class IBoiteServiceClass {
     }
 
     private mapMessage(data: any): IBoiteMessage {
-        const sender = data.sender || {};
+        const sender = data.sender || data.profiles || {};
         const senderName = `${sender.first_name || ''} ${sender.last_name || ''}`.trim() || 'Utilisateur';
         return {
             id: data.id,
