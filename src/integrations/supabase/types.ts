@@ -1181,8 +1181,13 @@ export type Database = {
       }
       icorrespondance_folders: {
         Row: {
+          approved_at: string | null
+          approved_by_id: string | null
           comment: string | null
           created_at: string
+          current_holder_id: string | null
+          delivered_at: string | null
+          delivery_method: string | null
           iboite_conversation_id: string | null
           id: string
           is_internal: boolean | null
@@ -1195,14 +1200,20 @@ export type Database = {
           recipient_organization: string | null
           recipient_user_id: string | null
           reference_number: string | null
+          requires_approval: boolean | null
           sent_at: string | null
           status: string
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          approved_at?: string | null
+          approved_by_id?: string | null
           comment?: string | null
           created_at?: string
+          current_holder_id?: string | null
+          delivered_at?: string | null
+          delivery_method?: string | null
           iboite_conversation_id?: string | null
           id?: string
           is_internal?: boolean | null
@@ -1215,14 +1226,20 @@ export type Database = {
           recipient_organization?: string | null
           recipient_user_id?: string | null
           reference_number?: string | null
+          requires_approval?: boolean | null
           sent_at?: string | null
           status?: string
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          approved_at?: string | null
+          approved_by_id?: string | null
           comment?: string | null
           created_at?: string
+          current_holder_id?: string | null
+          delivered_at?: string | null
+          delivery_method?: string | null
           iboite_conversation_id?: string | null
           id?: string
           is_internal?: boolean | null
@@ -1235,6 +1252,7 @@ export type Database = {
           recipient_organization?: string | null
           recipient_user_id?: string | null
           reference_number?: string | null
+          requires_approval?: boolean | null
           sent_at?: string | null
           status?: string
           updated_at?: string | null
@@ -1246,6 +1264,59 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      icorrespondance_workflow_steps: {
+        Row: {
+          actor_id: string
+          actor_name: string | null
+          actor_role: string | null
+          comment: string | null
+          created_at: string | null
+          folder_id: string
+          id: string
+          is_read: boolean | null
+          read_at: string | null
+          step_type: string
+          target_id: string | null
+          target_name: string | null
+        }
+        Insert: {
+          actor_id: string
+          actor_name?: string | null
+          actor_role?: string | null
+          comment?: string | null
+          created_at?: string | null
+          folder_id: string
+          id?: string
+          is_read?: boolean | null
+          read_at?: string | null
+          step_type: string
+          target_id?: string | null
+          target_name?: string | null
+        }
+        Update: {
+          actor_id?: string
+          actor_name?: string | null
+          actor_role?: string | null
+          comment?: string | null
+          created_at?: string | null
+          folder_id?: string
+          id?: string
+          is_read?: boolean | null
+          read_at?: string | null
+          step_type?: string
+          target_id?: string | null
+          target_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "icorrespondance_workflow_steps_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "icorrespondance_folders"
             referencedColumns: ["id"]
           },
         ]
@@ -1974,6 +2045,15 @@ export type Database = {
     }
     Functions: {
       cleanup_old_sessions: { Args: never; Returns: undefined }
+      create_workflow_step: {
+        Args: {
+          p_comment?: string
+          p_folder_id: string
+          p_step_type: string
+          p_target_id?: string
+        }
+        Returns: string
+      }
       get_all_organizations: {
         Args: { limit_count?: number }
         Returns: {
@@ -1998,6 +2078,7 @@ export type Database = {
           organization_name: string
         }[]
       }
+      get_user_organizations: { Args: { _user_id: string }; Returns: string[] }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2005,6 +2086,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       match_knowledge_base: {
         Args: {
           match_count?: number
@@ -2130,6 +2212,18 @@ export type Database = {
         | "PERMIS_DEMOLIR"
         | "PERMIS_AMENAGER"
         | "CERTIFICAT_URBANISME"
+      workflow_step_type:
+        | "CREATED"
+        | "SENT_FOR_APPROVAL"
+        | "VIEWED"
+        | "APPROVED"
+        | "REJECTED"
+        | "MODIFICATION_REQUESTED"
+        | "RETURNED_TO_AGENT"
+        | "READY_FOR_DELIVERY"
+        | "DELIVERED_PRINT"
+        | "DELIVERED_IBOITE"
+        | "ARCHIVED"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2315,6 +2409,19 @@ export const Constants = {
         "PERMIS_DEMOLIR",
         "PERMIS_AMENAGER",
         "CERTIFICAT_URBANISME",
+      ],
+      workflow_step_type: [
+        "CREATED",
+        "SENT_FOR_APPROVAL",
+        "VIEWED",
+        "APPROVED",
+        "REJECTED",
+        "MODIFICATION_REQUESTED",
+        "RETURNED_TO_AGENT",
+        "READY_FOR_DELIVERY",
+        "DELIVERED_PRINT",
+        "DELIVERED_IBOITE",
+        "ARCHIVED",
       ],
     },
   },
