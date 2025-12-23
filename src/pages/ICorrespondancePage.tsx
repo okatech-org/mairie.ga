@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { iBoiteService } from '@/services/iboite-service';
 import { correspondanceService } from '@/services/correspondanceService';
@@ -151,6 +152,7 @@ export default function ICorrespondancePage() {
     const navigate = useNavigate();
     const location = useLocation();
     const { toast } = useToast();
+    const { user, userRole } = useAuth();
 
     // State
     const [folders, setFolders] = useState<ICorrespondanceFolder[]>([]);
@@ -329,6 +331,19 @@ export default function ICorrespondancePage() {
                         console.warn('⚠️ [iCorrespondance] Insert doc error:', docsError);
                     }
                 }
+            }
+
+            // Create initial CREATED workflow step
+            const { error: stepError } = await (supabase.from as any)('icorrespondance_workflow_steps')
+                .insert({
+                    folder_id: folder.id,
+                    step_type: 'CREATED',
+                    actor_id: userId,
+                    comment: 'Dossier créé',
+                });
+
+            if (stepError) {
+                console.warn('⚠️ [iCorrespondance] Insert workflow step error:', stepError);
             }
 
             return {
@@ -1083,8 +1098,8 @@ export default function ICorrespondancePage() {
                                                 <ApprovalActions
                                                     folderId={selectedFolder.id}
                                                     currentStatus={selectedFolder.status}
-                                                    userRole="agent" // TODO: Get from user context
-                                                    isCurrentHolder={true} // TODO: Check current_holder_id
+                                                    userRole={userRole || 'citizen'}
+                                                    isCurrentHolder={!selectedFolder.current_holder_id || selectedFolder.current_holder_id === user?.id}
                                                     onActionComplete={() => loadFolders()}
                                                 />
 
