@@ -205,22 +205,21 @@ export function useUserEnvironment(): UseUserEnvironmentReturn {
     const isMaire = state.role === MunicipalStaffRole.MAIRE;
     const isMaireAdjoint = state.role === MunicipalStaffRole.MAIRE_ADJOINT;
     const isSecretaireGeneral = state.role === MunicipalStaffRole.SECRETAIRE_GENERAL;
-    const isChefService = state.role === MunicipalStaffRole.CHEF_SERVICE
-        || state.role === MunicipalStaffRole.CHEF_BUREAU;
+    const isChefService = state.role === MunicipalStaffRole.CHEF_SERVICE_ETAT_CIVIL
+        || state.role === MunicipalStaffRole.CHEF_SERVICE_URBANISME;
     const isAgent = isMunicipalStaff && ![
         MunicipalStaffRole.MAIRE,
         MunicipalStaffRole.MAIRE_ADJOINT,
         MunicipalStaffRole.SECRETAIRE_GENERAL,
-        MunicipalStaffRole.CHEF_SERVICE,
-        MunicipalStaffRole.CHEF_BUREAU
+        MunicipalStaffRole.CHEF_SERVICE_ETAT_CIVIL,
+        MunicipalStaffRole.CHEF_SERVICE_URBANISME
     ].includes(state.role as MunicipalStaffRole);
 
     // Helpers pour les usagers
-    const isCitoyen = state.role === PublicUserRole.CITOYEN
-        || state.role === PublicUserRole.CITOYEN_AUTRE;
-    const isEtranger = state.role === PublicUserRole.ETRANGER_RESIDENT;
-    const isAssociation = state.role === PublicUserRole.ASSOCIATION;
-    const isEntreprise = state.role === PublicUserRole.ENTREPRISE;
+    const isCitoyen = state.role === PublicUserRole.USAGER;
+    const isEtranger = false; // Now handled via UsagerStatus, not role
+    const isAssociation = false; // Now handled via profile metadata
+    const isEntreprise = false; // Now handled via profile metadata
 
     // Actions
     const refresh = async () => {

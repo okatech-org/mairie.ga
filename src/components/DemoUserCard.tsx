@@ -23,17 +23,13 @@ const ROLE_COLORS: Record<string, string> = {
   [MunicipalRole.MAIRE]: 'bg-yellow-600',
   [MunicipalRole.MAIRE_ADJOINT]: 'bg-orange-500',
   [MunicipalRole.SECRETAIRE_GENERAL]: 'bg-slate-600',
-  [MunicipalRole.CHEF_SERVICE]: 'bg-blue-600',
-  [MunicipalRole.CHEF_BUREAU]: 'bg-blue-500',
+  [MunicipalRole.CHEF_SERVICE_ETAT_CIVIL]: 'bg-blue-600',
+  [MunicipalRole.CHEF_SERVICE_URBANISME]: 'bg-blue-500',
+  [MunicipalRole.OFFICIER_ETAT_CIVIL]: 'bg-emerald-600',
   [MunicipalRole.AGENT_MUNICIPAL]: 'bg-green-600',
-  [MunicipalRole.AGENT_ETAT_CIVIL]: 'bg-emerald-600',
-  [MunicipalRole.AGENT_TECHNIQUE]: 'bg-cyan-600',
   [MunicipalRole.AGENT_ACCUEIL]: 'bg-teal-500',
   [MunicipalRole.STAGIAIRE]: 'bg-purple-500',
-  [MunicipalRole.CITOYEN]: 'bg-sky-600',
-  [MunicipalRole.CITOYEN_AUTRE_COMMUNE]: 'bg-cyan-500',
-  [MunicipalRole.ETRANGER_RESIDENT]: 'bg-indigo-500',
-  [MunicipalRole.PERSONNE_MORALE]: 'bg-amber-600',
+  [MunicipalRole.USAGER]: 'bg-sky-600',
 };
 
 export function DemoUserCard({ user }: DemoUserCardProps) {
@@ -52,17 +48,13 @@ export function DemoUserCard({ user }: DemoUserCardProps) {
   const getTargetRoute = () => {
     if (user.role === 'ADMIN') {
       return "/dashboard/super-admin";
-    } else if (user.role === MunicipalRole.CITOYEN || user.role === MunicipalRole.CITOYEN_AUTRE_COMMUNE) {
-      return "/dashboard/citizen";
-    } else if (user.role === MunicipalRole.ETRANGER_RESIDENT) {
-      return "/dashboard/foreigner";
-    } else if (user.role === MunicipalRole.PERSONNE_MORALE) {
+    } else if (user.role === MunicipalRole.USAGER) {
       return "/dashboard/citizen";
     } else if (user.role === MunicipalRole.MAIRE || user.role === MunicipalRole.MAIRE_ADJOINT) {
       return "/dashboard/maire";
     } else if (user.role === MunicipalRole.SECRETAIRE_GENERAL) {
       return "/dashboard/sg";
-    } else if (user.role === MunicipalRole.CHEF_SERVICE || user.role === MunicipalRole.CHEF_BUREAU) {
+    } else if (user.role === MunicipalRole.CHEF_SERVICE_ETAT_CIVIL || user.role === MunicipalRole.CHEF_SERVICE_URBANISME) {
       return "/dashboard/chef-service";
     } else {
       return "/dashboard/agent";

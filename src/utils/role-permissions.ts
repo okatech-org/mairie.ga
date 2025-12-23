@@ -39,7 +39,7 @@ export const ROLE_DEFAULTS: Record<MunicipalRole, RoleDefaults> = {
             ServiceCategory.ENVIRONNEMENT,
             ServiceCategory.VOIRIE
         ],
-        serviceAccessLevel: { canView: true, canProcess: true, canValidate: true } // Full Access
+        serviceAccessLevel: { canView: true, canProcess: true, canValidate: true }
     },
     [MunicipalRole.MAIRE_ADJOINT]: {
         functions: [
@@ -83,24 +83,32 @@ export const ROLE_DEFAULTS: Record<MunicipalRole, RoleDefaults> = {
     },
 
     // SERVICE HEADS
-    [MunicipalRole.CHEF_SERVICE]: {
+    [MunicipalRole.CHEF_SERVICE_ETAT_CIVIL]: {
         functions: [
+            UserFunction.CIVIL_REGISTRY_VIEW,
+            UserFunction.CIVIL_REGISTRY_CREATE,
+            UserFunction.CIVIL_REGISTRY_VALIDATE,
+            UserFunction.CIVIL_REGISTRY_PRINT,
             UserFunction.REPORTING_VIEW,
             UserFunction.USER_MANAGEMENT
         ],
-        serviceCategories: [], // Dynamic depending on the actual service department, but defaults to none specific here
+        serviceCategories: [ServiceCategory.ETAT_CIVIL, ServiceCategory.LEGALISATION],
         serviceAccessLevel: { canView: true, canProcess: true, canValidate: true }
     },
-    [MunicipalRole.CHEF_BUREAU]: {
+    [MunicipalRole.CHEF_SERVICE_URBANISME]: {
         functions: [
-            UserFunction.REPORTING_VIEW
+            UserFunction.URBANISM_VIEW,
+            UserFunction.URBANISM_PROCESS,
+            UserFunction.URBANISM_VALIDATE,
+            UserFunction.REPORTING_VIEW,
+            UserFunction.USER_MANAGEMENT
         ],
-        serviceCategories: [],
-        serviceAccessLevel: { canView: true, canProcess: true, canValidate: false }
+        serviceCategories: [ServiceCategory.URBANISME, ServiceCategory.VOIRIE, ServiceCategory.ENVIRONNEMENT],
+        serviceAccessLevel: { canView: true, canProcess: true, canValidate: true }
     },
 
     // AGENTS
-    [MunicipalRole.AGENT_ETAT_CIVIL]: {
+    [MunicipalRole.OFFICIER_ETAT_CIVIL]: {
         functions: [
             UserFunction.CIVIL_REGISTRY_VIEW,
             UserFunction.CIVIL_REGISTRY_CREATE,
@@ -115,14 +123,6 @@ export const ROLE_DEFAULTS: Record<MunicipalRole, RoleDefaults> = {
             UserFunction.URBANISM_VIEW
         ],
         serviceCategories: [ServiceCategory.ETAT_CIVIL, ServiceCategory.URBANISME],
-        serviceAccessLevel: { canView: true, canProcess: true, canValidate: false }
-    },
-    [MunicipalRole.AGENT_TECHNIQUE]: {
-        functions: [
-            UserFunction.URBANISM_VIEW,
-            UserFunction.URBANISM_PROCESS
-        ],
-        serviceCategories: [ServiceCategory.URBANISME, ServiceCategory.VOIRIE, ServiceCategory.ENVIRONNEMENT],
         serviceAccessLevel: { canView: true, canProcess: true, canValidate: false }
     },
     [MunicipalRole.AGENT_ACCUEIL]: {
@@ -141,11 +141,8 @@ export const ROLE_DEFAULTS: Record<MunicipalRole, RoleDefaults> = {
         serviceAccessLevel: { canView: true, canProcess: false, canValidate: false }
     },
 
-    // USERS (Default minimal access)
-    [MunicipalRole.CITOYEN]: { functions: [], serviceCategories: [], serviceAccessLevel: { canView: true, canProcess: false, canValidate: false } },
-    [MunicipalRole.CITOYEN_AUTRE_COMMUNE]: { functions: [], serviceCategories: [], serviceAccessLevel: { canView: true, canProcess: false, canValidate: false } },
-    [MunicipalRole.ETRANGER_RESIDENT]: { functions: [], serviceCategories: [], serviceAccessLevel: { canView: true, canProcess: false, canValidate: false } },
-    [MunicipalRole.PERSONNE_MORALE]: { functions: [], serviceCategories: [], serviceAccessLevel: { canView: true, canProcess: false, canValidate: false } }
+    // USAGERS (Unified public user role)
+    [MunicipalRole.USAGER]: { functions: [], serviceCategories: [], serviceAccessLevel: { canView: true, canProcess: false, canValidate: false } }
 };
 
 export function getDefaultsForRole(role: MunicipalRole) {

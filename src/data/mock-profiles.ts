@@ -64,7 +64,7 @@ const generateMairieStaff = (mairie: typeof mairiesGabon[0]): MockProfile[] => {
         first_name: "Chef",
         last_name: "Service État Civil",
         email: `etat-civil@${domain}`,
-        role: MunicipalRole.CHEF_SERVICE,
+        role: MunicipalRole.CHEF_SERVICE_ETAT_CIVIL,
         organization_id: `mock-${mairie.id}`,
         employer: `mock-${mairie.id}`,
         created_at: new Date().toISOString(),
