@@ -1,8 +1,9 @@
 // Énumération des types d'usagers types pour une mairie
 export enum CitizenType {
+    GABONAIS = 'GABONAIS',
+    ETRANGER = 'ETRANGER',
     RESIDENT = 'RESIDENT',
-    NON_RESIDENT = 'NON_RESIDENT',
-    ETRANGER = 'ETRANGER'
+    NON_RESIDENT = 'NON_RESIDENT'
 }
 
 // Énumération des statuts dans le pays d'accueil

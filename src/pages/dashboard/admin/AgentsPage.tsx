@@ -39,13 +39,12 @@ const getRoleBadgeColor = (role: string): string => {
             return "bg-orange-100 text-orange-800 border-orange-200";
         case MunicipalRole.SECRETAIRE_GENERAL:
             return "bg-blue-100 text-blue-800 border-blue-200";
-        case MunicipalRole.CHEF_SERVICE:
-        case MunicipalRole.CHEF_BUREAU:
+        case MunicipalRole.CHEF_SERVICE_ETAT_CIVIL:
+        case MunicipalRole.CHEF_SERVICE_URBANISME:
             return "bg-purple-100 text-purple-800 border-purple-200";
-        case MunicipalRole.AGENT_ETAT_CIVIL:
+        case MunicipalRole.OFFICIER_ETAT_CIVIL:
             return "bg-green-100 text-green-800 border-green-200";
         case MunicipalRole.AGENT_MUNICIPAL:
-        case MunicipalRole.AGENT_TECHNIQUE:
             return "bg-teal-100 text-teal-800 border-teal-200";
         case MunicipalRole.AGENT_ACCUEIL:
             return "bg-cyan-100 text-cyan-800 border-cyan-200";
@@ -113,7 +112,7 @@ const ALL_AGENTS: Agent[] = [
     {
         id: 'lbv-4',
         name: 'Marie Essono',
-        role: MunicipalRole.CHEF_SERVICE,
+        role: MunicipalRole.CHEF_SERVICE_ETAT_CIVIL,
         email: 'm.essono@mairie-libreville.ga',
         status: 'active',
         department: 'État Civil',
@@ -124,7 +123,7 @@ const ALL_AGENTS: Agent[] = [
     {
         id: 'lbv-5',
         name: 'Jean Nguema',
-        role: MunicipalRole.CHEF_SERVICE,
+        role: MunicipalRole.CHEF_SERVICE_URBANISME,
         email: 'j.nguema@mairie-libreville.ga',
         status: 'active',
         department: 'Urbanisme',
@@ -135,7 +134,7 @@ const ALL_AGENTS: Agent[] = [
     {
         id: 'lbv-6',
         name: 'Léa Mboumba',
-        role: MunicipalRole.AGENT_ETAT_CIVIL,
+        role: MunicipalRole.OFFICIER_ETAT_CIVIL,
         email: 'l.mboumba@mairie-libreville.ga',
         status: 'active',
         department: 'État Civil',
@@ -146,7 +145,7 @@ const ALL_AGENTS: Agent[] = [
     {
         id: 'lbv-7',
         name: 'Marc Ondo',
-        role: MunicipalRole.AGENT_ETAT_CIVIL,
+        role: MunicipalRole.OFFICIER_ETAT_CIVIL,
         email: 'm.ondo@mairie-libreville.ga',
         status: 'leave',
         department: 'État Civil',
@@ -228,7 +227,7 @@ const ALL_AGENTS: Agent[] = [
     {
         id: 'pg-4',
         name: 'Hélène Oyane',
-        role: MunicipalRole.CHEF_SERVICE,
+        role: MunicipalRole.CHEF_SERVICE_ETAT_CIVIL,
         email: 'h.oyane@mairie-portgentil.ga',
         status: 'active',
         department: 'État Civil',
@@ -239,7 +238,7 @@ const ALL_AGENTS: Agent[] = [
     {
         id: 'pg-5',
         name: 'André Moussavou',
-        role: MunicipalRole.CHEF_SERVICE,
+        role: MunicipalRole.CHEF_SERVICE_URBANISME,
         email: 'a.moussavou@mairie-portgentil.ga',
         status: 'active',
         department: 'Urbanisme',
@@ -250,7 +249,7 @@ const ALL_AGENTS: Agent[] = [
     {
         id: 'pg-6',
         name: 'Jeanne Minko',
-        role: MunicipalRole.AGENT_ETAT_CIVIL,
+        role: MunicipalRole.OFFICIER_ETAT_CIVIL,
         email: 'j.minko@mairie-portgentil.ga',
         status: 'active',
         department: 'État Civil',
@@ -261,7 +260,7 @@ const ALL_AGENTS: Agent[] = [
     {
         id: 'pg-7',
         name: 'Patrick Nze',
-        role: MunicipalRole.AGENT_ETAT_CIVIL,
+        role: MunicipalRole.OFFICIER_ETAT_CIVIL,
         email: 'p.nze@mairie-portgentil.ga',
         status: 'leave',
         department: 'État Civil',

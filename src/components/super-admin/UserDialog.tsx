@@ -32,7 +32,7 @@ export function UserDialog({ open, onOpenChange, initialData, onSave }: UserDial
     const [searchQuery, setSearchQuery] = useState("");
     const [formData, setFormData] = useState<any>({
         name: "",
-        role: MunicipalRole.CITOYEN,
+        role: MunicipalRole.USAGER,
         entityId: "",
         email: "",
         functions: [],
@@ -88,7 +88,7 @@ export function UserDialog({ open, onOpenChange, initialData, onSave }: UserDial
             // Reset for new user
             setFormData({
                 name: "",
-                role: MunicipalRole.CITOYEN,
+                role: MunicipalRole.USAGER,
                 entityId: "",
                 email: "",
                 functions: [],
@@ -196,9 +196,10 @@ export function UserDialog({ open, onOpenChange, initialData, onSave }: UserDial
                                                     <SelectItem value={MunicipalRole.MAIRE}>Maire</SelectItem>
                                                     <SelectItem value={MunicipalRole.MAIRE_ADJOINT}>Maire Adjoint</SelectItem>
                                                     <SelectItem value={MunicipalRole.SECRETAIRE_GENERAL}>Secrétaire Général</SelectItem>
-                                                    <SelectItem value={MunicipalRole.CHEF_SERVICE}>Chef de Service</SelectItem>
+                                                    <SelectItem value={MunicipalRole.CHEF_SERVICE_ETAT_CIVIL}>Chef Service État Civil</SelectItem>
+                                                    <SelectItem value={MunicipalRole.CHEF_SERVICE_URBANISME}>Chef Service Urbanisme</SelectItem>
+                                                    <SelectItem value={MunicipalRole.OFFICIER_ETAT_CIVIL}>Officier État Civil</SelectItem>
                                                     <SelectItem value={MunicipalRole.AGENT_MUNICIPAL}>Agent Municipal</SelectItem>
-                                                    <SelectItem value={MunicipalRole.AGENT_ETAT_CIVIL}>Agent État Civil</SelectItem>
                                                     <SelectItem value={MunicipalRole.AGENT_ACCUEIL}>Agent Accueil</SelectItem>
                                                 </SelectContent>
                                             </Select>

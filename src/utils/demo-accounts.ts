@@ -84,7 +84,7 @@ export const getMunicipalStaffAccounts = (entity: Entity): DemoUser[] => {
     },
     {
       id: `${baseId}-chef-etat-civil`,
-      role: MunicipalRole.CHEF_SERVICE,
+      role: MunicipalRole.CHEF_SERVICE_ETAT_CIVIL,
       name: `Chef Service État Civil`,
       entityId: entity.id,
       permissions: ['Gestion état civil', 'Validation actes'],
@@ -93,7 +93,7 @@ export const getMunicipalStaffAccounts = (entity: Entity): DemoUser[] => {
     },
     {
       id: `${baseId}-agent-ec`,
-      role: MunicipalRole.AGENT_ETAT_CIVIL,
+      role: MunicipalRole.OFFICIER_ETAT_CIVIL,
       name: `Officier État Civil`,
       entityId: entity.id,
       permissions: ['Établissement actes', 'Célébration mariages'],
