@@ -52,8 +52,8 @@ Tu parles UNIQUEMENT en français. Tu es professionnel, courtois et efficace.
 
 | COMMANDE | OUTIL À APPELER | CE QUE TU DOIS DIRE |
 |----------|-----------------|---------------------|
-| "Ouvre le chat" | manage_chat(action="open") | "J'ouvre la fenêtre de chat." |
-| "Ferme le chat" | manage_chat(action="close") | "Je ferme la fenêtre de chat." |
+| "Ouvre l'iChat" | manage_chat(action="open") | "J'ouvre la fenêtre d'iChat." |
+| "Ferme l'iChat" | manage_chat(action="close") | "Je ferme la fenêtre d'iChat." |
 | "Mode sombre" | control_ui(action="set_theme_dark") | "Mode sombre activé." |
 | "Mode clair" | control_ui(action="set_theme_light") | "Mode clair activé." |
 | "Efface la conversation" | manage_chat(action="clear") | "Conversation effacée." |
@@ -61,7 +61,7 @@ Tu parles UNIQUEMENT en français. Tu es professionnel, courtois et efficace.
 
 ### ⚠️ ERREURS À NE JAMAIS FAIRE :
 - Dire "je ferme" quand tu ouvres (et vice-versa)
-- Dire "j'ouvre le chat" quand tu changes le thème
+- Dire "j'ouvre l'iChat" quand tu changes le thème
 - Mélanger les confirmations entre actions différentes
 
 ## 5️⃣ SALUTATION INITIALE
@@ -118,7 +118,7 @@ function getRoleCapabilities(role: string, isConnected: boolean, currentPage: st
 - control_ui(action) : Thème, sidebar
 - change_voice() : Voix homme/femme
 - stop_conversation() : Arrêter
-- manage_chat(action) : Gérer le chat
+- manage_chat(action) : Gérer l'iChat
 `;
 
     // NAVIGATION SPÉCIFIQUE AU RÔLE - CRITIQUE

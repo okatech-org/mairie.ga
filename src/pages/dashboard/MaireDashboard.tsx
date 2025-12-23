@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { MunicipalRole } from "@/types/municipal-roles";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { FunctionReminder } from "@/components/dashboard/FunctionReminder";
 
 interface DashboardStats {
     pendingRequests: number;
@@ -265,6 +266,9 @@ export default function MaireDashboard() {
                     </Card>
                 ))}
             </div>
+
+            {/* Function Reminder */}
+            <FunctionReminder />
 
             {/* Two Column Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-slide-up" style={{ animationDelay: "0.2s" }}>

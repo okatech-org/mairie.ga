@@ -151,6 +151,50 @@ export interface IBoiteServiceSearchResult {
     responsibleName?: string;
 }
 
+/**
+ * Membre d'un service
+ */
+export interface ServiceMember {
+    id: string;
+    serviceId: string;
+    userId: string;
+    memberRole: 'LEADER' | 'MEMBER' | 'BACKUP';
+    canReceiveCorrespondence: boolean;
+    canReceiveCalls: boolean;
+    displayOrder: number;
+    joinedAt: string;
+    user?: {
+        displayName: string;
+        phone?: string;
+        position?: string;
+    };
+}
+
+/**
+ * Entrée de l'annuaire des contacts
+ */
+export interface ContactDirectoryEntry {
+    userId: string;
+    profileId: string;
+    displayName: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    position?: string;
+    servicePhone?: string;
+    isPublicContact: boolean;
+    environment: UserEnvironment;
+    role: string;
+    organizationId?: string;
+    organizationName?: string;
+    organizationCity?: string;
+    services?: Array<{
+        id: string;
+        name: string;
+        role: string;
+    }>;
+}
+
 // ============================================================
 // IBOÎTE MESSAGING TYPES
 // ============================================================

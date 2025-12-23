@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { FunctionReminder } from "@/components/dashboard/FunctionReminder";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -135,7 +136,7 @@ export default function SuperAdminDashboard() {
         <DashboardLayout>
             {/* Main Container - Mobile first spacing */}
             <div className="space-y-4 sm:space-y-6 lg:space-y-8 relative">
-                
+
                 {/* Header Section - Stack on mobile, row on md+ */}
                 <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:justify-between lg:items-center">
                     <div className="min-w-0">
@@ -257,9 +258,12 @@ export default function SuperAdminDashboard() {
                     ))}
                 </div>
 
+                {/* Function Reminder */}
+                <FunctionReminder />
+
                 {/* Main Content Grid - Stack on mobile, 3 cols on lg+ */}
                 <div className="grid gap-4 sm:gap-6 lg:grid-cols-3 lg:gap-8">
-                    
+
                     {/* ENTITY MANAGEMENT - Full width mobile, 2/3 desktop */}
                     <div className="lg:col-span-2 space-y-3 sm:space-y-4 lg:space-y-6">
                         <div className="flex items-center justify-between gap-2">
@@ -293,12 +297,11 @@ export default function SuperAdminDashboard() {
                                             </span>
                                         </div>
                                         <div className="flex items-center justify-between gap-2">
-                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                                                entity.type === OrganizationType.AMBASSADE ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' :
+                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${entity.type === OrganizationType.AMBASSADE ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' :
                                                 entity.type === OrganizationType.CONSULAT_GENERAL ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' :
-                                                entity.type === OrganizationType.CONSULAT ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' :
-                                                'bg-muted text-muted-foreground'
-                                            }`}>
+                                                    entity.type === OrganizationType.CONSULAT ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' :
+                                                        'bg-muted text-muted-foreground'
+                                                }`}>
                                                 {entity.type.replace(/_/g, ' ')}
                                             </span>
                                             <button className="text-primary text-xs font-medium hover:underline">Gérer</button>
@@ -339,12 +342,11 @@ export default function SuperAdminDashboard() {
                                                         {entity.name}
                                                     </td>
                                                     <td className="px-4 xl:px-6 py-4">
-                                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                                            entity.type === OrganizationType.AMBASSADE ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' :
+                                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${entity.type === OrganizationType.AMBASSADE ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' :
                                                             entity.type === OrganizationType.CONSULAT_GENERAL ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' :
-                                                            entity.type === OrganizationType.CONSULAT ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' :
-                                                            'bg-muted text-muted-foreground'
-                                                        }`}>
+                                                                entity.type === OrganizationType.CONSULAT ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' :
+                                                                    'bg-muted text-muted-foreground'
+                                                            }`}>
                                                             {entity.type.replace(/_/g, ' ')}
                                                         </span>
                                                     </td>
@@ -400,7 +402,7 @@ export default function SuperAdminDashboard() {
                     <div className="space-y-3 sm:space-y-4 lg:space-y-6">
                         <LoginAttemptsMonitor />
                         <AuditSummaryWidget />
-                        
+
                         {/* Maintenance Widget */}
                         <div className="neu-raised rounded-xl p-4 sm:p-5 lg:p-6">
                             <h3 className="font-bold mb-3 sm:mb-4 text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">

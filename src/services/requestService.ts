@@ -106,8 +106,8 @@ export const requestService = {
         if (error) throw error;
 
         // Log update audit
-        await auditService.logUpdate('request', id, 
-            currentData || {}, 
+        await auditService.logUpdate('request', id,
+            currentData || {},
             updates as Record<string, unknown>
         );
 

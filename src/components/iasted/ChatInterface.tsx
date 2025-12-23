@@ -23,7 +23,7 @@ export function ChatInterface({ isExpanded }: ChatInterfaceProps) {
         {
             id: '1',
             role: 'assistant',
-            content: 'Bonjour ! Je suis iAsted. Je peux répondre à vos questions ou vous mettre en relation avec un agent humain. Que souhaitez-vous faire ?',
+            content: 'Bonjour ! Je suis iAsted. Je peux répondre à vos questions via iChat ou vous mettre en relation avec un agent humain. Que souhaitez-vous faire ?',
             timestamp: new Date()
         }
     ]);
@@ -133,8 +133,8 @@ export function ChatInterface({ isExpanded }: ChatInterfaceProps) {
                                 </div>
                                 <div
                                     className={`p-3 rounded-2xl text-sm ${msg.role === 'user'
-                                            ? 'bg-primary text-primary-foreground rounded-tr-none'
-                                            : 'bg-white border shadow-sm rounded-tl-none'
+                                        ? 'bg-primary text-primary-foreground rounded-tr-none'
+                                        : 'bg-white border shadow-sm rounded-tl-none'
                                         }`}
                                 >
                                     {msg.content}

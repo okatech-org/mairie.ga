@@ -65,28 +65,28 @@
   }
 
   .dark {
-    /* Mode Sombre Amélioré - Plus de contraste */
-    --background: 220 25% 6%;
+    /* Mode Sombre Amélioré - Gris neutre sans teinte bleue */
+    --background: 0 0% 6%;
     --foreground: 0 0% 98%;
 
-    --card: 220 25% 9%;
+    --card: 0 0% 9%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 220 25% 8%;
+    --popover: 0 0% 8%;
     --popover-foreground: 0 0% 98%;
 
     /* Primary - Bleu lumineux */
     --primary: 214 90% 60%;
-    --primary-foreground: 220 25% 6%;
+    --primary-foreground: 0 0% 6%;
     --primary-light: 214 70% 25%;
 
     /* Secondary - Bleu électrique plus vif */
     --secondary: 202 100% 60%;
-    --secondary-foreground: 220 25% 6%;
+    --secondary-foreground: 0 0% 6%;
 
-    /* Muted avec meilleur contraste */
-    --muted: 220 20% 14%;
-    --muted-foreground: 220 15% 70%;
+    /* Muted avec meilleur contraste - Gris neutre */
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 70%;
 
     /* Accent - Rose plus vibrant */
     --accent: 338 85% 65%;
@@ -94,7 +94,7 @@
 
     /* Warning - Jaune doré lumineux */
     --warning: 45 100% 60%;
-    --warning-foreground: 220 25% 6%;
+    --warning-foreground: 0 0% 6%;
 
     --destructive: 0 90% 65%;
     --destructive-foreground: 0 0% 100%;
@@ -103,9 +103,9 @@
     --success: 146 80% 45%;
     --success-foreground: 0 0% 100%;
 
-    /* Bordures plus visibles */
-    --border: 220 20% 20%;
-    --input: 220 20% 16%;
+    /* Bordures plus visibles - Gris neutre */
+    --border: 0 0% 20%;
+    --input: 0 0% 16%;
     --ring: 214 90% 60%;
 
     /* Chart colors - Plus vifs en mode sombre */

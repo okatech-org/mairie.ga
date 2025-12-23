@@ -55,6 +55,21 @@ export interface SendCorrespondanceParams {
     isUrgent?: boolean;
 }
 
+export interface WorkflowStep {
+    id: string;
+    folder_id: string;
+    step_type: string;
+    actor_id: string;
+    actor_name?: string;
+    actor_role?: string;
+    target_id?: string;
+    target_name?: string;
+    comment?: string;
+    is_read: boolean;
+    read_at?: string;
+    created_at: string;
+}
+
 // Authorized roles for CORRESPONDANCE features (inter-administration mail)
 // Only municipal staff can use this - NOT citizens/foreigners/visitors
 export const CORRESPONDANCE_AUTHORIZED_ROLES = [
@@ -423,6 +438,241 @@ class CorrespondanceService {
     async getUnreadCount(): Promise<number> {
         const folders = await this.getMockFolders();
         return folders.filter(f => !f.isRead).length;
+    }
+
+    // ============================================================
+    // WORKFLOW METHODS - Gestion du parcours administratif
+    // ============================================================
+
+    /**
+     * Submit folder for approval to Maire/Adjoint
+     */
+    async submitForApproval(folderId: string, approverId: string, comment?: string): Promise<{
+        success: boolean;
+        stepId?: string;
+    }> {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Non authentifié');
+
+        // Update folder status and holder
+        const { error: updateError } = await (supabase.from as any)('icorrespondance_folders')
+            .update({
+                status: 'PENDING_APPROVAL',
+                current_holder_id: approverId,
+                requires_approval: true,
+            })
+            .eq('id', folderId);
+
+        if (updateError) throw new Error(updateError.message);
+
+        // Create workflow step
+        const { data: step, error: stepError } = await (supabase.from as any)('icorrespondance_workflow_steps')
+            .insert({
+                folder_id: folderId,
+                step_type: 'SENT_FOR_APPROVAL',
+                actor_id: user.id,
+                target_id: approverId,
+                comment: comment || 'Soumis pour approbation',
+            })
+            .select()
+            .single();
+
+        if (stepError) {
+            console.error('[Workflow] Error creating step:', stepError);
+        }
+
+        return { success: true, stepId: step?.id };
+    }
+
+    /**
+     * Approve folder (Maire/Adjoint action)
+     */
+    async approveFolder(folderId: string, comment?: string): Promise<{
+        success: boolean;
+    }> {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Non authentifié');
+
+        // Get the original creator to return the folder
+        const { data: folder } = await (supabase.from as any)('icorrespondance_folders')
+            .select('user_id')
+            .eq('id', folderId)
+            .single();
+
+        // Update folder status
+        const { error: updateError } = await (supabase.from as any)('icorrespondance_folders')
+            .update({
+                status: 'APPROVED',
+                approved_by_id: user.id,
+                approved_at: new Date().toISOString(),
+                current_holder_id: folder?.user_id, // Return to original agent
+            })
+            .eq('id', folderId);
+
+        if (updateError) throw new Error(updateError.message);
+
+        // Create workflow step
+        await (supabase.from as any)('icorrespondance_workflow_steps')
+            .insert({
+                folder_id: folderId,
+                step_type: 'APPROVED',
+                actor_id: user.id,
+                target_id: folder?.user_id,
+                comment: comment || 'Approuvé',
+            });
+
+        return { success: true };
+    }
+
+    /**
+     * Reject folder with reason
+     */
+    async rejectFolder(folderId: string, reason: string): Promise<{
+        success: boolean;
+    }> {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Non authentifié');
+
+        // Get the original creator
+        const { data: folder } = await (supabase.from as any)('icorrespondance_folders')
+            .select('user_id')
+            .eq('id', folderId)
+            .single();
+
+        // Update folder status
+        const { error: updateError } = await (supabase.from as any)('icorrespondance_folders')
+            .update({
+                status: 'REJECTED',
+                current_holder_id: folder?.user_id, // Return to original agent
+            })
+            .eq('id', folderId);
+
+        if (updateError) throw new Error(updateError.message);
+
+        // Create workflow step
+        await (supabase.from as any)('icorrespondance_workflow_steps')
+            .insert({
+                folder_id: folderId,
+                step_type: 'REJECTED',
+                actor_id: user.id,
+                target_id: folder?.user_id,
+                comment: reason,
+            });
+
+        return { success: true };
+    }
+
+    /**
+     * Return folder to agent after approval (ready for delivery)
+     */
+    async returnToAgent(folderId: string): Promise<{
+        success: boolean;
+    }> {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Non authentifié');
+
+        // Get the original creator
+        const { data: folder } = await (supabase.from as any)('icorrespondance_folders')
+            .select('user_id')
+            .eq('id', folderId)
+            .single();
+
+        // Update folder status
+        const { error: updateError } = await (supabase.from as any)('icorrespondance_folders')
+            .update({
+                status: 'READY_FOR_DELIVERY',
+                current_holder_id: folder?.user_id,
+            })
+            .eq('id', folderId);
+
+        if (updateError) throw new Error(updateError.message);
+
+        // Create workflow step
+        await (supabase.from as any)('icorrespondance_workflow_steps')
+            .insert({
+                folder_id: folderId,
+                step_type: 'RETURNED_TO_AGENT',
+                actor_id: user.id,
+                target_id: folder?.user_id,
+                comment: 'Retourné à l\'agent pour remise',
+            });
+
+        return { success: true };
+    }
+
+    /**
+     * Mark folder as delivered
+     */
+    async markAsDelivered(folderId: string, method: 'PRINT' | 'IBOITE'): Promise<{
+        success: boolean;
+    }> {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Non authentifié');
+
+        const stepType = method === 'PRINT' ? 'DELIVERED_PRINT' : 'DELIVERED_IBOITE';
+        const comment = method === 'PRINT'
+            ? 'Document imprimé et remis à l\'usager'
+            : 'Document envoyé via iBoîte';
+
+        // Update folder status
+        const { error: updateError } = await (supabase.from as any)('icorrespondance_folders')
+            .update({
+                status: 'DELIVERED',
+                delivery_method: method,
+                delivered_at: new Date().toISOString(),
+            })
+            .eq('id', folderId);
+
+        if (updateError) throw new Error(updateError.message);
+
+        // Create workflow step
+        await (supabase.from as any)('icorrespondance_workflow_steps')
+            .insert({
+                folder_id: folderId,
+                step_type: stepType,
+                actor_id: user.id,
+                comment: comment,
+            });
+
+        return { success: true };
+    }
+
+    /**
+     * Get workflow history for a folder
+     */
+    async getWorkflowHistory(folderId: string): Promise<WorkflowStep[]> {
+        const { data, error } = await (supabase.from as any)('icorrespondance_workflow_steps')
+            .select('*')
+            .eq('folder_id', folderId)
+            .order('created_at', { ascending: true });
+
+        if (error) {
+            console.error('[Workflow] Error fetching history:', error);
+            return [];
+        }
+
+        return data || [];
+    }
+
+    /**
+     * Get folders pending approval (for Maire/Adjoint)
+     */
+    async getFoldersPendingApproval(): Promise<any[]> {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return [];
+
+        const { data, error } = await (supabase.from as any)('icorrespondance_folders')
+            .select('*, documents:icorrespondance_documents(*)')
+            .eq('current_holder_id', user.id)
+            .eq('status', 'PENDING_APPROVAL')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('[Workflow] Error fetching pending:', error);
+            return [];
+        }
+
+        return data || [];
     }
 }
 

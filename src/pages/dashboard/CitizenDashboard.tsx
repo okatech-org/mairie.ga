@@ -16,6 +16,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 // 🧠 Neuro-Hexagonal: Using Neuron hook instead of legacy service
 import { useRequestNeurons } from '@/hooks/neurons';
+import { FunctionReminder } from '@/components/dashboard/FunctionReminder';
 
 export default function CitizenDashboard() {
     const { user: citizen, loading, error } = useCitizenProfile();
@@ -141,6 +142,9 @@ export default function CitizenDashboard() {
                     </Card>
                 ))}
             </div>
+
+            {/* Function Reminder */}
+            <FunctionReminder />
 
             {/* Profile & Info Cards */}
             <div className="grid gap-6 md:grid-cols-2">

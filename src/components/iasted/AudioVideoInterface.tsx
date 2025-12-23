@@ -4,19 +4,29 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Monitor, MoreVertical, UserPlus, Phone } from 'lucide-react';
 
 interface AudioVideoInterfaceProps {
-    mode: 'audio' | 'video';
+    mode: 'audio' | 'video' | 'both';
 }
 
 export function AudioVideoInterface({ mode }: AudioVideoInterfaceProps) {
     const [isMuted, setIsMuted] = useState(false);
     const [isVideoOff, setIsVideoOff] = useState(false);
     const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'connected'>('idle');
+    const [callType, setCallType] = useState<'audio' | 'video'>('audio');
+
+    // Determine effective call type for display
+    const effectiveMode = mode === 'both' ? callType : mode;
+    const showVideoControls = effectiveMode === 'video';
+
+    const startCall = (type: 'audio' | 'video') => {
+        setCallType(type);
+        setCallStatus('calling');
+    };
 
     if (callStatus === 'idle') {
         return (
             <div className="h-full flex flex-col items-center justify-center gap-8">
                 <div className="relative group">
-                    <div className="neu-raised w-32 h-32 rounded-full flex items-center justify-center animate-pulse group-hover:shadow-neo-lg transition-all duration-500">
+                    <div className="w-32 h-32 rounded-full flex items-center justify-center bg-card/50 border border-border/50 group-hover:border-primary/20 transition-all duration-500">
                         <Avatar className="w-24 h-24 border-4 border-background/50">
                             <AvatarFallback className="bg-primary/20 text-primary text-3xl font-bold">A</AvatarFallback>
                         </Avatar>
@@ -24,25 +34,49 @@ export function AudioVideoInterface({ mode }: AudioVideoInterfaceProps) {
                     <span className="absolute bottom-2 right-2 w-6 h-6 bg-green-500 border-4 border-background rounded-full shadow-lg"></span>
                 </div>
                 <div className="text-center space-y-2">
-                    <h3 className="font-bold text-2xl text-foreground">Agent Consulaire</h3>
-                    <p className="text-sm text-muted-foreground">Disponible pour un appel {mode === 'video' ? 'vidéo' : 'audio'}</p>
+                    <h3 className="font-bold text-2xl text-foreground">Agent Municipal</h3>
+                    <p className="text-sm text-muted-foreground">
+                        {mode === 'both' ? 'Disponible pour un appel audio ou vidéo' : `Disponible pour un appel ${mode === 'video' ? 'vidéo' : 'audio'}`}
+                    </p>
                 </div>
-                <Button
-                    size="lg"
-                    className="neu-raised rounded-full w-20 h-20 bg-green-500/10 hover:bg-green-500/20 text-green-500 hover:scale-110 transition-all duration-300 border-2 border-green-500/20"
-                    onClick={() => setCallStatus('calling')}
-                >
-                    {mode === 'video' ? <Video className="w-8 h-8" /> : <Phone className="w-8 h-8" />}
-                </Button>
+
+                {mode === 'both' ? (
+                    <div className="flex gap-4">
+                        <Button
+                            size="lg"
+                            className="rounded-full w-20 h-20 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 hover:scale-110 transition-all duration-300 border-2 border-blue-500/20 flex flex-col gap-1"
+                            onClick={() => startCall('audio')}
+                        >
+                            <Phone className="w-7 h-7" />
+                            <span className="text-xs">Audio</span>
+                        </Button>
+                        <Button
+                            size="lg"
+                            className="rounded-full w-20 h-20 bg-green-500/10 hover:bg-green-500/20 text-green-500 hover:scale-110 transition-all duration-300 border-2 border-green-500/20 flex flex-col gap-1"
+                            onClick={() => startCall('video')}
+                        >
+                            <Video className="w-7 h-7" />
+                            <span className="text-xs">Vidéo</span>
+                        </Button>
+                    </div>
+                ) : (
+                    <Button
+                        size="lg"
+                        className="rounded-full w-20 h-20 bg-green-500/10 hover:bg-green-500/20 text-green-500 hover:scale-110 transition-all duration-300 border-2 border-green-500/20"
+                        onClick={() => startCall(mode)}
+                    >
+                        {mode === 'video' ? <Video className="w-8 h-8" /> : <Phone className="w-8 h-8" />}
+                    </Button>
+                )}
             </div>
         );
     }
 
     return (
-        <div className="h-full flex flex-col neu-inset rounded-2xl overflow-hidden relative bg-black/20">
+        <div className="h-full flex flex-col rounded-2xl overflow-hidden relative bg-card/30 border border-border/30">
             {/* Remote Video / Avatar */}
             <div className="flex-1 flex items-center justify-center relative p-4">
-                {mode === 'video' && !isVideoOff ? (
+                {showVideoControls && !isVideoOff ? (
                     <div className="w-full h-full rounded-xl overflow-hidden bg-slate-900/50 flex items-center justify-center border border-white/5">
                         <div className="text-center space-y-4">
                             <div className="w-20 h-20 rounded-full bg-white/5 mx-auto flex items-center justify-center animate-pulse">
@@ -59,7 +93,7 @@ export function AudioVideoInterface({ mode }: AudioVideoInterfaceProps) {
                             </Avatar>
                         </div>
                         <div className="text-center">
-                            <h3 className="text-xl font-bold text-foreground">Agent Consulaire</h3>
+                            <h3 className="text-xl font-bold text-foreground">Agent Municipal</h3>
                             <p className="text-green-500 text-sm font-medium animate-pulse">
                                 {callStatus === 'calling' ? 'Appel en cours...' : 'Connecté'}
                             </p>
@@ -79,7 +113,7 @@ export function AudioVideoInterface({ mode }: AudioVideoInterfaceProps) {
             </div>
 
             {/* Local Video (PIP) */}
-            {mode === 'video' && (
+            {showVideoControls && (
                 <div className="absolute top-4 right-4 w-32 h-44 neu-raised rounded-xl overflow-hidden border-2 border-primary/20 shadow-2xl">
                     <div className="w-full h-full flex items-center justify-center bg-black/40 backdrop-blur-md">
                         <span className="text-[10px] text-white/50 font-medium">Moi</span>
@@ -100,7 +134,7 @@ export function AudioVideoInterface({ mode }: AudioVideoInterfaceProps) {
                     {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
                 </Button>
 
-                {mode === 'video' && (
+                {showVideoControls && (
                     <Button
                         variant="ghost"
                         size="icon"

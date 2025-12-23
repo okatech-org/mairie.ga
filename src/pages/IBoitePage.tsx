@@ -38,12 +38,11 @@ import {
     CheckCheck,
     Loader2,
     Inbox,
-    FolderOpen,
     MessageSquare,
     FileText,
     Edit3,
     SendHorizonal,
-    Stamp
+    UserCircle
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -52,10 +51,11 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ContactsDirectory } from '@/components/contacts/ContactsDirectory';
 import type { IBoiteConversation, IBoiteMessage, IBoiteExternalCorrespondence } from '@/types/environments';
 
 // Types de dossiers
-type FolderType = 'inbox' | 'sent' | 'drafts' | 'official' | 'archive';
+type FolderType = 'inbox' | 'sent' | 'drafts' | 'archive' | 'contacts';
 
 // ============================================================
 // COMPOSANTS INTERNES
@@ -304,7 +304,7 @@ export default function IBoitePage() {
             setIsLoading(true);
             setSelectedConversationId(null);
             setSelectedExternalMail(null);
-            
+
             try {
                 const { supabase } = await import('@/integrations/supabase/client');
                 const { data: session } = await supabase.auth.getSession();
@@ -319,25 +319,19 @@ export default function IBoitePage() {
                         setConversations(convs);
                         setExternalMails([]);
                         break;
-                    
+
                     case 'sent':
                         const sentMails = await iBoiteService.getSentMessages(50);
                         setExternalMails(sentMails);
                         setConversations([]);
                         break;
-                    
+
                     case 'drafts':
                         const drafts = await iBoiteService.getDrafts(50);
                         setExternalMails(drafts);
                         setConversations([]);
                         break;
-                    
-                    case 'official':
-                        const official = await iBoiteService.getOfficialCorrespondence({ limit: 50 });
-                        setExternalMails(official);
-                        setConversations([]);
-                        break;
-                    
+
                     case 'archive':
                         const archived = await iBoiteService.getConversations({ archived: true });
                         setConversations(archived);
@@ -533,18 +527,9 @@ export default function IBoitePage() {
                                 Brouillons
                             </Button>
                         </div>
-                        
-                        {/* Onglets - Deuxième ligne */}
+
+                        {/* Archive */}
                         <div className="flex gap-1 p-1 bg-muted/50 rounded-lg">
-                            <Button
-                                variant={activeFolder === 'official' ? 'secondary' : 'ghost'}
-                                size="sm"
-                                className="flex-1 h-8"
-                                onClick={() => setActiveFolder('official')}
-                            >
-                                <Stamp className="h-4 w-4 mr-1" />
-                                Officiels
-                            </Button>
                             <Button
                                 variant={activeFolder === 'archive' ? 'secondary' : 'ghost'}
                                 size="sm"
@@ -553,6 +538,19 @@ export default function IBoitePage() {
                             >
                                 <Archive className="h-4 w-4 mr-1" />
                                 Archives
+                            </Button>
+                        </div>
+
+                        {/* Contacts */}
+                        <div className="flex gap-1 p-1 bg-muted/50 rounded-lg">
+                            <Button
+                                variant={activeFolder === 'contacts' ? 'secondary' : 'ghost'}
+                                size="sm"
+                                className="flex-1 h-8"
+                                onClick={() => setActiveFolder('contacts')}
+                            >
+                                <UserCircle className="h-4 w-4 mr-1" />
+                                Contacts
                             </Button>
                         </div>
                     </div>
@@ -592,14 +590,13 @@ export default function IBoitePage() {
                                     ))
                                 )
                             ) : (
-                                // Afficher les mails externes (sent, drafts, official)
+                                // Afficher les mails externes (sent, drafts)
                                 filteredExternalMails.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                                         <Mail className="h-12 w-12 opacity-20 mb-3" />
                                         <p className="text-sm">
                                             {activeFolder === 'sent' && 'Aucun message envoyé'}
                                             {activeFolder === 'drafts' && 'Aucun brouillon'}
-                                            {activeFolder === 'official' && 'Aucune correspondance officielle'}
                                         </p>
                                         <Button
                                             variant="link"
@@ -643,25 +640,59 @@ export default function IBoitePage() {
                         </div>
                     </ScrollArea>
 
-                    {/* Accès Correspondance */}
-                    <div className="p-3 border-t">
-                        <Button
-                            variant="outline"
-                            className="w-full justify-start"
-                            onClick={() => navigate('/icorrespondance')}
-                        >
-                            <FolderOpen className="h-4 w-4 mr-2 text-amber-500" />
-                            Correspondance officielle
-                        </Button>
-                    </div>
                 </div>
 
                 {/* Zone de chat / Prévisualisation */}
                 <div className={cn(
                     "flex-1 flex flex-col",
-                    (!selectedConversationId && !selectedExternalMail) && "hidden md:flex"
+                    (!selectedConversationId && !selectedExternalMail && activeFolder !== 'contacts') && "hidden md:flex"
                 )}>
-                    {selectedConversation ? (
+                    {activeFolder === 'contacts' ? (
+                        <div className="flex-1 flex flex-col h-full">
+                            <div className="p-4 border-b">
+                                <h2 className="text-xl font-semibold flex items-center gap-2">
+                                    <UserCircle className="h-5 w-5" />
+                                    Annuaire des Contacts
+                                </h2>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                    Tous vos contacts et services accessibles
+                                </p>
+                            </div>
+                            <div className="flex-1 overflow-hidden">
+                                <ContactsDirectory
+                                    onStartChat={(userId, displayName) => {
+                                        toast({
+                                            title: "Conversation",
+                                            description: `Démarrage de la conversation avec ${displayName}`,
+                                        });
+                                        // TODO: Créer/ouvrir conversation avec cet utilisateur
+                                        setActiveFolder('inbox');
+                                    }}
+                                    onStartCall={(userId, displayName) => {
+                                        toast({
+                                            title: "Appel",
+                                            description: `Lancement d'un appel vers ${displayName}`,
+                                        });
+                                        // TODO: Démarrer un appel iAppel
+                                    }}
+                                    onStartMeeting={(userId, displayName) => {
+                                        toast({
+                                            title: "iRéunion",
+                                            description: `Démarrage d'une réunion avec ${displayName}`,
+                                        });
+                                        // TODO: Démarrer une réunion
+                                    }}
+                                    onAddToContacts={(userId, displayName) => {
+                                        toast({
+                                            title: "iContact",
+                                            description: `${displayName} ajouté à vos contacts`,
+                                        });
+                                        // TODO: Ajouter le contact aux favoris
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    ) : selectedConversation ? (
                         <>
                             {/* Header conversation */}
                             <div className="p-4 border-b flex items-center gap-3">
@@ -793,8 +824,8 @@ export default function IBoitePage() {
                                         "text-white",
                                         selectedExternalMail.status === 'DRAFT' ? 'bg-yellow-500' : 'bg-primary'
                                     )}>
-                                        {selectedExternalMail.recipientName?.slice(0, 2).toUpperCase() || 
-                                         selectedExternalMail.recipientEmail?.slice(0, 2).toUpperCase() || '?'}
+                                        {selectedExternalMail.recipientName?.slice(0, 2).toUpperCase() ||
+                                            selectedExternalMail.recipientEmail?.slice(0, 2).toUpperCase() || '?'}
                                     </AvatarFallback>
                                 </Avatar>
 
@@ -810,8 +841,8 @@ export default function IBoitePage() {
 
                                 <Badge variant={
                                     selectedExternalMail.status === 'SENT' ? 'default' :
-                                    selectedExternalMail.status === 'DRAFT' ? 'secondary' :
-                                    selectedExternalMail.status === 'FAILED' ? 'destructive' : 'outline'
+                                        selectedExternalMail.status === 'DRAFT' ? 'secondary' :
+                                            selectedExternalMail.status === 'FAILED' ? 'destructive' : 'outline'
                                 }>
                                     {selectedExternalMail.status === 'SENT' && 'Envoyé'}
                                     {selectedExternalMail.status === 'DRAFT' && 'Brouillon'}
@@ -829,7 +860,7 @@ export default function IBoitePage() {
                                             {selectedExternalMail.subject || '(Sans objet)'}
                                         </h3>
                                         <p className="text-xs text-muted-foreground mt-1">
-                                            {selectedExternalMail.sentAt 
+                                            {selectedExternalMail.sentAt
                                                 ? format(new Date(selectedExternalMail.sentAt), 'PPpp', { locale: fr })
                                                 : format(new Date(selectedExternalMail.createdAt), 'PPpp', { locale: fr })
                                             }

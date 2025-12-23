@@ -3,6 +3,7 @@ import DashboardLayout from "@/layouts/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, FileText, Calendar, CheckCircle2, Clock, ArrowRight } from "lucide-react";
+import { FunctionReminder } from "@/components/dashboard/FunctionReminder";
 
 const MOCK_REQUESTS = [
     { id: '1', initials: 'MN', name: 'Marie Ndong', type: 'Acte de naissance', time: 'Il y a 30 min' },
@@ -85,6 +86,9 @@ export default function AgentDashboard() {
                         </CardContent>
                     </Card>
                 </div>
+
+                {/* Function Reminder */}
+                <FunctionReminder />
 
                 {/* Quick Links */}
                 <div className="grid md:grid-cols-2 gap-4">

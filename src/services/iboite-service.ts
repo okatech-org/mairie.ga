@@ -23,7 +23,9 @@ import type {
     IBoiteAttachment,
     GlobalRecipient,
     OrganizationRecipient,
-    ServiceRecipient
+    ServiceRecipient,
+    ServiceMember,
+    ContactDirectoryEntry
 } from '@/types/environments';
 
 // Re-export IBoiteService type from environments
@@ -965,6 +967,281 @@ class IBoiteServiceClass {
 
     private mapMessages(data: any[]): IBoiteMessage[] {
         return data.map(item => this.mapMessage(item));
+    }
+
+    // ========================================================
+    // ANNUAIRE DES CONTACTS
+    // ========================================================
+
+    /**
+     * Récupère l'annuaire des contacts selon le rôle de l'utilisateur
+     * - Personnel/Services/Mairies: tous les contacts internes
+     * - Visiteurs: seulement les contacts publics + services de leurs dossiers
+     */
+    async getContactsDirectory(options?: {
+        includeServices?: boolean;
+        limit?: number;
+    }): Promise<ContactDirectoryEntry[]> {
+        try {
+            const { data: session } = await supabase.auth.getSession();
+            if (!session?.session?.user?.id) return [];
+
+            const userId = session.session.user.id;
+            const limit = options?.limit ?? 100;
+
+            // Essayer d'abord la fonction SQL optimisée
+            try {
+                const { data, error } = await (supabase.rpc as any)('get_contacts_for_user', {
+                    p_user_id: userId,
+                    p_include_services: options?.includeServices ?? true,
+                    p_limit: limit
+                });
+
+                if (!error && data && data.length > 0) {
+                    return (data || []).map((row: any): ContactDirectoryEntry => ({
+                        userId: row.user_id,
+                        profileId: row.user_id,
+                        displayName: row.display_name || 'Utilisateur',
+                        firstName: '',
+                        lastName: '',
+                        phone: row.phone,
+                        position: row.position,
+                        servicePhone: row.service_phone,
+                        isPublicContact: row.is_public_contact || false,
+                        environment: row.environment,
+                        role: row.role,
+                        organizationId: row.organization_id,
+                        organizationName: row.organization_name,
+                        services: row.services || []
+                    }));
+                }
+            } catch (rpcError) {
+                console.warn('[iBoîte] RPC get_contacts_for_user not available, using fallback');
+            }
+
+            // FALLBACK: Charger directement depuis profiles + organizations
+            console.log('[iBoîte] Using direct profile query fallback');
+
+            const { data: profiles, error: profilesError } = await supabase
+                .from('profiles')
+                .select(`
+                    id,
+                    first_name,
+                    last_name,
+                    email,
+                    phone,
+                    role,
+                    environment,
+                    organization_id,
+                    organizations:organization_id (
+                        id,
+                        name
+                    )
+                `)
+                .neq('id', userId) // Exclure l'utilisateur actuel
+                .limit(limit);
+
+            if (profilesError) {
+                console.error('[iBoîte] Fallback profiles query error:', profilesError);
+                return [];
+            }
+
+            return (profiles || []).map((profile: any): ContactDirectoryEntry => ({
+                userId: profile.id,
+                profileId: profile.id,
+                displayName: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email || 'Utilisateur',
+                firstName: profile.first_name || '',
+                lastName: profile.last_name || '',
+                phone: profile.phone,
+                position: profile.role,
+                servicePhone: null,
+                isPublicContact: false,
+                environment: profile.environment,
+                role: profile.role,
+                organizationId: profile.organization_id,
+                organizationName: profile.organizations?.name || null,
+                services: []
+            }));
+        } catch (error) {
+            console.error('[iBoîte] Get contacts directory error:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Récupère les membres d'un service spécifique
+     */
+    async getServiceMembers(serviceId: string): Promise<ServiceMember[]> {
+        try {
+            // Note: Fonction définie dans la migration, pas encore dans les types générés
+            const { data, error } = await (supabase.rpc as any)('get_service_members', {
+                p_service_id: serviceId
+            });
+
+            if (error) {
+                console.error('[iBoîte] Get service members error:', error);
+                return [];
+            }
+
+            return (data || []).map((row: any): ServiceMember => ({
+                id: row.id,
+                serviceId: serviceId,
+                userId: row.user_id,
+                memberRole: row.member_role,
+                canReceiveCorrespondence: row.can_receive_correspondence,
+                canReceiveCalls: row.can_receive_calls,
+                displayOrder: row.display_order,
+                joinedAt: row.joined_at || new Date().toISOString(),
+                user: {
+                    displayName: row.display_name,
+                    phone: row.phone,
+                    position: row.position
+                }
+            }));
+        } catch (error) {
+            console.error('[iBoîte] Get service members error:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Envoie un message à tous les membres d'un service
+     * Crée une conversation de type SERVICE et ajoute tous les membres comme participants
+     */
+    async sendToService(params: {
+        serviceId: string;
+        subject: string;
+        content: string;
+        attachments?: IBoiteAttachment[];
+    }): Promise<IBoiteConversation | null> {
+        try {
+            const { data: session } = await supabase.auth.getSession();
+            if (!session?.session?.user?.id) return null;
+
+            // 1. Récupérer les membres du service
+            const members = await this.getServiceMembers(params.serviceId);
+            if (members.length === 0) {
+                console.error('[iBoîte] No members in service:', params.serviceId);
+                return null;
+            }
+
+            // 2. Créer la conversation de type SERVICE
+            const conversation = await this.createConversation({
+                type: 'SERVICE',
+                subject: params.subject,
+                participantIds: members.map(m => m.userId),
+                serviceId: params.serviceId,
+                initialMessage: params.content
+            });
+
+            return conversation;
+        } catch (error) {
+            console.error('[iBoîte] Send to service error:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Réclame un élément de service (appel ou correspondance)
+     * Premier arrivé, premier servi - retire l'élément des autres membres
+     */
+    async claimServiceItem(params: {
+        itemType: 'CALL' | 'CORRESPONDENCE';
+        itemId: string;
+        serviceId: string;
+    }): Promise<{ success: boolean; message?: string }> {
+        try {
+            const { data: session } = await supabase.auth.getSession();
+            if (!session?.session?.user?.id) {
+                return { success: false, message: 'Non authentifié' };
+            }
+
+            // Vérifier que l'utilisateur est membre du service
+            const members = await this.getServiceMembers(params.serviceId);
+            const isMember = members.some(m => m.userId === session.session!.user.id);
+
+            if (!isMember) {
+                return { success: false, message: 'Vous n\'êtes pas membre de ce service' };
+            }
+
+            if (params.itemType === 'CORRESPONDENCE') {
+                // Marquer la correspondance comme assignée à cet utilisateur
+                const { error } = await (supabase.from as any)('requests')
+                    .update({
+                        assigned_to: session.session.user.id,
+                        status: 'IN_PROGRESS'
+                    })
+                    .eq('id', params.itemId)
+                    .is('assigned_to', null); // Seulement si pas encore assigné
+
+                if (error) {
+                    console.error('[iBoîte] Claim correspondence error:', error);
+                    return { success: false, message: 'Correspondance déjà attribuée' };
+                }
+            }
+            // Pour les appels, on pourrait implémenter une logique similaire
+
+            console.log(`📬 [iBoîte] Item ${params.itemId} claimed by user ${session.session.user.id}`);
+            return { success: true };
+        } catch (error) {
+            console.error('[iBoîte] Claim service item error:', error);
+            return { success: false, message: 'Erreur lors de l\'attribution' };
+        }
+    }
+
+    /**
+     * Ajoute un membre à un service
+     */
+    async addServiceMember(params: {
+        serviceId: string;
+        userId: string;
+        role?: 'LEADER' | 'MEMBER' | 'BACKUP';
+    }): Promise<boolean> {
+        try {
+            const { error } = await (supabase.from as any)('service_members')
+                .insert({
+                    service_id: params.serviceId,
+                    user_id: params.userId,
+                    member_role: params.role || 'MEMBER'
+                });
+
+            if (error) {
+                console.error('[iBoîte] Add service member error:', error);
+                return false;
+            }
+
+            console.log(`📬 [iBoîte] User ${params.userId} added to service ${params.serviceId}`);
+            return true;
+        } catch (error) {
+            console.error('[iBoîte] Add service member error:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Retire un membre d'un service
+     */
+    async removeServiceMember(params: {
+        serviceId: string;
+        userId: string;
+    }): Promise<boolean> {
+        try {
+            const { error } = await (supabase.from as any)('service_members')
+                .delete()
+                .eq('service_id', params.serviceId)
+                .eq('user_id', params.userId);
+
+            if (error) {
+                console.error('[iBoîte] Remove service member error:', error);
+                return false;
+            }
+
+            console.log(`📬 [iBoîte] User ${params.userId} removed from service ${params.serviceId}`);
+            return true;
+        } catch (error) {
+            console.error('[iBoîte] Remove service member error:', error);
+            return false;
+        }
     }
 
     private mapExternalCorrespondence(data: any): IBoiteExternalCorrespondence {

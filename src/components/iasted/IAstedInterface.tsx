@@ -396,11 +396,11 @@ export default function IAstedInterface({
             switch (action) {
                 case 'open':
                     setIsOpen(true);
-                    return { success: true, message: 'Interface de chat ouverte' };
+                    return { success: true, message: 'Interface iChat ouverte' };
 
                 case 'close':
                     setIsOpen(false);
-                    return { success: true, message: 'Interface de chat fermée' };
+                    return { success: true, message: 'Interface iChat fermée' };
 
                 case 'summarize':
                     toast.info('Génération du résumé de conversation...');
@@ -418,7 +418,7 @@ export default function IAstedInterface({
                     return { success: true, message: 'Historique effacé' };
 
                 default:
-                    return { success: false, message: 'Action de chat non reconnue' };
+                    return { success: false, message: 'Action iChat non reconnue' };
             }
         }
 

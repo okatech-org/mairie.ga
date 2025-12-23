@@ -59,6 +59,8 @@ import {
     getOrganizationContacts,
 } from '@/data/correspondanceData';
 import { IBoiteRecipientSearch } from '@/components/iboite/IBoiteRecipientSearch';
+import { WorkflowTimeline } from '@/components/icorrespondance/WorkflowTimeline';
+import { ApprovalActions } from '@/components/icorrespondance/ApprovalActions';
 
 // Storage bucket for iCorrespondance documents
 const ICORRESPONDANCE_BUCKET = 'icorrespondance-documents';
@@ -78,8 +80,15 @@ interface ICorrespondanceFolder {
     recipient_email?: string;
     recipient_user_id?: string;
     comment?: string;
-    status: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'SENT' | 'ARCHIVED';
+    status: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'READY_FOR_DELIVERY' | 'DELIVERED' | 'SENT' | 'ARCHIVED';
     is_urgent: boolean;
+    // Workflow fields
+    current_holder_id?: string;
+    requires_approval?: boolean;
+    approved_by_id?: string;
+    approved_at?: string;
+    delivery_method?: 'PRINT' | 'IBOITE' | 'PENDING';
+    delivered_at?: string;
     is_read: boolean;
     is_internal: boolean;
     iboite_conversation_id?: string;
@@ -125,8 +134,11 @@ const DOC_TYPE_ICON: Record<string, { color: string; label: string }> = {
 
 const STATUS_LABELS: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
     DRAFT: { label: 'Brouillon', variant: 'outline' },
-    PENDING_APPROVAL: { label: 'En attente', variant: 'secondary' },
+    PENDING_APPROVAL: { label: 'En attente approbation', variant: 'secondary' },
     APPROVED: { label: 'Approuvé', variant: 'default' },
+    REJECTED: { label: 'Rejeté', variant: 'destructive' },
+    READY_FOR_DELIVERY: { label: 'Prêt pour remise', variant: 'default' },
+    DELIVERED: { label: 'Remis', variant: 'default' },
     SENT: { label: 'Envoyé', variant: 'default' },
     ARCHIVED: { label: 'Archivé', variant: 'secondary' },
 };
@@ -1058,19 +1070,38 @@ export default function ICorrespondancePage() {
                                                 </div>
                                             </div>
 
-                                            {/* Actions */}
-                                            {selectedFolder.status === 'DRAFT' && (
-                                                <div className="flex justify-end gap-3 pt-4 border-t">
-                                                    <Button variant="outline" onClick={() => handleArchiveFolder(selectedFolder)}>
-                                                        <Archive className="w-4 h-4 mr-2" />
-                                                        Archiver
-                                                    </Button>
-                                                    <Button onClick={() => handleOpenSendDialog(selectedFolder)} className="gap-2">
-                                                        <Send className="w-4 h-4" />
-                                                        Envoyer
-                                                    </Button>
-                                                </div>
-                                            )}
+                                            {/* Workflow Timeline */}
+                                            <div className="border-t pt-4 mt-4">
+                                                <WorkflowTimeline
+                                                    folderId={selectedFolder.id}
+                                                    className="mb-4"
+                                                />
+                                            </div>
+
+                                            {/* Workflow Actions */}
+                                            <div className="flex justify-between items-center gap-3 pt-4 border-t">
+                                                <ApprovalActions
+                                                    folderId={selectedFolder.id}
+                                                    currentStatus={selectedFolder.status}
+                                                    userRole="agent" // TODO: Get from user context
+                                                    isCurrentHolder={true} // TODO: Check current_holder_id
+                                                    onActionComplete={() => loadFolders()}
+                                                />
+
+                                                {/* Legacy actions for non-workflow statuses */}
+                                                {selectedFolder.status === 'DRAFT' && (
+                                                    <div className="flex gap-2">
+                                                        <Button variant="outline" size="sm" onClick={() => handleArchiveFolder(selectedFolder)}>
+                                                            <Archive className="w-4 h-4 mr-2" />
+                                                            Archiver
+                                                        </Button>
+                                                        <Button size="sm" onClick={() => handleOpenSendDialog(selectedFolder)} className="gap-2">
+                                                            <Send className="w-4 h-4" />
+                                                            Envoyer
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </motion.div>
                                     ) : (
                                         // Folders Grid

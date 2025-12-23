@@ -35,10 +35,13 @@ import {
     FolderPlus,
     Mail,
     Send as SendIcon,
+    UserCircle,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AudioVideoInterface } from './AudioVideoInterface';
 import { MeetingInterface } from './MeetingInterface';
+import { ContactsDirectory } from '@/components/contacts/ContactsDirectory';
+import { IChatPanel, IAppelPanel, IReunionPanel, IContactPanel } from '@/components/icom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRealtimeVoiceWebRTC, UseRealtimeVoiceWebRTC } from '@/hooks/useRealtimeVoiceWebRTC';
 import { DocumentUploadZone } from '@/components/iasted/DocumentUploadZone';
@@ -68,6 +71,8 @@ interface IAstedChatModalProps {
     currentVoice?: 'echo' | 'ash' | 'shimmer';
     systemPrompt?: string;
     userRole?: string;
+    /** If false, displays simplified iCom branding without AI features */
+    hasIAsted?: boolean;
 }
 
 const MessageBubble: React.FC<{
@@ -509,7 +514,8 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
     onClearPendingDocument,
     currentVoice,
     systemPrompt,
-    userRole = 'unknown'
+    userRole = 'unknown',
+    hasIAsted = true
 }) => {
     const [inputText, setInputText] = useState('');
     const [messages, setMessages] = useState<Message[]>([]);
@@ -863,7 +869,7 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
     // Gérer la génération de documents déclenchée par commande vocale
     // P4: Ajout d'un flag pour éviter la double génération
     const pendingDocumentProcessed = useRef<string | null>(null);
-    
+
     useEffect(() => {
         if (pendingDocument && onClearPendingDocument) {
             // P4: Vérifier si ce document a déjà été traité
@@ -873,12 +879,12 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                 onClearPendingDocument();
                 return;
             }
-            
+
             console.log('📄 [IAstedChatModal] Génération de document depuis voix:', pendingDocument);
 
             // Marquer comme traité
             pendingDocumentProcessed.current = docKey;
-            
+
             // Marquer qu'un document est en cours - empêche l'init d'écraser les messages
             hasDocumentRef.current = true;
 
@@ -899,7 +905,7 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
 
             executeToolCall(toolCall);
             onClearPendingDocument();
-            
+
             // Reset le flag après un délai
             setTimeout(() => {
                 pendingDocumentProcessed.current = null;
@@ -1127,12 +1133,12 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
 
                     try {
                         let blob: Blob, url: string, filename: string;
-                        
+
                         // P4: Enrichir le contenu si vide ou insuffisant
                         let enrichedContentPoints = args.content_points || [];
-                        const needsEnrichment = !enrichedContentPoints.length || 
+                        const needsEnrichment = !enrichedContentPoints.length ||
                             enrichedContentPoints.every((p: string) => !p || p.length < 30);
-                        
+
                         if (needsEnrichment && args.subject) {
                             console.log('📄 [generateDocument] Contenu insuffisant, enrichissement...');
                             try {
@@ -1145,7 +1151,7 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                                     recipient: args.recipient,
                                     recipientOrg: args.recipient_org
                                 });
-                                
+
                                 if (enrichResult?.success && enrichResult.contentPoints?.length) {
                                     enrichedContentPoints = enrichResult.contentPoints;
                                     console.log('✅ [generateDocument] Contenu enrichi:', enrichedContentPoints.length, 'paragraphes');
@@ -1359,9 +1365,9 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                     try {
                         // P4: Enrichir le contenu si insuffisant
                         let enrichedContentPoints = args.content_points || [];
-                        const needsEnrichment = !enrichedContentPoints.length || 
+                        const needsEnrichment = !enrichedContentPoints.length ||
                             enrichedContentPoints.every((p: string) => !p || p.length < 30);
-                        
+
                         if (needsEnrichment && args.subject) {
                             console.log('📄 [create_correspondence] Contenu insuffisant, enrichissement...');
                             const enrichResult = await correspondanceService.enrichContent({
@@ -1371,13 +1377,13 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                                 recipient: args.recipient,
                                 recipientOrg: args.recipient_org
                             });
-                            
+
                             if (enrichResult?.success && enrichResult.contentPoints?.length) {
                                 enrichedContentPoints = enrichResult.contentPoints;
                                 console.log('✅ [create_correspondence] Contenu enrichi:', enrichedContentPoints.length, 'paragraphes');
                             }
                         }
-                        
+
                         const result = await correspondanceService.createCorrespondance({
                             recipient: args.recipient,
                             recipientOrg: args.recipient_org,
@@ -1430,7 +1436,7 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                                 document.body.removeChild(link);
                             }, 500);
                         }
-                        
+
                         // P4: Envoyer immédiatement si demandé et email fourni
                         if (args.send_immediately && args.recipient_email) {
                             console.log('📤 [create_correspondence] Envoi immédiat demandé...');
@@ -1442,13 +1448,13 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                                 body: `Veuillez trouver ci-joint notre correspondance concernant: ${args.subject}`,
                                 documentId: docId,
                             });
-                            
+
                             if (sendResult.success) {
                                 toast({
                                     title: "✉️ Courrier envoyé",
                                     description: `Email envoyé à ${args.recipient_email}`,
                                 });
-                                
+
                                 setMessages(prev => [...prev, {
                                     id: crypto.randomUUID(),
                                     role: 'assistant',
@@ -1473,7 +1479,7 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                         if (!args.recipient_email) {
                             throw new Error('Email du destinataire requis pour l\'envoi');
                         }
-                        
+
                         const result = await correspondanceService.sendCorrespondance({
                             recipientEmail: args.recipient_email,
                             recipientName: args.recipient_name,
@@ -1656,23 +1662,31 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
             <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
-                className="neu-card w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden"
+                className="bg-background border border-border/50 rounded-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden shadow-2xl"
             >
                 {/* Header */}
-                <div className="neu-card p-6 rounded-t-2xl rounded-b-none">
+                <div className="p-6 border-b border-border/50 bg-card/50">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="neu-raised w-14 h-14 rounded-full flex items-center justify-center p-3">
-                                <Brain className="w-7 h-7 text-primary" />
+                            <div className="w-14 h-14 rounded-full flex items-center justify-center p-3 bg-primary/10 border border-primary/20">
+                                {hasIAsted ? (
+                                    <Brain className="w-7 h-7 text-primary" />
+                                ) : (
+                                    <MessageSquare className="w-7 h-7 text-primary" />
+                                )}
                             </div>
                             <div>
-                                <h2 className="text-xl font-bold text-foreground">iAsted - Chat Stratégique</h2>
-                                <p className="text-sm text-muted-foreground">Agent de Commande Totale</p>
+                                <h2 className="text-xl font-bold text-foreground">
+                                    {hasIAsted ? 'iAsted - iChat Stratégique' : 'iCom - Communications'}
+                                </h2>
+                                <p className="text-sm text-muted-foreground">
+                                    {hasIAsted ? 'Agent de Commande Totale' : 'Messagerie unifiée'}
+                                </p>
                             </div>
                         </div>
 
@@ -1694,41 +1708,43 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                                 <Trash2 className="w-4 h-4" />
                             </button>
 
-                            {/* Voice Selector */}
-                            <div className="flex items-center gap-2 bg-background/50 rounded-lg p-1 border border-border/50">
-                                <button
-                                    onClick={async () => {
-                                        setSelectedVoice('ash');
-                                        localStorage.setItem('iasted-voice-selection', 'ash');
-                                        if (openaiRTC.isConnected) {
-                                            await openaiRTC.disconnect();
-                                            await openaiRTC.connect('ash');
-                                        }
-                                    }}
-                                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${selectedVoice === 'ash'
-                                        ? 'bg-primary text-primary-foreground shadow-sm'
-                                        : 'text-muted-foreground hover:bg-background/80'
-                                        }`}
-                                >
-                                    Homme
-                                </button>
-                                <button
-                                    onClick={async () => {
-                                        setSelectedVoice('shimmer');
-                                        localStorage.setItem('iasted-voice-selection', 'shimmer');
-                                        if (openaiRTC.isConnected) {
-                                            await openaiRTC.disconnect();
-                                            await openaiRTC.connect('shimmer');
-                                        }
-                                    }}
-                                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${selectedVoice === 'shimmer'
-                                        ? 'bg-primary text-primary-foreground shadow-sm'
-                                        : 'text-muted-foreground hover:bg-background/80'
-                                        }`}
-                                >
-                                    Femme
-                                </button>
-                            </div>
+                            {/* Voice Selector - Only shown when iAsted is available */}
+                            {hasIAsted && (
+                                <div className="flex items-center gap-2 bg-background/50 rounded-lg p-1 border border-border/50">
+                                    <button
+                                        onClick={async () => {
+                                            setSelectedVoice('ash');
+                                            localStorage.setItem('iasted-voice-selection', 'ash');
+                                            if (openaiRTC.isConnected) {
+                                                await openaiRTC.disconnect();
+                                                await openaiRTC.connect('ash');
+                                            }
+                                        }}
+                                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${selectedVoice === 'ash'
+                                            ? 'bg-primary text-primary-foreground shadow-sm'
+                                            : 'text-muted-foreground hover:bg-background/80'
+                                            }`}
+                                    >
+                                        Homme
+                                    </button>
+                                    <button
+                                        onClick={async () => {
+                                            setSelectedVoice('shimmer');
+                                            localStorage.setItem('iasted-voice-selection', 'shimmer');
+                                            if (openaiRTC.isConnected) {
+                                                await openaiRTC.disconnect();
+                                                await openaiRTC.connect('shimmer');
+                                            }
+                                        }}
+                                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${selectedVoice === 'shimmer'
+                                            ? 'bg-primary text-primary-foreground shadow-sm'
+                                            : 'text-muted-foreground hover:bg-background/80'
+                                            }`}
+                                    >
+                                        Femme
+                                    </button>
+                                </div>
+                            )}
 
                             <button
                                 onClick={onClose}
@@ -1741,26 +1757,26 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                 </div >
 
                 {/* Tabs & Content */}
-                <Tabs defaultValue="chat" className="flex-1 flex flex-col min-h-0">
+                <Tabs defaultValue="ichat" className="flex-1 flex flex-col min-h-0">
                     <div className="px-6 border-b border-border/50 bg-background/50 backdrop-blur-sm">
                         <TabsList className="w-full justify-start bg-transparent h-12 p-0 gap-6">
-                            <TabsTrigger value="chat" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 h-full gap-2 transition-all">
-                                <MessageSquare className="w-4 h-4" /> Chat
+                            <TabsTrigger value="ichat" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 h-full gap-2 transition-all">
+                                <MessageSquare className="w-4 h-4" /> iChat
                             </TabsTrigger>
                             <TabsTrigger value="call" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 h-full gap-2 transition-all">
-                                <Phone className="w-4 h-4" /> Appel
-                            </TabsTrigger>
-                            <TabsTrigger value="video" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 h-full gap-2 transition-all">
-                                <Video className="w-4 h-4" /> Visio
+                                <Phone className="w-4 h-4" /> iAppel
                             </TabsTrigger>
                             <TabsTrigger value="meeting" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 h-full gap-2 transition-all">
-                                <Users className="w-4 h-4" /> Réunion
+                                <Users className="w-4 h-4" /> iRéunion
+                            </TabsTrigger>
+                            <TabsTrigger value="contact" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 h-full gap-2 transition-all">
+                                <UserCircle className="w-4 h-4" /> iContact
                             </TabsTrigger>
                         </TabsList>
                     </div>
 
-                    <div className="flex-1 overflow-hidden relative">
-                        <TabsContent value="chat" className="h-full m-0 flex flex-col">
+                    <div className="flex-1 overflow-hidden relative bg-background">
+                        <TabsContent value="ichat" className="h-full m-0 flex flex-col data-[state=active]:flex data-[state=inactive]:hidden">
                             {/* Messages */}
                             <div className="flex-1 overflow-y-auto p-4 space-y-2">
                                 <AnimatePresence>
@@ -1778,79 +1794,105 @@ export const IAstedChatModal: React.FC<IAstedChatModalProps> = ({
                                         />
                                     ))}
                                 </AnimatePresence>
-
                                 {isProcessing && (
                                     <motion.div
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
-                                        className="flex items-center gap-2 text-muted-foreground"
+                                        className="flex items-center gap-2 px-4 py-3 text-muted-foreground"
                                     >
                                         <Loader2 className="w-4 h-4 animate-spin" />
                                         <span className="text-sm">iAsted réfléchit...</span>
                                     </motion.div>
                                 )}
-
                                 <div ref={messagesEndRef} />
                             </div>
 
-                            {/* Input Area */}
-                            <div className="p-4 border-t border-border bg-background/50 backdrop-blur-md flex items-end gap-2">
-                                <button
-                                    onClick={() => openaiRTC.toggleConversation(selectedVoice)}
-                                    className={`neu-raised p-4 rounded-xl hover:shadow-neo-lg transition-all ${openaiRTC.isConnected ? 'bg-primary text-primary-foreground' : ''
-                                        }`}
-                                    title={openaiRTC.isConnected ? 'Arrêter le mode vocal' : 'Activer le mode vocal'}
-                                >
-                                    {openaiRTC.isConnected ? (
-                                        <MicOff className="w-6 h-6" />
-                                    ) : (
-                                        <Mic className="w-6 h-6 text-primary" />
-                                    )}
-                                </button>
-
-                                <div className="flex-1 relative">
-                                    <textarea
-                                        value={inputText}
-                                        onChange={(e) => setInputText(e.target.value)}
-                                        onKeyDown={handleKeyPress}
-                                        placeholder={
-                                            openaiRTC.isConnected ? `🎙️ Mode vocal actif (${selectedVoice === 'echo' ? 'Standard' : 'Africain'})` :
-                                                "Posez votre question à iAsted..."
-                                        }
-                                        className="w-full neu-inset rounded-xl p-4 pr-12 bg-transparent resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 min-h-[60px] max-h-[120px]"
-                                        rows={1}
-                                        disabled={isProcessing || openaiRTC.isConnected}
-                                    />
+                            {/* Input */}
+                            <div className="p-4 border-t neu-card rounded-b-2xl">
+                                <div className="flex items-end gap-3">
+                                    {/* Microphone Button */}
                                     <button
-                                        onClick={handleSendMessage}
-                                        disabled={!inputText.trim() || isProcessing || openaiRTC.isConnected}
-                                        className="absolute right-2 bottom-2 p-2 rounded-lg hover:bg-primary/10 text-primary disabled:opacity-50 transition-colors"
+                                        onClick={() => openaiRTC.toggleConversation(selectedVoice)}
+                                        className={`shrink-0 neu-raised w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${openaiRTC.isConnected
+                                            ? 'bg-gradient-to-br from-purple-500 to-blue-500 text-white shadow-lg shadow-primary/30 animate-pulse'
+                                            : 'hover:shadow-neo-md'
+                                            }`}
+                                        title={openaiRTC.isConnected ? 'Désactiver le microphone' : 'Activer le microphone'}
                                     >
-                                        {isProcessing ? (
-                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                        {openaiRTC.isConnected ? (
+                                            <MicOff className="w-6 h-6 text-white" />
                                         ) : (
-                                            <Send className="w-5 h-5" />
+                                            <Mic className="w-6 h-6 text-primary" />
                                         )}
                                     </button>
+
+                                    <div className="flex-1 relative">
+                                        <textarea
+                                            value={inputText}
+                                            onChange={(e) => setInputText(e.target.value)}
+                                            onKeyDown={handleKeyPress}
+                                            placeholder={
+                                                openaiRTC.isConnected ? `🎙️ Mode vocal actif` :
+                                                    hasIAsted ? "Posez votre question à iChat..." : "Envoyer un message..."
+                                            }
+                                            className="w-full neu-inset rounded-xl p-4 pr-12 bg-transparent resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 min-h-[60px] max-h-[120px]"
+                                            rows={1}
+                                            disabled={isProcessing || openaiRTC.isConnected}
+                                        />
+                                        <button
+                                            onClick={handleSendMessage}
+                                            disabled={!inputText.trim() || isProcessing || openaiRTC.isConnected}
+                                            className="absolute right-2 bottom-2 p-2 rounded-lg hover:bg-primary/10 text-primary disabled:opacity-50 transition-colors"
+                                        >
+                                            {isProcessing ? (
+                                                <Loader2 className="w-5 h-5 animate-spin" />
+                                            ) : (
+                                                <Send className="w-5 h-5" />
+                                            )}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="text-center text-sm text-muted-foreground pb-2">
-                                {isProcessing ? '🧠 iAsted analyse...' :
-                                    openaiRTC.isConnected ? `🎙️ Mode vocal actif (${selectedVoice === 'echo' ? 'Standard' : 'Africain'})` :
-                                        '💬 Conversation stratégique'}
+
+                            <div
+                                className="p-2 border-t border-border/30 flex items-center justify-center text-muted-foreground text-xs gap-2"
+                            >
+                                <MessageSquare className="w-3 h-3 text-primary" />
+                                {hasIAsted ?
+                                    '💬 Conversation stratégique' :
+                                    '💬 Conversation'}
                             </div>
                         </TabsContent>
 
-                        <TabsContent value="call" className="h-full m-0 p-4">
-                            <AudioVideoInterface mode="audio" />
+                        <TabsContent value="call" className="absolute inset-0 m-0 overflow-hidden data-[state=active]:block data-[state=inactive]:hidden">
+                            <IAppelPanel />
                         </TabsContent>
 
-                        <TabsContent value="video" className="h-full m-0 p-4">
-                            <AudioVideoInterface mode="video" />
+                        <TabsContent value="meeting" className="absolute inset-0 m-0 overflow-hidden data-[state=active]:block data-[state=inactive]:hidden">
+                            <IReunionPanel />
                         </TabsContent>
 
-                        <TabsContent value="meeting" className="h-full m-0 p-4">
-                            <MeetingInterface />
+                        <TabsContent value="contact" className="absolute inset-0 m-0 overflow-hidden data-[state=active]:block data-[state=inactive]:hidden">
+                            <IContactPanel
+                                onStartChat={(userId, displayName) => {
+                                    toast({
+                                        title: "iChat",
+                                        description: `Démarrage de la conversation avec ${displayName}`,
+                                    });
+                                }}
+                                onStartCall={(userId, displayName) => {
+                                    toast({
+                                        title: "iAppel",
+                                        description: `Appel vers ${displayName}`,
+                                    });
+                                }}
+                                onStartVideo={(userId, displayName) => {
+                                    toast({
+                                        title: "iVidéo",
+                                        description: `Appel vidéo vers ${displayName}`,
+                                    });
+                                }}
+                            />
                         </TabsContent>
                     </div>
                 </Tabs>
