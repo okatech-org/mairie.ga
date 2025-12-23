@@ -661,32 +661,20 @@ export default function IBoitePage() {
                             <div className="flex-1 overflow-hidden">
                                 <ContactsDirectory
                                     onStartChat={(userId, displayName) => {
-                                        toast({
-                                            title: "Conversation",
-                                            description: `Démarrage de la conversation avec ${displayName}`,
-                                        });
+                                        toast.info(`Démarrage de la conversation avec ${displayName}`);
                                         // TODO: Créer/ouvrir conversation avec cet utilisateur
                                         setActiveFolder('inbox');
                                     }}
                                     onStartCall={(userId, displayName) => {
-                                        toast({
-                                            title: "Appel",
-                                            description: `Lancement d'un appel vers ${displayName}`,
-                                        });
+                                        toast.info(`Lancement d'un appel vers ${displayName}`);
                                         // TODO: Démarrer un appel iAppel
                                     }}
                                     onStartMeeting={(userId, displayName) => {
-                                        toast({
-                                            title: "iRéunion",
-                                            description: `Démarrage d'une réunion avec ${displayName}`,
-                                        });
+                                        toast.info(`Démarrage d'une réunion avec ${displayName}`);
                                         // TODO: Démarrer une réunion
                                     }}
                                     onAddToContacts={(userId, displayName) => {
-                                        toast({
-                                            title: "iContact",
-                                            description: `${displayName} ajouté à vos contacts`,
-                                        });
+                                        toast.success(`${displayName} ajouté à vos contacts`);
                                         // TODO: Ajouter le contact aux favoris
                                     }}
                                 />
