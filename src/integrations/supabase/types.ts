@@ -2078,6 +2078,10 @@ export type Database = {
           organization_name: string
         }[]
       }
+      get_user_conversation_ids: {
+        Args: { _user_id: string }
+        Returns: string[]
+      }
       get_user_organizations: { Args: { _user_id: string }; Returns: string[] }
       has_role: {
         Args: {
