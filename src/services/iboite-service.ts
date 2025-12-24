@@ -443,24 +443,46 @@ class IBoiteServiceClass {
         try {
             const { data: session } = await supabase.auth.getSession();
             if (!session?.session?.user?.id) return null;
+            const currentUserId = session.session.user.id;
 
-            const { data } = await (supabase.from as any)('iboite_conversations')
+            // Get all private conversations where current user participates
+            const { data: myConversations } = await (supabase.from as any)('iboite_conversation_participants')
                 .select(`
-                    *,
-                    participants:iboite_conversation_participants!inner(user_id)
+                    conversation_id,
+                    conversation:iboite_conversations!inner(
+                        id, conversation_type
+                    )
                 `)
-                .eq('conversation_type', 'PRIVATE')
-                .contains('participants', [
-                    { user_id: session.session.user.id },
-                    { user_id: otherUserId }
-                ]);
+                .eq('user_id', currentUserId)
+                .eq('is_active', true)
+                .eq('conversation.conversation_type', 'PRIVATE');
 
-            const found = (data || []).find((conv: any) =>
-                conv.participants?.length === 2
-            );
+            if (!myConversations || myConversations.length === 0) return null;
 
-            return found ? this.mapConversation(found, []) : null;
+            // For each of those conversations, check if otherUserId is also a participant
+            const conversationIds = myConversations.map((c: any) => c.conversation_id);
+            
+            const { data: otherParticipants } = await (supabase.from as any)('iboite_conversation_participants')
+                .select('conversation_id')
+                .eq('user_id', otherUserId)
+                .eq('is_active', true)
+                .in('conversation_id', conversationIds);
+
+            if (!otherParticipants || otherParticipants.length === 0) return null;
+
+            // Get the full conversation data
+            const foundConversationId = otherParticipants[0].conversation_id;
+            const { data: fullConversation } = await (supabase.from as any)('iboite_conversations')
+                .select('*, participants:iboite_conversation_participants(*)')
+                .eq('id', foundConversationId)
+                .single();
+
+            if (!fullConversation) return null;
+
+            const enriched = await this.enrichConversationsWithProfiles([fullConversation]);
+            return this.mapConversation(enriched[0], []);
         } catch (error) {
+            console.error('[iBoîte] findPrivateConversation error:', error);
             return null;
         }
     }
