@@ -341,13 +341,11 @@ class IBoiteServiceClass {
             const { data: session } = await supabase.auth.getSession();
             if (!session?.session?.user?.id) return [];
 
+            // First, get conversations the user participates in
             let query = (supabase.from as any)('iboite_conversations')
                 .select(`
                     *,
-                    participants:iboite_conversation_participants!inner(
-                        *,
-                        profiles(first_name, last_name)
-                    )
+                    participants:iboite_conversation_participants!inner(*)
                 `)
                 .eq('participants.user_id', session.session.user.id)
                 .eq('participants.is_active', true)
@@ -372,7 +370,11 @@ class IBoiteServiceClass {
                 return [];
             }
 
-            return this.mapConversations(data || [], session.session.user.id);
+            // Enrich with participant profiles separately
+            const conversations = data || [];
+            const enrichedConversations = await this.enrichConversationsWithProfiles(conversations);
+            
+            return this.mapConversations(enrichedConversations, session.session.user.id);
         } catch (error) {
             console.error('[iBoîte] Get conversations error:', error);
             return [];
@@ -473,12 +475,7 @@ class IBoiteServiceClass {
     }): Promise<IBoiteMessage[]> {
         try {
             let query = (supabase.from as any)('iboite_messages')
-                .select(`
-                    *,
-                    sender:profiles(
-                        first_name, last_name, avatar_url
-                    )
-                `)
+                .select('*')
                 .eq('conversation_id', conversationId)
                 .eq('is_deleted', false)
                 .order('created_at', { ascending: false });
@@ -500,7 +497,9 @@ class IBoiteServiceClass {
 
             await this.markConversationAsRead(conversationId);
 
-            return this.mapMessages(data || []);
+            // Enrich with sender profiles
+            const enrichedMessages = await this.enrichMessagesWithSenderProfiles(data || []);
+            return this.mapMessages(enrichedMessages);
         } catch (error) {
             console.error('[iBoîte] Get messages error:', error);
             return [];
@@ -693,10 +692,7 @@ class IBoiteServiceClass {
             let query = (supabase.from as any)('iboite_conversations')
                 .select(`
                     *,
-                    participants:iboite_conversation_participants!inner(
-                        *,
-                        profiles(first_name, last_name, avatar_url)
-                    )
+                    participants:iboite_conversation_participants!inner(*)
                 `)
                 .eq('participants.user_id', userId)
                 .eq('last_message_sender_id', userId) // Filter for those where user is the last sender
@@ -714,7 +710,9 @@ class IBoiteServiceClass {
                 return [];
             }
 
-            return this.mapConversations(data || [], userId);
+            // Enrich with participant profiles
+            const enrichedConversations = await this.enrichConversationsWithProfiles(data || []);
+            return this.mapConversations(enrichedConversations, userId);
         } catch (error) {
             console.error('[iBoîte] Get sent conversations error:', error);
             return [];
@@ -894,6 +892,75 @@ class IBoiteServiceClass {
     // ========================================================
     // MAPPERS
     // ========================================================
+
+    // ========================================================
+    // HELPER: Enrich conversations with participant profiles
+    // ========================================================
+
+    private async enrichConversationsWithProfiles(conversations: any[]): Promise<any[]> {
+        if (!conversations.length) return [];
+
+        // Collect all unique user IDs from participants
+        const allUserIds = new Set<string>();
+        conversations.forEach(conv => {
+            (conv.participants || []).forEach((p: any) => {
+                if (p.user_id) allUserIds.add(p.user_id);
+            });
+        });
+
+        if (!allUserIds.size) return conversations;
+
+        // Fetch profiles for all user IDs in one query
+        const { data: profiles } = await supabase
+            .from('profiles')
+            .select('user_id, first_name, last_name')
+            .in('user_id', Array.from(allUserIds));
+
+        // Create a map for quick lookup
+        const profileMap = new Map<string, { first_name: string; last_name: string }>();
+        (profiles || []).forEach((p: any) => {
+            profileMap.set(p.user_id, { first_name: p.first_name, last_name: p.last_name });
+        });
+
+        // Enrich participants with profile data
+        return conversations.map(conv => ({
+            ...conv,
+            participants: (conv.participants || []).map((p: any) => ({
+                ...p,
+                profiles: profileMap.get(p.user_id) || { first_name: '', last_name: '' }
+            }))
+        }));
+    }
+
+    private async enrichMessagesWithSenderProfiles(messages: any[]): Promise<any[]> {
+        if (!messages.length) return [];
+
+        // Collect all unique sender IDs
+        const allSenderIds = new Set<string>();
+        messages.forEach(msg => {
+            if (msg.sender_id) allSenderIds.add(msg.sender_id);
+        });
+
+        if (!allSenderIds.size) return messages;
+
+        // Fetch profiles for all sender IDs in one query
+        const { data: profiles } = await supabase
+            .from('profiles')
+            .select('user_id, first_name, last_name')
+            .in('user_id', Array.from(allSenderIds));
+
+        // Create a map for quick lookup
+        const profileMap = new Map<string, { first_name: string; last_name: string }>();
+        (profiles || []).forEach((p: any) => {
+            profileMap.set(p.user_id, { first_name: p.first_name, last_name: p.last_name });
+        });
+
+        // Enrich messages with sender profile data
+        return messages.map(msg => ({
+            ...msg,
+            sender: profileMap.get(msg.sender_id) || { first_name: '', last_name: '' }
+        }));
+    }
 
     private mapContact(data: any): IBoiteContact {
         return {
