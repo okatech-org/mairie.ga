@@ -13,8 +13,11 @@ serve(async (req) => {
 
     try {
         const authHeader = req.headers.get('Authorization')
+        console.log('Auth header present:', !!authHeader)
+        
         if (!authHeader) {
-            return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+            console.error('No authorization header provided')
+            return new Response(JSON.stringify({ error: 'Unauthorized - No auth header' }), {
                 status: 401,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             })
@@ -27,8 +30,18 @@ serve(async (req) => {
         })
 
         const { data: { user }, error: authError } = await supabase.auth.getUser()
-        if (authError || !user) {
-            return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        
+        if (authError) {
+            console.error('Auth error:', authError.message)
+            return new Response(JSON.stringify({ error: 'Unauthorized - Auth failed', details: authError.message }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            })
+        }
+        
+        if (!user) {
+            console.error('No user found in session')
+            return new Response(JSON.stringify({ error: 'Unauthorized - No user' }), {
                 status: 401,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             })
@@ -36,6 +49,7 @@ serve(async (req) => {
 
         const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')
         if (!OPENAI_API_KEY) {
+            console.error('OPENAI_API_KEY is not configured')
             throw new Error('OPENAI_API_KEY is not set')
         }
 
@@ -60,7 +74,7 @@ serve(async (req) => {
         }
 
         const data = await response.json()
-        console.log('Ephemeral token created successfully')
+        console.log('Ephemeral token created successfully for user:', user.id)
 
         return new Response(JSON.stringify(data), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
