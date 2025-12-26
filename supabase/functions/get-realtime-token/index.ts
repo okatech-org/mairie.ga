@@ -13,47 +13,29 @@ serve(async (req) => {
 
     try {
         const authHeader = req.headers.get('Authorization')
-        console.log('Auth header present:', !!authHeader)
+        let userId = 'anonymous'
         
-        if (!authHeader) {
-            console.error('No authorization header provided')
-            return new Response(JSON.stringify({ error: 'Unauthorized - No auth header' }), {
-                status: 401,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        // Optional authentication - works for both logged-in and public users
+        if (authHeader) {
+            const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+            const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
+            const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+                global: { headers: { Authorization: authHeader } }
             })
-        }
-
-        const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
-        const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-            global: { headers: { Authorization: authHeader } }
-        })
-
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
-        
-        if (authError) {
-            console.error('Auth error:', authError.message)
-            return new Response(JSON.stringify({ error: 'Unauthorized - Auth failed', details: authError.message }), {
-                status: 401,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            })
+            
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user) {
+                userId = user.id
+            }
         }
         
-        if (!user) {
-            console.error('No user found in session')
-            return new Response(JSON.stringify({ error: 'Unauthorized - No user' }), {
-                status: 401,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            })
-        }
+        console.log(`Requesting realtime token for: ${userId}`)
 
         const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')
         if (!OPENAI_API_KEY) {
             console.error('OPENAI_API_KEY is not configured')
             throw new Error('OPENAI_API_KEY is not set')
         }
-
-        console.log(`User requesting realtime token: ${user.id}`)
 
         const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
             method: 'POST',
@@ -74,7 +56,7 @@ serve(async (req) => {
         }
 
         const data = await response.json()
-        console.log('Ephemeral token created successfully for user:', user.id)
+        console.log('Ephemeral token created successfully for:', userId)
 
         return new Response(JSON.stringify(data), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
