@@ -140,15 +140,12 @@ export const useRealtimeVoiceWebRTC = (onToolCall?: (name: string, args: any) =>
 
             setVoiceState('connecting');
 
-            // 0. Verify user session before calling edge function
-            const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-            if (sessionError || !sessionData?.session) {
-                console.error('❌ No valid session:', sessionError?.message);
-                throw new Error('Vous devez être connecté pour utiliser la fonction vocale.');
-            }
-            console.log('✅ Valid session found for user:', sessionData.session.user.id);
+            // Check session for logging purposes (optional - not required)
+            const { data: sessionData } = await supabase.auth.getSession();
+            const userId = sessionData?.session?.user?.id || 'anonymous';
+            console.log('🔊 Voice connection for:', userId);
 
-            // 1. Get Ephemeral Token from edge function (mode strict: auth obligatoire)
+            // 1. Get Ephemeral Token from edge function (works for public and authenticated users)
             console.log('🔑 Requesting ephemeral token...');
             const { data, error } = await supabase.functions.invoke('get-realtime-token', { body: {} });
 
